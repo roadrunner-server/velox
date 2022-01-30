@@ -219,30 +219,26 @@ func (r *repo) GetPluginsModData() ([]*structures.ModulesInfo, error) {
 
 		modInfo.ModuleName = strings.TrimRight(retMod[1], "\n")
 
-		if v.Ref == "master" {
-			commits, rsp, err := r.client.Repositories.ListCommits(context.Background(), v.Owner, v.Repo, &github.CommitsListOptions{
-				SHA:   v.Ref,
-				Until: time.Now(),
-				ListOptions: github.ListOptions{
-					Page:    1,
-					PerPage: 1,
-				},
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			if rsp.StatusCode != http.StatusOK {
-				return nil, errors.New(fmt.Sprintf("bad response status: %d", rsp.StatusCode))
-			}
-
-			for i := 0; i < len(commits); i++ {
-				modInfo.Version = *commits[i].SHA
-			}
+		commits, rsp, err := r.client.Repositories.ListCommits(context.Background(), v.Owner, v.Repo, &github.CommitsListOptions{
+			SHA:   v.Ref,
+			Until: time.Now(),
+			ListOptions: github.ListOptions{
+				Page:    1,
+				PerPage: 1,
+			},
+		})
+		if err != nil {
+			return nil, err
 		}
 
-		// if this is not a master - save the ref
-		modInfo.Version = v.Ref
+		if rsp.StatusCode != http.StatusOK {
+			return nil, errors.New(fmt.Sprintf("bad response status: %d", rsp.StatusCode))
+		}
+
+		for i := 0; i < len(commits); i++ {
+			modInfo.Version = *commits[i].SHA
+		}
+
 		modInfoRet = append(modInfoRet, modInfo)
 	}
 
