@@ -16,3 +16,4 @@
 .idea
 # Added by cargo
 **/target
+plugins_dev.toml

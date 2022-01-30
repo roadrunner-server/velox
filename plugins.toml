@@ -1,0 +1,17 @@
+# github.com/roadrunner-server/roadrunner version
+[roadrunner]
+ref = "latest"
+
+[github_token]
+token = ""
+
+
+[plugins]
+http = { version = "latest", repo = "github.com/roadrunner-server/http" }
+logger = { version = "latest", repo = "github.com/roadrunner-server/logger" }
+server = { version = "latest", repo = "github.com/roadrunner-server/server" }
+rpc = { version = "latest", repo = "github.com/roadrunner-server/rpc" }
+
+bar = { ref = "master", repo = "github.com/roadrunner-server/static" }
+baz = { ref = "COMMIT-REF", repo = "github.com/roadrunner-server/static", build-flags = "-X static/main/version=" }
+foo = { version = "v1.0.2", repo = "github.com/bar/foo" }
