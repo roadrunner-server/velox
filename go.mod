@@ -3,6 +3,7 @@ module github.com/roadrunner-server/velox
 go 1.17
 
 require (
+	github.com/fatih/color v1.13.0
 	github.com/google/go-github/v42 v42.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.10.1
@@ -19,6 +20,8 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

@@ -17,7 +17,7 @@ import (
 
 	"github.com/google/go-github/v42/github"
 	"github.com/roadrunner-server/velox"
-	"github.com/roadrunner-server/velox/structures"
+	"github.com/roadrunner-server/velox/shared"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -28,10 +28,6 @@ const (
 	// keep in sync with the configuration
 	tokenKey string = "token"
 )
-
-type GitRepository interface {
-	GetGoMod(owner, repo, ref string) ([]byte, error)
-}
 
 /*
 GHRepo represents template repository
@@ -61,7 +57,7 @@ func NewRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 
 // DownloadTemplate downloads template repository ->
 func (r *GHRepo) DownloadTemplate(version string) (string, error) {
-	r.log.Debug("[GET ARCHIVE LINK]", zap.String("owner", rrOwner), zap.String("GHRepo", rrRepo), zap.String("encoding", "zip"), zap.String("ref", version))
+	r.log.Info("[GET ARCHIVE LINK]", zap.String("owner", rrOwner), zap.String("GHRepo", rrRepo), zap.String("encoding", "zip"), zap.String("ref", version))
 	url, resp, err := r.client.Repositories.GetArchiveLink(context.Background(), rrOwner, rrRepo, github.Zipball, &github.RepositoryContentGetOptions{Ref: version}, true)
 	if err != nil {
 		return "", err
@@ -71,14 +67,14 @@ func (r *GHRepo) DownloadTemplate(version string) (string, error) {
 		return "", fmt.Errorf("wrong response status, got: %d", resp.StatusCode)
 	}
 
-	r.log.Debug("[REQUESTING REPO]", zap.String("url", url.String()))
+	r.log.Info("[REQUESTING REPO]", zap.String("url", url.String()))
 	request, err := r.client.NewRequest(http.MethodGet, url.String(), nil)
 	if err != nil {
 		return "", err
 	}
 
 	buf := new(bytes.Buffer)
-	r.log.Debug("[FETCHING CONTENT]", zap.String("url", url.String()))
+	r.log.Info("[FETCHING CONTENT]", zap.String("url", url.String()))
 	do, err := r.client.Do(context.Background(), request, buf)
 	if err != nil {
 		return "", err
@@ -146,6 +142,8 @@ func (r *GHRepo) DownloadTemplate(version string) (string, error) {
 			return "", err
 		}
 	}
+
+	r.log.Info("[REPOSITORY SUCCESSFULLY SAVED]", zap.String("path", filepath.Join(dest, outDir))) //nolint:gosec
 	// first name is the output path
 	return filepath.Join(dest, outDir), nil //nolint:gosec
 }
@@ -192,11 +190,11 @@ func extract(dest string, zf *zip.File) error {
 // https://github.com/roadrunner-server/static/archive/refs/heads/master.zip
 // https://github.com/spiral/roadrunner-binary/archive/refs/tags/v2.7.0.zip
 
-func (r *GHRepo) GetPluginsModData() ([]*structures.ModulesInfo, error) {
-	modInfoRet := make([]*structures.ModulesInfo, 0, 5)
+func (r *GHRepo) GetPluginsModData() ([]*shared.ModulesInfo, error) {
+	modInfoRet := make([]*shared.ModulesInfo, 0, 5)
 
 	for k, v := range r.config.Plugins {
-		modInfo := new(structures.ModulesInfo)
+		modInfo := new(shared.ModulesInfo)
 		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("plugin", k), zap.String("ref", v.Ref))
 
 		if v.Ref == "" {

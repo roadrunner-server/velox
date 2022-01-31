@@ -5,20 +5,6 @@ import (
 	"text/template"
 )
 
-// Entry represents all info about module
-type Entry struct {
-	Module    string
-	Structure string
-	Prefix    string
-	Version   string
-	// Replace directive, should include path
-	Replace string
-}
-
-type Template struct {
-	Entries []*Entry
-}
-
 const GoModTemplate string = `
 module github.com/roadrunner-server/roadrunner/v2
 
@@ -37,11 +23,7 @@ require (
 )
 
 replace (
-{{range $v := .Entries}}
-{{if (ne $v.Replace "")}}
-{{$v.Module}} => {{$v.Replace}}
-{{end}}
-{{end}}
+{{range $v := .Entries}}{{if (ne $v.Replace "")}}{{$v.Module}} => {{$v.Replace}}{{end}}{{end}}
 )
 `
 
@@ -69,6 +51,20 @@ func Plugins() []interface{} {
 	}
 }
 `
+
+// Entry represents all info about module
+type Entry struct {
+	Module    string
+	Structure string
+	Prefix    string
+	Version   string
+	// Replace directive, should include path
+	Replace string
+}
+
+type Template struct {
+	Entries []*Entry
+}
 
 func compileTemplate(buf *bytes.Buffer, data *Template) error {
 	tmplt, err := template.New("plugins.go").Parse(PluginsTemplate)

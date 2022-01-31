@@ -15,6 +15,9 @@ type Config struct {
 	// GH token
 	Token map[string]string `mapstructure:"github_token"`
 
+	// Log contains log configuration
+	Log map[string]string `mapstructure:"log"`
+
 	// Plugins Config
 	Plugins map[string]*PluginConfig `mapstructure:"plugins"`
 }
@@ -47,6 +50,10 @@ func (c *Config) Validate() error {
 		if v.Repo == "" {
 			return fmt.Errorf("no repository specified for the plugin: %s", k)
 		}
+	}
+
+	if len(c.Log) == 0 {
+		c.Log = map[string]string{"level": "debug", "mode": "development"}
 	}
 
 	return nil

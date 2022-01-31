@@ -8,7 +8,7 @@ import (
 	"path"
 	"syscall"
 
-	"github.com/roadrunner-server/velox/structures"
+	"github.com/roadrunner-server/velox/shared"
 	"go.uber.org/zap"
 )
 
@@ -24,12 +24,12 @@ const (
 type Builder struct {
 	rrPath    string
 	out       string
-	modules   []*structures.ModulesInfo
+	modules   []*shared.ModulesInfo
 	log       *zap.Logger
 	buildArgs []string
 }
 
-func NewBuilder(rrPath string, modules []*structures.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
+func NewBuilder(rrPath string, modules []*shared.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
 	return &Builder{
 		rrPath:    rrPath,
 		modules:   modules,
@@ -103,13 +103,14 @@ func (b *Builder) Build() error { //nolint:gocyclo
 
 	buf.Reset()
 
-	b.log.Debug("[SWITCHING WORKING DIR]", zap.String("wd", b.rrPath))
+	b.log.Info("[SWITCHING WORKING DIR]", zap.String("wd", b.rrPath), zap.String("!!!NOTE!!!", "If you won't specify full path for the binary it'll be in that working dir"))
 	err = syscall.Chdir(b.rrPath)
 	if err != nil {
 		return err
 	}
 
 	for i := 0; i < len(t.Entries); i++ {
+		// go get only deps w/o replace
 		if t.Entries[i].Replace != "" {
 			continue
 		}
@@ -119,11 +120,13 @@ func (b *Builder) Build() error { //nolint:gocyclo
 		}
 	}
 
+	// go mod tidy for the old packages
 	err = b.goModTidyCmd116()
 	if err != nil {
 		return err
 	}
 
+	// upgrade to 1.17
 	err = b.goModTidyCmd117()
 	if err != nil {
 		return err
@@ -226,6 +229,6 @@ func (b *Builder) goGetMod(repo, hash string) error {
 }
 
 func (b *Builder) Write(d []byte) (int, error) {
-	b.log.Info("[STDERR OUTPUT]", zap.ByteString("log", d))
+	b.log.Debug("[STDERR OUTPUT]", zap.ByteString("log", d))
 	return len(d), nil
 }

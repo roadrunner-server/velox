@@ -1,5 +1,6 @@
-package structures
+package shared
 
+// ModulesInfo represents single go module
 type ModulesInfo struct {
 	// Version - commit sha or tag
 	Version string
