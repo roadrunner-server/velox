@@ -1,11 +1,11 @@
 [velox]
-build_args = "-ldflag -s -race"
+build_args = ['-trimpath', '-ldflags', '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=v2.8.0-alpha.1 -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=development']
 
 [roadrunner]
 ref = "master"
 
 [github_token]
-token = "fooooo"
+token = ""
 
 [log]
 level = "debug"
@@ -16,11 +16,10 @@ mode = "development"
 logger = { ref = "master", owner = "roadrunner-server", repository = "logger" }
 temporal = { ref = "master", owner = "temporalio", repository = "roadrunner-temporal" }
 metrics = { ref = "master", owner = "roadrunner-server", repository = "metrics" }
-reload = { ref = "master", owner = "roadrunner-server", repository = "reload" }
 cache = { ref = "master", owner = "roadrunner-server", repository = "cache" }
-rpc = { ref = "master", owner = "roadrunner-server", repository = "rpc" }
+reload = { ref = "master", owner = "roadrunner-server", repository = "reload" }
 server = { ref = "master", owner = "roadrunner-server", repository = "server" }
-service = { ref = "master", owner = "roadrunner-server", repository = "service", replace = "../plugins/service" }
+service = { ref = "master", owner = "roadrunner-server", repository = "service" }
 amqp = { ref = "master", owner = "roadrunner-server", repository = "amqp" }
 beanstalk = { ref = "master", owner = "roadrunner-server", repository = "beanstalk" }
 boltdb = { ref = "master", owner = "roadrunner-server", repository = "boltdb" }
@@ -29,7 +28,7 @@ fileserver = { ref = "master", owner = "roadrunner-server", repository = "filese
 grpc = { ref = "master", owner = "roadrunner-server", repository = "grpc" }
 gzip = { ref = "master", owner = "roadrunner-server", repository = "gzip" }
 headers = { ref = "master", owner = "roadrunner-server", repository = "headers" }
-http = { ref = "v2.8.0-rc.3", owner = "roadrunner-server", repository = "http" }
+http = { ref = "master", owner = "roadrunner-server", repository = "http" }
 jobs = { ref = "master", owner = "roadrunner-server", repository = "jobs" }
 memory = { ref = "master", owner = "roadrunner-server", repository = "memory" }
 nats = { ref = "master", owner = "roadrunner-server", repository = "nats" }
