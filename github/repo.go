@@ -46,7 +46,7 @@ func NewRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 	var client *http.Client
 
 	// if token exists, use it to increase rate limiter
-	if t, ok := cfg.Token[tokenKey]; ok {
+	if t := cfg.Token[tokenKey]; t != "" {
 		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: t})
 		client = oauth2.NewClient(ctx, ts)
