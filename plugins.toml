@@ -1,17 +1,21 @@
-# github.com/roadrunner-server/roadrunner version
+[velox]
+build_args = "-ldflag -s -race"
+
 [roadrunner]
-ref = "latest"
+ref = "master"
 
 [github_token]
-token = ""
+token = "fooooo"
 
+[log]
+level = "debug"
+mode = "development"
 
 [plugins]
-http = { version = "latest", repo = "github.com/roadrunner-server/http" }
-logger = { version = "latest", repo = "github.com/roadrunner-server/logger" }
-server = { version = "latest", repo = "github.com/roadrunner-server/server" }
-rpc = { version = "latest", repo = "github.com/roadrunner-server/rpc" }
-
-bar = { ref = "master", repo = "github.com/roadrunner-server/static" }
-baz = { ref = "COMMIT-REF", repo = "github.com/roadrunner-server/static", build-flags = "-X static/main/version=" }
-foo = { version = "v1.0.2", repo = "github.com/bar/foo" }
+# ref -> master, commit or tag
+temporal = { ref = "master", owner = "temporalio", repository = "roadrunner-temporal" }
+http = { ref = "v2.8.0-rc.3", owner = "roadrunner-server", repository = "http" }
+logger = { ref = "master", owner = "roadrunner-server", repository = "logger" }
+server = { ref = "master", owner = "roadrunner-server", repository = "server" }
+service = { ref = "master", owner = "roadrunner-server", repository = "service", replace = "../plugins/service" }
+rpc = { ref = "master", owner = "roadrunner-server", repository = "rpc" }

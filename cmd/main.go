@@ -61,7 +61,7 @@ func main() {
 		zlog.Fatal("[PLUGINS GET MOD INFO]", zap.Error(err))
 	}
 
-	builder := build.NewBuilder(path, pMod, *out, zlog)
+	builder := build.NewBuilder(path, pMod, *out, zlog, cfg.Velox["build_args"])
 
 	err = builder.Build()
 	if err != nil {

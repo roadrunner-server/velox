@@ -5,11 +5,14 @@ import (
 	"text/template"
 )
 
+// Entry represents all info about module
 type Entry struct {
 	Module    string
 	Structure string
 	Prefix    string
 	Version   string
+	// Replace directive, should include path
+	Replace string
 }
 
 type Template struct {
@@ -31,6 +34,14 @@ require (
         github.com/spf13/cobra v1.3.0
         github.com/stretchr/testify v1.7.0
         github.com/vbauerster/mpb/v5 v5.4.0
+)
+
+replace (
+{{range $v := .Entries}}
+{{if (ne $v.Replace "")}}
+{{$v.Module}} => {{$v.Replace}}
+{{end}}
+{{end}}
 )
 `
 

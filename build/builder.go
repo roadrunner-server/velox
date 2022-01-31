@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"syscall"
 
 	"github.com/roadrunner-server/velox/structures"
@@ -14,32 +13,28 @@ import (
 )
 
 const (
-	goModContent = `
-module github.com/roadrunner-server/roadrunner/v2
-
-go 1.17
-`
-)
-
-const (
 	// path to the file which should be generated from the template
-	pluginsPath string = "/internal/container/plugins.go"
-	letterBytes        = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	pluginsPath        string = "/internal/container/plugins.go"
+	letterBytes               = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	goModStr           string = "go.mod"
+	pluginStructureStr string = "Plugin{}"
 )
 
 type Builder struct {
-	rrPath  string
-	out     string
-	modules []*structures.ModulesInfo
-	log     *zap.Logger
+	rrPath    string
+	out       string
+	modules   []*structures.ModulesInfo
+	log       *zap.Logger
+	buildArgs string
 }
 
-func NewBuilder(rrPath string, modules []*structures.ModulesInfo, out string, log *zap.Logger) *Builder {
+func NewBuilder(rrPath string, modules []*structures.ModulesInfo, out string, log *zap.Logger, buildArgs string) *Builder {
 	return &Builder{
-		rrPath:  rrPath,
-		modules: modules,
-		out:     out,
-		log:     log,
+		rrPath:    rrPath,
+		modules:   modules,
+		buildArgs: buildArgs,
+		out:       out,
+		log:       log,
 	}
 }
 
@@ -51,8 +46,9 @@ func (b *Builder) Build() error {
 
 		e.Module = b.modules[i].ModuleName
 		e.Prefix = RandStringBytes(5)
-		e.Structure = "Plugin{}"
+		e.Structure = pluginStructureStr
 		e.Version = b.modules[i].Version
+		e.Replace = b.modules[i].Replace
 
 		t.Entries[i] = e
 	}
@@ -82,17 +78,18 @@ func (b *Builder) Build() error {
 		return err
 	}
 
-	err = os.Remove(path.Join(b.rrPath, "go.mod"))
+	err = os.Remove(path.Join(b.rrPath, goModStr))
 	if err != nil {
 		return err
 	}
 
-	goModFile, err := os.Create(path.Join(b.rrPath, "go.mod"))
+	goModFile, err := os.Create(path.Join(b.rrPath, goModStr))
 	if err != nil {
 		return err
 	}
 
 	buf.Reset()
+
 	err = compileGoModTemplate(buf, t)
 	if err != nil {
 		return err
@@ -103,36 +100,35 @@ func (b *Builder) Build() error {
 		return err
 	}
 
-	// change wd to
-	p, err := filepath.Abs(b.rrPath)
-	if err != nil {
-		return err
-	}
-	err = syscall.Chdir(p)
+	buf.Reset()
+
+	b.log.Debug("[SWITCHING WORKING DIR]", zap.String("wd", b.rrPath))
+	err = syscall.Chdir(b.rrPath)
 	if err != nil {
 		return err
 	}
 
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy"))
 	err = b.goModTidyCmd()
 	if err != nil {
 		return err
 	}
 
 	for i := 0; i < len(t.Entries); i++ {
+		if t.Entries[i].Replace != "" {
+			continue
+		}
 		err = b.goGetMod(t.Entries[i].Module, t.Entries[i].Version)
 		if err != nil {
 			return err
 		}
 	}
 
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy"))
 	err = b.goModTidyCmd()
 	if err != nil {
 		return err
 	}
 
-	err = b.goBuildCmd()
+	err = b.goBuildCmd(b.out)
 	if err != nil {
 		return err
 	}
@@ -148,9 +144,14 @@ func RandStringBytes(n int) string {
 	return string(b)
 }
 
-func (b *Builder) goBuildCmd() error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go build"))
-	cmd := exec.Command("go", "build", "cmd/rr/main.go")
+func (b *Builder) goBuildCmd(out string) error {
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go build "+b.buildArgs+" -o "+out+"cmd/rr/main.go"))
+	var cmd *exec.Cmd
+	if b.buildArgs != "" {
+		cmd = exec.Command("go", "build", b.buildArgs, "-o", out, "cmd/rr/main.go")
+	}
+
+	cmd = exec.Command("go", "build", "-o", out, "cmd/rr/main.go")
 	cmd.Stderr = b
 	err := cmd.Start()
 	if err != nil {
@@ -195,6 +196,6 @@ func (b *Builder) goGetMod(repo, hash string) error {
 }
 
 func (b *Builder) Write(d []byte) (int, error) {
-	b.log.Info("[GO MOD OUTPUT]", zap.ByteString("log", d))
+	b.log.Info("[STDERR OUTPUT]", zap.ByteString("log", d))
 	return len(d), nil
 }

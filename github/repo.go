@@ -219,6 +219,7 @@ func (r *repo) GetPluginsModData() ([]*structures.ModulesInfo, error) {
 
 		modInfo.ModuleName = strings.TrimRight(retMod[1], "\n")
 
+		r.log.Debug("[REQUESTING COMMIT SHA-1]", zap.String("plugin", k), zap.String("ref", v.Ref))
 		commits, rsp, err := r.client.Repositories.ListCommits(context.Background(), v.Owner, v.Repo, &github.CommitsListOptions{
 			SHA:   v.Ref,
 			Until: time.Now(),
@@ -239,6 +240,11 @@ func (r *repo) GetPluginsModData() ([]*structures.ModulesInfo, error) {
 			modInfo.Version = *commits[i].SHA
 		}
 
+		if v.Replace != "" {
+			r.log.Debug("[REPLACE REQUESTED]", zap.String("plugin", k), zap.String("path", v.Replace))
+		}
+
+		modInfo.Replace = v.Replace
 		modInfoRet = append(modInfoRet, modInfo)
 	}
 

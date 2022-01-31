@@ -7,6 +7,8 @@ import (
 )
 
 type Config struct {
+	Velox map[string]string `mapstructure:"velox"`
+
 	// Version
 	Roadrunner map[string]string `mapstructure:"roadrunner"`
 
@@ -21,6 +23,7 @@ type PluginConfig struct {
 	Ref        string `mapstructure:"ref"`
 	Owner      string `mapstructure:"owner"`
 	Repo       string `mapstructure:"repository"`
+	Replace    string `mapstructure:"replace"`
 	BuildFlags string `mapstructure:"build-flags"`
 }
 
