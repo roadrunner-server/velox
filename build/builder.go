@@ -108,11 +108,6 @@ func (b *Builder) Build() error {
 		return err
 	}
 
-	err = b.goModTidyCmd()
-	if err != nil {
-		return err
-	}
-
 	for i := 0; i < len(t.Entries); i++ {
 		if t.Entries[i].Replace != "" {
 			continue
@@ -123,7 +118,12 @@ func (b *Builder) Build() error {
 		}
 	}
 
-	err = b.goModTidyCmd()
+	err = b.goModTidyCmd116()
+	if err != nil {
+		return err
+	}
+
+	err = b.goModTidyCmd117()
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func RandStringBytes(n int) string {
 }
 
 func (b *Builder) goBuildCmd(out string) error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go build "+b.buildArgs+" -o "+out+"cmd/rr/main.go"))
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go build "+b.buildArgs+" -o "+out+" cmd/rr/main.go"))
 	var cmd *exec.Cmd
 	if b.buildArgs != "" {
 		cmd = exec.Command("go", "build", b.buildArgs, "-o", out, "cmd/rr/main.go")
@@ -164,9 +164,24 @@ func (b *Builder) goBuildCmd(out string) error {
 	return nil
 }
 
-func (b *Builder) goModTidyCmd() error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy"))
-	cmd := exec.Command("go", "mod", "tidy")
+func (b *Builder) goModTidyCmd116() error {
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy -go=1.16"))
+	cmd := exec.Command("go", "mod", "tidy", "-go=1.16")
+	cmd.Stderr = b
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
+	err = cmd.Wait()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Builder) goModTidyCmd117() error {
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy -go=1.17"))
+	cmd := exec.Command("go", "mod", "tidy", "-go=1.17")
 	cmd.Stderr = b
 	err := cmd.Start()
 	if err != nil {
