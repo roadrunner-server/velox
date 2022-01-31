@@ -18,6 +18,7 @@ const (
 	letterBytes               = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	goModStr           string = "go.mod"
 	pluginStructureStr string = "Plugin{}"
+	rrMainGo           string = "cmd/rr/main.go"
 )
 
 type Builder struct {
@@ -25,10 +26,10 @@ type Builder struct {
 	out       string
 	modules   []*structures.ModulesInfo
 	log       *zap.Logger
-	buildArgs string
+	buildArgs []string
 }
 
-func NewBuilder(rrPath string, modules []*structures.ModulesInfo, out string, log *zap.Logger, buildArgs string) *Builder {
+func NewBuilder(rrPath string, modules []*structures.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
 	return &Builder{
 		rrPath:    rrPath,
 		modules:   modules,
@@ -38,7 +39,7 @@ func NewBuilder(rrPath string, modules []*structures.ModulesInfo, out string, lo
 	}
 }
 
-func (b *Builder) Build() error {
+func (b *Builder) Build() error { //nolint:gocyclo
 	t := new(Template)
 	t.Entries = make([]*Entry, len(b.modules))
 	for i := 0; i < len(b.modules); i++ {
@@ -139,20 +140,34 @@ func (b *Builder) Build() error {
 func RandStringBytes(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		b[i] = letterBytes[rand.Intn(len(letterBytes))] //nolint:gosec
 	}
 	return string(b)
 }
 
 func (b *Builder) goBuildCmd(out string) error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go build "+b.buildArgs+" -o "+out+" cmd/rr/main.go"))
 	var cmd *exec.Cmd
-	if b.buildArgs != "" {
-		cmd = exec.Command("go", "build", b.buildArgs, "-o", out, "cmd/rr/main.go")
+	if len(b.buildArgs) != 0 {
+		buildCmdArgs := make([]string, 0, len(b.buildArgs)+5)
+		buildCmdArgs = append(buildCmdArgs, "build")
+		// verbose
+		buildCmdArgs = append(buildCmdArgs, "-v")
+		// build args
+		buildCmdArgs = append(buildCmdArgs, b.buildArgs...)
+		// output file
+		buildCmdArgs = append(buildCmdArgs, "-o")
+		// path
+		buildCmdArgs = append(buildCmdArgs, out)
+		// path to main.go
+		buildCmdArgs = append(buildCmdArgs, rrMainGo)
+		cmd = exec.Command("go", buildCmdArgs...)
+	} else {
+		cmd = exec.Command("go", "build", "-o", out, rrMainGo)
 	}
 
-	cmd = exec.Command("go", "build", "-o", out, "cmd/rr/main.go")
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", cmd.String()))
 	cmd.Stderr = b
+	cmd.Stdout = b
 	err := cmd.Start()
 	if err != nil {
 		return err
@@ -196,7 +211,7 @@ func (b *Builder) goModTidyCmd117() error {
 
 func (b *Builder) goGetMod(repo, hash string) error {
 	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go get "+repo+"@"+hash))
-	cmd := exec.Command("go", "get", repo+"@"+hash)
+	cmd := exec.Command("go", "get", repo+"@"+hash) //nolint:gosec
 	cmd.Stderr = b
 
 	err := cmd.Start()

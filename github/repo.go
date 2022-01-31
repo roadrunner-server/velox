@@ -23,12 +23,10 @@ import (
 )
 
 const (
-	templateURL = "https://github.com/roadrunner-server/roadrunner"
-	latest      = "archive/refs/heads/master.zip"
-	fff         = "https://github.com/roadrunner-server/roadrunner/zip/refs/heads/e59dcbfc4ededf78944cfbe1dba1f25cad857af7"
-
 	rrOwner string = "roadrunner-server"
 	rrRepo  string = "roadrunner"
+	// keep in sync with the configuration
+	tokenKey string = "token"
 )
 
 type GitRepository interface {
@@ -36,36 +34,41 @@ type GitRepository interface {
 }
 
 /*
-repo represents template repository
+GHRepo represents template repository
 */
-type repo struct {
+type GHRepo struct {
 	client *github.Client
 	config *velox.Config
 	log    *zap.Logger
 }
 
-func NewRepoInfo(cfg *velox.Config, log *zap.Logger) *repo {
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cfg.Token["token"]})
-	tc := oauth2.NewClient(ctx, ts)
+func NewRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
+	var client *http.Client
 
-	return &repo{
+	// if token exists, use it to increase rate limiter
+	if t, ok := cfg.Token[tokenKey]; ok {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: t})
+		client = oauth2.NewClient(ctx, ts)
+	}
+
+	return &GHRepo{
 		log:    log,
 		config: cfg,
-		client: github.NewClient(tc),
+		client: github.NewClient(client),
 	}
 }
 
 // DownloadTemplate downloads template repository ->
-func (r *repo) DownloadTemplate(version string) (string, error) {
-	r.log.Debug("[GET ARCHIVE LINK]", zap.String("owner", rrOwner), zap.String("repo", rrRepo), zap.String("encoding", "zip"), zap.String("ref", version))
+func (r *GHRepo) DownloadTemplate(version string) (string, error) {
+	r.log.Debug("[GET ARCHIVE LINK]", zap.String("owner", rrOwner), zap.String("GHRepo", rrRepo), zap.String("encoding", "zip"), zap.String("ref", version))
 	url, resp, err := r.client.Repositories.GetArchiveLink(context.Background(), rrOwner, rrRepo, github.Zipball, &github.RepositoryContentGetOptions{Ref: version}, true)
 	if err != nil {
 		return "", err
 	}
 
 	if resp.StatusCode != http.StatusFound {
-		return "", errors.New(fmt.Sprintf("wrong response status, got: %d", resp.StatusCode))
+		return "", fmt.Errorf("wrong response status, got: %d", resp.StatusCode)
 	}
 
 	r.log.Debug("[REQUESTING REPO]", zap.String("url", url.String()))
@@ -134,51 +137,62 @@ func (r *repo) DownloadTemplate(version string) (string, error) {
 		return "", errors.New("empty zip archive")
 	}
 
+	outDir := rc.File[0].Name
+
 	for _, zf := range rc.File {
 		r.log.Debug("[EXTRACTING]", zap.String("file", zf.Name), zap.String("path", dest))
-		pt := filepath.Join(dest, zf.Name)
-
-		if !strings.HasPrefix(pt, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return "", fmt.Errorf("invalid file path: %s", pt)
-		}
-
-		if zf.FileInfo().IsDir() {
-			err = os.MkdirAll(pt, os.ModePerm)
-			if err != nil {
-				return "", err
-			}
-			continue
-		}
-
-		destFile, err := os.OpenFile(pt, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zf.Mode())
+		err = extract(dest, zf)
 		if err != nil {
 			return "", err
 		}
-
-		zippedFile, err := zf.Open()
-		if err != nil {
-			_ = destFile.Close()
-			return "", err
-		}
-
-		_, err = io.Copy(destFile, zippedFile)
-		if err != nil {
-			_ = destFile.Close()
-			_ = zippedFile.Close()
-			return "", err
-		}
-
-		_ = destFile.Close()
-		_ = zippedFile.Close()
 	}
 	// first name is the output path
-	return filepath.Join(dest, rc.File[0].Name), nil
+	return filepath.Join(dest, outDir), nil //nolint:gosec
+}
+
+func extract(dest string, zf *zip.File) error {
+	pt := filepath.Join(dest, zf.Name) //nolint:gosec
+
+	if !strings.HasPrefix(pt, filepath.Clean(dest)+string(os.PathSeparator)) {
+		return fmt.Errorf("invalid file path: %s", pt)
+	}
+
+	if zf.FileInfo().IsDir() {
+		err := os.MkdirAll(pt, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	destFile, err := os.OpenFile(pt, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zf.Mode())
+	if err != nil {
+		return err
+	}
+
+	zippedFile, err := zf.Open()
+	if err != nil {
+		_ = destFile.Close()
+		return err
+	}
+
+	// G110: Potential DoS vulnerability via decompression bomb
+	_, err = io.Copy(destFile, zippedFile) //nolint:gosec
+	if err != nil {
+		_ = destFile.Close()
+		_ = zippedFile.Close()
+		return err
+	}
+
+	_ = destFile.Close()
+	_ = zippedFile.Close()
+	return nil
 }
 
 // https://github.com/roadrunner-server/static/archive/refs/heads/master.zip
 // https://github.com/spiral/roadrunner-binary/archive/refs/tags/v2.7.0.zip
 
-func (r *repo) GetPluginsModData() ([]*structures.ModulesInfo, error) {
+func (r *GHRepo) GetPluginsModData() ([]*structures.ModulesInfo, error) {
 	modInfoRet := make([]*structures.ModulesInfo, 0, 5)
 
 	for k, v := range r.config.Plugins {
@@ -195,7 +209,7 @@ func (r *repo) GetPluginsModData() ([]*structures.ModulesInfo, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return nil, errors.New(fmt.Sprintf("bad response status: %d", resp.StatusCode))
+			return nil, fmt.Errorf("bad response status: %d", resp.StatusCode)
 		}
 
 		rdr := bufio.NewReader(rc)
@@ -209,7 +223,7 @@ func (r *repo) GetPluginsModData() ([]*structures.ModulesInfo, error) {
 		// module github.com/roadrunner-server/logger/v2, we split and get the second part
 		retMod := strings.Split(ret, " ")
 		if len(retMod) < 2 {
-			return nil, errors.New(fmt.Sprintf("failed to parse module info for the plugin: %s", ret))
+			return nil, fmt.Errorf("failed to parse module info for the plugin: %s", ret)
 		}
 
 		err = resp.Body.Close()
@@ -233,7 +247,7 @@ func (r *repo) GetPluginsModData() ([]*structures.ModulesInfo, error) {
 		}
 
 		if rsp.StatusCode != http.StatusOK {
-			return nil, errors.New(fmt.Sprintf("bad response status: %d", rsp.StatusCode))
+			return nil, fmt.Errorf("bad response status: %d", rsp.StatusCode)
 		}
 
 		for i := 0; i < len(commits); i++ {

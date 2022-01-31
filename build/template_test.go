@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var res string = `
+const res string = `
 package container
 
 import (

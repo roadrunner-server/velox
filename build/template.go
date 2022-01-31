@@ -51,7 +51,6 @@ package container
 import (
 	"github.com/roadrunner-server/informer/v2"
 	"github.com/roadrunner-server/resetter/v2"
-    rrt "github.com/temporalio/roadrunner-temporal"
 	{{range $v := .Entries}}{{$v.Prefix}} "{{$v.Module}}"
 	{{end}}
 )
@@ -63,8 +62,6 @@ func Plugins() []interface{} {
 		&informer.Plugin{},
 		// resetter plugin (./rr reset)
 		&resetter.Plugin{},
-		// temporal plugins
-		&rrt.Plugin{},
 	
 		// std and custom plugins
 		{{range $v := .Entries}}&{{$v.Prefix}}.{{$v.Structure}},

@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	Velox map[string]string `mapstructure:"velox"`
+	Velox map[string][]string `mapstructure:"velox"`
 
 	// Version
 	Roadrunner map[string]string `mapstructure:"roadrunner"`
@@ -20,11 +20,11 @@ type Config struct {
 }
 
 type PluginConfig struct {
-	Ref        string `mapstructure:"ref"`
-	Owner      string `mapstructure:"owner"`
-	Repo       string `mapstructure:"repository"`
-	Replace    string `mapstructure:"replace"`
-	BuildFlags string `mapstructure:"build-flags"`
+	Ref        string   `mapstructure:"ref"`
+	Owner      string   `mapstructure:"owner"`
+	Repo       string   `mapstructure:"repository"`
+	Replace    string   `mapstructure:"replace"`
+	BuildFlags []string `mapstructure:"build-flags"`
 }
 
 func (c *Config) Validate() error {
