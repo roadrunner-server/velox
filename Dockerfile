@@ -19,10 +19,9 @@ ENV LDFLAGS="-s \
 RUN set -x
 RUN go mod download
 RUN go mod tidy
-RUN CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o ./vx ./vx
+RUN CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o ./velox ./vx
 
-
-FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:3
+FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.17-alpine
 
 # use same build arguments for image labels
 ARG APP_VERSION="undefined"
@@ -39,7 +38,7 @@ LABEL \
     org.opencontainers.image.licenses="MIT"
 
 # copy required files from builder image
-COPY --from=builder /src/vx /usr/bin/vx
+COPY --from=builder /src/velox /usr/bin/vx
 COPY --from=builder /src/velox.toml /etc/velox.toml
 
 # use roadrunner binary as image entrypoint

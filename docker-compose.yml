@@ -1,0 +1,13 @@
+version: '3.9'
+
+services:
+  velox:
+    container_name: velox
+    environment:
+      - CGO_ENABLED=0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: "build -c=/etc/velox.toml -o=/tmp/"
+#    volumes:
+#      - /tmp:/tmp:rw

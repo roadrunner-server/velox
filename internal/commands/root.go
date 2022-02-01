@@ -18,10 +18,12 @@ import (
 func NewCommand(executableName string) *cobra.Command {
 	var config = &velox.Config{} // velox configuration
 	var zapLogger = &zap.Logger{}
+	var cfgPath = strPtr("")
 
 	var (
 		pathToConfig string // path to the velox configuration
 		outputFile   string // output file (optionally with directory)
+
 	)
 
 	cmd := &cobra.Command{
@@ -55,6 +57,7 @@ func NewCommand(executableName string) *cobra.Command {
 			}
 
 			*config = *cfg
+			*cfgPath = outputFile
 
 			// [log]
 			// level = "debug"
@@ -71,12 +74,16 @@ func NewCommand(executableName string) *cobra.Command {
 	}
 
 	flag := cmd.PersistentFlags()
-	flag.StringVarP(&pathToConfig, "config", "c", "Path to the velox configuration file", "-c velox.toml")
-	flag.StringVarP(&outputFile, "out", "o", "Output filename (might be with the path)", "-o rr")
+	flag.StringVarP(&pathToConfig, "config", "c", "velox.toml", "Path to the velox configuration file: -c velox.toml")
+	flag.StringVarP(&outputFile, "out", "o", ".", "Output path: -o /etc/")
 
 	cmd.AddCommand(
 		run.BindCommand(config, zapLogger),
-		build.BindCommand(config, outputFile, zapLogger),
+		build.BindCommand(config, cfgPath, zapLogger),
 	)
 	return cmd
+}
+
+func strPtr(s string) *string {
+	return &s
 }

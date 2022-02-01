@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"syscall"
 
 	"github.com/roadrunner-server/velox/shared"
@@ -19,23 +20,24 @@ const (
 	goModStr           string = "go.mod"
 	pluginStructureStr string = "Plugin{}"
 	rrMainGo           string = "cmd/rr/main.go"
+	executableName     string = "rr"
 )
 
 type Builder struct {
-	rrPath    string
-	out       string
-	modules   []*shared.ModulesInfo
-	log       *zap.Logger
-	buildArgs []string
+	rrTempPath string
+	out        string
+	modules    []*shared.ModulesInfo
+	log        *zap.Logger
+	buildArgs  []string
 }
 
-func NewBuilder(rrPath string, modules []*shared.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
+func NewBuilder(rrTmpPath string, modules []*shared.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
 	return &Builder{
-		rrPath:    rrPath,
-		modules:   modules,
-		buildArgs: buildArgs,
-		out:       out,
-		log:       log,
+		rrTempPath: rrTmpPath,
+		modules:    modules,
+		buildArgs:  buildArgs,
+		out:        out,
+		log:        log,
 	}
 }
 
@@ -60,7 +62,7 @@ func (b *Builder) Build() error { //nolint:gocyclo
 		return err
 	}
 
-	f, err := os.Open(b.rrPath)
+	f, err := os.Open(b.rrTempPath)
 	if err != nil {
 		return err
 	}
@@ -69,22 +71,22 @@ func (b *Builder) Build() error { //nolint:gocyclo
 	}()
 
 	// remove old plugins.go
-	err = os.Remove(path.Join(b.rrPath, pluginsPath))
+	err = os.Remove(path.Join(b.rrTempPath, pluginsPath))
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(path.Join(b.rrPath, pluginsPath), buf.Bytes(), os.ModePerm)
+	err = os.WriteFile(path.Join(b.rrTempPath, pluginsPath), buf.Bytes(), os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	err = os.Remove(path.Join(b.rrPath, goModStr))
+	err = os.Remove(path.Join(b.rrTempPath, goModStr))
 	if err != nil {
 		return err
 	}
 
-	goModFile, err := os.Create(path.Join(b.rrPath, goModStr))
+	goModFile, err := os.Create(path.Join(b.rrTempPath, goModStr))
 	if err != nil {
 		return err
 	}
@@ -103,8 +105,8 @@ func (b *Builder) Build() error { //nolint:gocyclo
 
 	buf.Reset()
 
-	b.log.Info("[SWITCHING WORKING DIR]", zap.String("wd", b.rrPath), zap.String("!!!NOTE!!!", "If you won't specify full path for the binary it'll be in that working dir"))
-	err = syscall.Chdir(b.rrPath)
+	b.log.Info("[SWITCHING WORKING DIR]", zap.String("wd", b.rrTempPath))
+	err = syscall.Chdir(b.rrTempPath)
 	if err != nil {
 		return err
 	}
@@ -132,7 +134,19 @@ func (b *Builder) Build() error { //nolint:gocyclo
 		return err
 	}
 
-	err = b.goBuildCmd(b.out)
+	b.log.Info("[CHECKING OUTPUT DIR]", zap.String("dir", b.out))
+	err = os.MkdirAll(b.out, os.ModeDir)
+	if err != nil {
+		return err
+	}
+
+	err = b.goBuildCmd(filepath.Join(b.rrTempPath, executableName))
+	if err != nil {
+		return err
+	}
+
+	b.log.Info("[MOVING EXECUTABLE]", zap.String("file", filepath.Join(b.rrTempPath, executableName)), zap.String("to", filepath.Join(b.out, executableName)))
+	err = moveFile(filepath.Join(b.rrTempPath, executableName), filepath.Join(b.out, executableName))
 	if err != nil {
 		return err
 	}
@@ -226,6 +240,35 @@ func (b *Builder) goGetMod(repo, hash string) error {
 		return err
 	}
 	return nil
+}
+
+func moveFile(from, to string) error {
+	ffInfo, err := os.Stat(from)
+	if err != nil {
+		return err
+	}
+	
+	fFile, err := os.ReadFile(from)
+	if err != nil {
+		return err
+	}
+
+	toFile, err := os.Create(to)
+	if err != nil {
+		return err
+	}
+
+	err = toFile.Chmod(ffInfo.Mode())
+	if err != nil {
+		return err
+	}
+
+	_, err = toFile.Write(fFile)
+	if err != nil {
+		return err
+	}
+
+	return toFile.Close()
 }
 
 func (b *Builder) Write(d []byte) (int, error) {
