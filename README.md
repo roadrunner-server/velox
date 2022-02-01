@@ -58,5 +58,5 @@ tcp = { ref = "master", owner = "roadrunner-server", repository = "tcp" }
 
 3. Usage:
 ```shell
-vx --config=plugins.toml --out=~/Downloads/rr
+vx build -c=plugins.toml -o=~/Downloads
 ```
