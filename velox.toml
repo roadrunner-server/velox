@@ -1,5 +1,5 @@
 [velox]
-build_args = ['-trimpath', '-ldflags', '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=v2.8.0-alpha.1 -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=development']
+build_args = ['-trimpath', '-ldflags', '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=v2.8.0-alpha.1 -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=foo']
 
 [roadrunner]
 ref = "master"
@@ -8,7 +8,7 @@ ref = "master"
 token = ""
 
 [log]
-level = "debug"
+level = "info"
 mode = "development"
 
 [plugins]
@@ -19,7 +19,7 @@ metrics = { ref = "master", owner = "roadrunner-server", repository = "metrics" 
 cache = { ref = "master", owner = "roadrunner-server", repository = "cache" }
 reload = { ref = "master", owner = "roadrunner-server", repository = "reload" }
 server = { ref = "master", owner = "roadrunner-server", repository = "server" }
-service = { ref = "master", owner = "roadrunner-server", repository = "service" }
+service = { ref = "master", owner = "roadrunner-server", repository = "service", replace = "/home/valery/projects/opensource/github/spiral/plugins/service" }
 amqp = { ref = "master", owner = "roadrunner-server", repository = "amqp" }
 beanstalk = { ref = "master", owner = "roadrunner-server", repository = "beanstalk" }
 boltdb = { ref = "master", owner = "roadrunner-server", repository = "boltdb" }

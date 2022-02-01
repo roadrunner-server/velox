@@ -133,6 +133,7 @@ func (r *GHRepo) DownloadTemplate(version string) (string, error) {
 		return "", errors.New("empty zip archive")
 	}
 
+	// for this repository (roadrunner-server/roadrunner), 0-th element is a directory with content
 	outDir := rc.File[0].Name
 
 	for _, zf := range rc.File {
