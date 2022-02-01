@@ -247,7 +247,7 @@ func moveFile(from, to string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	fFile, err := os.ReadFile(from)
 	if err != nil {
 		return err
