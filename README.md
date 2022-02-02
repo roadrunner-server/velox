@@ -8,6 +8,8 @@ Replacement for the roadrunner-binary. Automated build system for the RR and roa
 go install github.com/roadrunner-server/velox/vx@v1.0.0-beta.1
 ```
 
+Or download velox binary from the [releases page](https://github.com/roadrunner-server/velox/releases/tag/v1.0.0-beta.1) and unpack to your PATH.
+
 2. Configuration sample: (filename - `plugins.toml`)
 
 ```toml
