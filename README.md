@@ -5,14 +5,14 @@ Replacement for the roadrunner-binary. Automated build system for the RR and roa
 1. Installation:
 
 ```shell
-go install github.com/roadrunner-server/velox/vx@master
+go install github.com/roadrunner-server/velox/vx@v1.0.0-beta.1
 ```
 
 2. Configuration sample: (filename - `plugins.toml`)
 
 ```toml
 [velox]
-build_args = ['-trimpath', '-ldflags', '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=v2.8.0-alpha.1 -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=foo']
+build_args = ['-trimpath', '-ldflags', '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=v2.8.0-alpha.1 -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=today']
 
 [roadrunner]
 ref = "master"
