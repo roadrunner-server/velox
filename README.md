@@ -62,3 +62,6 @@ tcp = { ref = "master", owner = "roadrunner-server", repository = "tcp" }
 ```shell
 vx build -c=plugins.toml -o=~/Downloads
 ```
+Where:
+- `-c` - path to the configuration
+- `-o` - path where to put the RR binary
