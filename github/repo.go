@@ -56,7 +56,7 @@ func NewRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 }
 
 // DownloadTemplate downloads template repository ->
-func (r *GHRepo) DownloadTemplate(version string) (string, error) {
+func (r *GHRepo) DownloadTemplate(version string) (string, error) { //nolint:gocyclo
 	r.log.Info("[GET ARCHIVE LINK]", zap.String("owner", rrOwner), zap.String("repository", rrRepo), zap.String("encoding", "zip"), zap.String("ref", version))
 	url, resp, err := r.client.Repositories.GetArchiveLink(context.Background(), rrOwner, rrRepo, github.Zipball, &github.RepositoryContentGetOptions{Ref: version}, true)
 	if err != nil {
@@ -133,9 +133,13 @@ func (r *GHRepo) DownloadTemplate(version string) (string, error) {
 		return "", errors.New("empty zip archive")
 	}
 
+	abs, err := filepath.Abs(rc.File[0].Name)
+	if err != nil {
+		return "", err
+	}
 	// for this repository (roadrunner-server/roadrunner), 0-th element is a directory with content
-	if strings.Contains(rc.File[0].Name, "..") {
-		return "", errors.New("path should not contain the '..' sympols")
+	if strings.Contains(abs, "..") {
+		return "", errors.New("path should not contain the '..' symbols")
 	}
 
 	outDir := rc.File[0].Name
