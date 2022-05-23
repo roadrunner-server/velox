@@ -2,17 +2,50 @@
 
 Replacement for the roadrunner-binary. Automated build system for the RR and roadrunner-plugins.
 
-1. Installation:
+### 1. Installation:
 
-```shell
-go install github.com/roadrunner-server/velox/vx@v1.0.0-beta.2
+- Docker:
+
+```dockerfile
+# https://docs.docker.com/buildx/working-with-buildx/
+# TARGETPLATFORM if not empty OR linux/amd64 by default
+FROM --platform=${TARGETPLATFORM:-linux/amd64} spiralscout/velox:latest as velox
+
+# app version and build date must be passed during image building (version without any prefix).
+# e.g.: `docker build --build-arg "APP_VERSION=1.2.3" --build-arg "BUILD_TIME=$(date +%FT%T%z)" .`
+ARG APP_VERSION="undefined"
+ARG BUILD_TIME="undefined"
+
+# copy your configuration into the docker
+COPY velox.toml .
+
+# we don't need CGO
+ENV CGO_ENABLED=0
+
+# RUN build
+RUN vx build -c velox.toml -o /usr/bin/
+
+FROM --platform=${TARGETPLATFORM:-linux/amd64} php:8.1-cli
+
+# copy required files from builder image
+COPY --from=velox /usr/bin/rr /usr/bin/rr
+
+# use roadrunner binary as image entrypoint
+CMD ["/usr/bin/rr"]
 ```
 
-Or download velox binary from the [releases page](https://github.com/roadrunner-server/velox/releases) and unpack to your PATH.
+- `go install` command:
+```shell
+go install github.com/roadrunner-server/velox/vx@latest
+```
 
-2. Configuration sample: (filename - `plugins.toml`)
+- Or download velox binary from the [releases page](https://github.com/roadrunner-server/velox/releases) and unpack to your `PATH`.
+
+## Configuration:
 
 ```toml
+# filename - `plugins.toml`
+
 [velox]
 build_args = ['-trimpath', '-ldflags', '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=v2.10.1 -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=10:00:00']
 
@@ -73,7 +106,8 @@ level = "debug"
 mode = "development"
 ```
 
-3. Usage:
+### 3. Usage:
+
 ```shell
 vx build -c plugins.toml -o ~/Downloads
 ```

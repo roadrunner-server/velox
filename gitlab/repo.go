@@ -56,13 +56,13 @@ func (r *GLRepo) GetPluginsModData() ([]*shared.ModulesInfo, error) {
 			return nil, err
 		}
 
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("bad response status: %d", resp.StatusCode)
+		}
+
 		contentStr, err := base64.StdEncoding.DecodeString(file.Content)
 		if err != nil {
 			return nil, err
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("bad response status: %d", resp.StatusCode)
 		}
 
 		scanner := bufio.NewScanner(bytes.NewReader(contentStr))
