@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v42/github"
+	"github.com/google/go-github/v44/github"
 	"github.com/roadrunner-server/velox"
 	"github.com/roadrunner-server/velox/shared"
 	"go.uber.org/zap"
@@ -25,8 +25,6 @@ import (
 const (
 	rrOwner string = "roadrunner-server"
 	rrRepo  string = "roadrunner"
-	// keep in sync with the configuration
-	tokenKey string = "token"
 )
 
 /*
@@ -38,13 +36,13 @@ type GHRepo struct {
 	log    *zap.Logger
 }
 
-func NewRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
+func NewGHRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 	var client *http.Client
 
 	// if token exists, use it to increase rate limiter
-	if t := cfg.Token[tokenKey]; t != "" {
+	if t := cfg.GitHub.Token; t != nil {
 		ctx := context.Background()
-		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: t})
+		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: t.Token})
 		client = oauth2.NewClient(ctx, ts)
 	}
 
@@ -201,7 +199,7 @@ func extract(dest string, zf *zip.File) error {
 func (r *GHRepo) GetPluginsModData() ([]*shared.ModulesInfo, error) {
 	modInfoRet := make([]*shared.ModulesInfo, 0, 5)
 
-	for k, v := range r.config.Plugins {
+	for k, v := range r.config.GitHub.Plugins {
 		modInfo := new(shared.ModulesInfo)
 		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("plugin", k), zap.String("ref", v.Ref))
 

@@ -4,9 +4,17 @@ import (
 	"syscall"
 
 	"github.com/roadrunner-server/velox"
+	"github.com/roadrunner-server/velox/builder"
 	"github.com/roadrunner-server/velox/github"
+	"github.com/roadrunner-server/velox/gitlab"
+	"github.com/roadrunner-server/velox/shared"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+)
+
+const (
+	ref       string = "ref"
+	buildArgs string = "build_args"
 )
 
 func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Command {
@@ -21,8 +29,23 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				}
 				*out = wd
 			}
-			rp := github.NewRepoInfo(cfg, zlog)
-			path, err := rp.DownloadTemplate(cfg.Roadrunner["ref"])
+
+			var mi []*shared.ModulesInfo
+			if cfg.GitLab != nil {
+				rp, err := gitlab.NewGLRepoInfo(cfg, zlog)
+				if err != nil {
+					return err
+				}
+
+				mi, err = rp.GetPluginsModData()
+				if err != nil {
+					return err
+				}
+			}
+
+			// roadrunner located on the github
+			rp := github.NewGHRepoInfo(cfg, zlog)
+			path, err := rp.DownloadTemplate(cfg.Roadrunner[ref])
 			if err != nil {
 				zlog.Fatal("[DOWNLOAD TEMPLATE]", zap.Error(err))
 			}
@@ -32,9 +55,12 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				zlog.Fatal("[PLUGINS GET MOD INFO]", zap.Error(err))
 			}
 
-			builder := NewBuilder(path, pMod, *out, zlog, cfg.Velox["build_args"])
+			// append data from gitlab
+			if mi != nil {
+				pMod = append(pMod, mi...)
+			}
 
-			err = builder.Build()
+			err = builder.NewBuilder(path, pMod, *out, zlog, cfg.Velox[buildArgs]).Build()
 			if err != nil {
 				zlog.Fatal("[BUILD FAILED]", zap.Error(err))
 			}

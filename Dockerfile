@@ -18,7 +18,7 @@ ENV LDFLAGS="-s \
 # verbose
 RUN set -x
 RUN go mod download
-RUN go mod tidy
+RUN go mod tidy -go 1.18
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o ./velox ./vx
 
 FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.18.2-alpine

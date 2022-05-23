@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/roadrunner-server/velox"
 	"github.com/roadrunner-server/velox/internal/commands/build"
-	"github.com/roadrunner-server/velox/internal/commands/run"
 	"github.com/roadrunner-server/velox/internal/version"
 	"github.com/roadrunner-server/velox/logger"
 	"github.com/spf13/cobra"
@@ -75,10 +74,9 @@ func NewCommand(executableName string) *cobra.Command {
 
 	flag := cmd.PersistentFlags()
 	flag.StringVarP(&pathToConfig, "config", "c", "velox.toml", "Path to the velox configuration file: -c velox.toml")
-	flag.StringVarP(&outputFile, "out", "o", ".", "Output path: -o /etc/")
+	flag.StringVarP(&outputFile, "out", "o", ".", "Output path: -o /usr/local/bin")
 
 	cmd.AddCommand(
-		run.BindCommand(config, zapLogger),
 		build.BindCommand(config, cfgPath, zapLogger),
 	)
 	return cmd

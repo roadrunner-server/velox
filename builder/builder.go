@@ -1,4 +1,4 @@
-package build
+package builder
 
 import (
 	"bytes"
@@ -122,14 +122,8 @@ func (b *Builder) Build() error { //nolint:gocyclo
 		}
 	}
 
-	// go mod tidy for the old packages
-	err = b.goModTidyCmd116()
-	if err != nil {
-		return err
-	}
-
-	// upgrade to 1.17
-	err = b.goModTidyCmd117()
+	// upgrade to 1.18
+	err = b.goModTidyCmd()
 	if err != nil {
 		return err
 	}
@@ -196,24 +190,9 @@ func (b *Builder) goBuildCmd(out string) error {
 	return nil
 }
 
-func (b *Builder) goModTidyCmd116() error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy -go=1.16"))
-	cmd := exec.Command("go", "mod", "tidy", "-go=1.16")
-	cmd.Stderr = b
-	err := cmd.Start()
-	if err != nil {
-		return err
-	}
-	err = cmd.Wait()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (b *Builder) goModTidyCmd117() error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy -go=1.17"))
-	cmd := exec.Command("go", "mod", "tidy", "-go=1.17")
+func (b *Builder) goModTidyCmd() error {
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy -go=1.18"))
+	cmd := exec.Command("go", "mod", "tidy", "-go=1.18")
 	cmd.Stderr = b
 	err := cmd.Start()
 	if err != nil {
