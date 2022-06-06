@@ -8,7 +8,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.12.0
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.7.2
 	github.com/xanzy/go-gitlab v0.68.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401
