@@ -6,7 +6,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/google/go-github/v44 v44.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.7.2
 	github.com/xanzy/go-gitlab v0.68.0
