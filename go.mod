@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/testify v1.7.4
 	github.com/xanzy/go-gitlab v0.68.0
 	go.uber.org/zap v1.21.0
-	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb
+	golang.org/x/oauth2 v0.0.0-20220622183110-fd043fe589d2
 )
 
 require (
@@ -37,9 +37,9 @@ require (
 	github.com/subosito/gotenv v1.4.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
-	golang.org/x/net v0.0.0-20220621193019-9d032be2e588 // indirect
-	golang.org/x/sys v0.0.0-20220615213510-4f61da869c0c // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
+	golang.org/x/net v0.0.0-20220622184535-263ec571b305 // indirect
+	golang.org/x/sys v0.0.0-20220622161953-175b2fd9d664 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
