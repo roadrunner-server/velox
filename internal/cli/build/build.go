@@ -5,9 +5,9 @@ import (
 
 	"github.com/roadrunner-server/velox"
 	"github.com/roadrunner-server/velox/builder"
+	"github.com/roadrunner-server/velox/common"
 	"github.com/roadrunner-server/velox/github"
 	"github.com/roadrunner-server/velox/gitlab"
-	"github.com/roadrunner-server/velox/shared"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -30,7 +30,7 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				*out = wd
 			}
 
-			var mi []*shared.ModulesInfo
+			var mi []*common.ModulesInfo
 			if cfg.GitLab != nil {
 				rp, err := gitlab.NewGLRepoInfo(cfg, zlog)
 				if err != nil {

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/roadrunner-server/velox/shared"
+	"github.com/roadrunner-server/velox/common"
 	"go.uber.org/zap"
 )
 
@@ -26,12 +26,12 @@ const (
 type Builder struct {
 	rrTempPath string
 	out        string
-	modules    []*shared.ModulesInfo
+	modules    []*common.ModulesInfo
 	log        *zap.Logger
 	buildArgs  []string
 }
 
-func NewBuilder(rrTmpPath string, modules []*shared.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
+func NewBuilder(rrTmpPath string, modules []*common.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
 	return &Builder{
 		rrTempPath: rrTmpPath,
 		modules:    modules,

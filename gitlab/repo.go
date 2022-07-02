@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/velox"
-	"github.com/roadrunner-server/velox/shared"
+	"github.com/roadrunner-server/velox/common"
 	"github.com/xanzy/go-gitlab"
 	"go.uber.org/zap"
 )
@@ -38,11 +38,11 @@ func NewGLRepoInfo(cfg *velox.Config, log *zap.Logger) (*GLRepo, error) {
 	}, nil
 }
 
-func (r *GLRepo) GetPluginsModData() ([]*shared.ModulesInfo, error) {
-	modInfoRet := make([]*shared.ModulesInfo, 0, 5)
+func (r *GLRepo) GetPluginsModData() ([]*common.ModulesInfo, error) {
+	modInfoRet := make([]*common.ModulesInfo, 0, 5)
 
 	for k, v := range r.config.GitLab.Plugins {
-		modInfo := new(shared.ModulesInfo)
+		modInfo := new(common.ModulesInfo)
 		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("plugin", k), zap.String("ref", v.Ref))
 
 		if v.Ref == "" {

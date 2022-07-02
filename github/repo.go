@@ -17,7 +17,7 @@ import (
 
 	"github.com/google/go-github/v44/github"
 	"github.com/roadrunner-server/velox"
-	"github.com/roadrunner-server/velox/shared"
+	"github.com/roadrunner-server/velox/common"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -196,11 +196,11 @@ func extract(dest string, zf *zip.File) error {
 // https://github.com/roadrunner-server/static/archive/refs/heads/master.zip
 // https://github.com/spiral/roadrunner-binary/archive/refs/tags/v2.7.0.zip
 
-func (r *GHRepo) GetPluginsModData() ([]*shared.ModulesInfo, error) {
-	modInfoRet := make([]*shared.ModulesInfo, 0, 5)
+func (r *GHRepo) GetPluginsModData() ([]*common.ModulesInfo, error) {
+	modInfoRet := make([]*common.ModulesInfo, 0, 5)
 
 	for k, v := range r.config.GitHub.Plugins {
-		modInfo := new(shared.ModulesInfo)
+		modInfo := new(common.ModulesInfo)
 		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("plugin", k), zap.String("ref", v.Ref))
 
 		if v.Ref == "" {

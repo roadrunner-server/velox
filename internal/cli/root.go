@@ -1,4 +1,4 @@
-package commands
+package cli
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/roadrunner-server/velox"
-	"github.com/roadrunner-server/velox/internal/commands/build"
+	"github.com/roadrunner-server/velox/internal/cli/build"
 	"github.com/roadrunner-server/velox/internal/version"
 	"github.com/roadrunner-server/velox/logger"
 	"github.com/spf13/cobra"

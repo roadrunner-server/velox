@@ -1,4 +1,4 @@
-package shared
+package common
 
 // ModulesInfo represents single go module
 type ModulesInfo struct {

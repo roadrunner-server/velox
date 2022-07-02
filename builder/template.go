@@ -8,18 +8,16 @@ import (
 const GoModTemplate string = `
 module github.com/roadrunner-server/roadrunner/v2
 
-go 1.17
+go 1.18
 
 require (
-        github.com/buger/goterm v1.0.1
+        github.com/buger/goterm v1.0.4
         github.com/dustin/go-humanize v1.0.0
         github.com/fatih/color v1.13.0
         github.com/joho/godotenv v1.4.0
-        github.com/mattn/go-runewidth v0.0.13
         github.com/olekukonko/tablewriter v0.0.5
-        github.com/spf13/cobra v1.3.0
-        github.com/stretchr/testify v1.7.0
-        github.com/vbauerster/mpb/v5 v5.4.0
+        github.com/spf13/cobra v1.5.0
+        github.com/stretchr/testify v1.8.0
 )
 
 replace (
