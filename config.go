@@ -55,7 +55,7 @@ func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 		c.Roadrunner[ref] = defaultBranch
 	}
 
-	if (c.GitLab != nil && len(c.GitLab.Plugins) == 0) || (c.GitHub != nil && len(c.GitHub.Plugins) == 0) {
+	if (c.GitLab != nil && len(c.GitLab.Plugins) == 0) && (c.GitHub != nil && len(c.GitHub.Plugins) == 0) {
 		return errors.New("no plugins specified in the configuration")
 	}
 
@@ -74,8 +74,8 @@ func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 			}
 		}
 
-		if c.GitHub.Token == nil {
-			c.GitHub.Token = &Token{Token: ""}
+		if c.GitHub.Token == nil || c.GitHub.Token.Token == "" {
+			return errors.New("github.token should not be empty, create a token with any permissions: https://github.com/settings/tokens")
 		}
 	}
 
@@ -96,6 +96,10 @@ func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 
 		if c.GitLab.BaseURL == nil {
 			c.GitLab.BaseURL = &Endpoint{BaseURL: gitlabBaseURL}
+		}
+
+		if c.GitLab.Token == nil || c.GitLab.Token.Token == "" {
+			return errors.New("gitlab.token should not be empty, create a token with at least [api, read_api] permissions: https://gitlab.com/-/profile/personal_access_tokens")
 		}
 	}
 
