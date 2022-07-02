@@ -11,28 +11,30 @@ const res string = `
 package container
 
 import (
-	ab github.com/roadrunner-server/rpc/v2
-	cd github.com/roadrunner-server/http/v2
-	ef github.com/roadrunner-server/grpc/v2
-	jk github.com/roadrunner-server/logger/v2
+	"github.com/roadrunner-server/informer/v2"
+	"github.com/roadrunner-server/resetter/v2"
+	ab "github.com/roadrunner-server/rpc/v2"
+	cd "github.com/roadrunner-server/http/v2"
+	ef "github.com/roadrunner-server/grpc/v2"
+	jk "github.com/roadrunner-server/logger/v2"
 	
 )
 
 func Plugins() []interface{} {
-	// bundled
-	// informer plugin (./rr workers, ./rr workers -i)
-	&informer.Plugin{},
-	// resetter plugin (./rr reset)
-	&resetter.Plugin{},
-	// temporal plugins
-	&rrt.Plugin{},
-
-	// std and custom plugins
-	&ab.Plugin{},
-	&cd.Plugin{},
-	&ef.Plugin{},
-	&jk.Plugin{},
+		return []interface{} {
+		// bundled
+		// informer plugin (./rr workers, ./rr workers -i)
+		&informer.Plugin{},
+		// resetter plugin (./rr reset)
+		&resetter.Plugin{},
 	
+		// std and custom plugins
+		&ab.Plugin{},
+		&cd.Plugin{},
+		&ef.Plugin{},
+		&jk.Plugin{},
+		
+	}
 }
 `
 

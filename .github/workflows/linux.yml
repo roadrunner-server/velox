@@ -1,0 +1,39 @@
+name: Linux
+
+on:
+  push:
+    branches:
+      - master
+    tags-ignore:
+      - "**"
+jobs:
+  golang:
+    name: Build (Go ${{ matrix.go }}, OS ${{matrix.os}})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        go: [ "1.18" ]
+        os: [ "ubuntu-latest" ]
+    steps:
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v3 # action page: <https://github.com/actions/setup-go>
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Run golang tests with coverage
+        run: make test
