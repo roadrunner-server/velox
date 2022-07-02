@@ -69,7 +69,6 @@ linters: # All available linters list: <https://golangci-lint.run/usage/linters/
     - ineffassign # Detects when assignments to existing variables are not used
     - misspell # Finds commonly misspelled English words in comments
     - nakedret # Finds naked returns in functions greater than a specified function length
-    - nestif # Reports deeply nested if statements
     - noctx # finds sending http request without context.Context
     - nolintlint # Reports ill-formed or insufficient nolint directives
     - prealloc # Finds slice declarations that could potentially be preallocated
