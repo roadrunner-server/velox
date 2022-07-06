@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v44/github"
+	"github.com/google/go-github/v45/github"
 	"github.com/roadrunner-server/velox"
 	"github.com/roadrunner-server/velox/common"
 	"go.uber.org/zap"
