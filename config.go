@@ -2,6 +2,7 @@ package velox
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 )
@@ -13,6 +14,7 @@ const (
 )
 
 type Config struct {
+	// build args
 	Velox map[string][]string `mapstructure:"velox"`
 
 	// Version
@@ -43,14 +45,21 @@ type CodeHosting struct {
 }
 
 type PluginConfig struct {
-	Ref        string   `mapstructure:"ref"`
-	Owner      string   `mapstructure:"owner"`
-	Repo       string   `mapstructure:"repository"`
-	Replace    string   `mapstructure:"replace"`
-	BuildFlags []string `mapstructure:"build-flags"`
+	Ref     string `mapstructure:"ref"`
+	Owner   string `mapstructure:"owner"`
+	Repo    string `mapstructure:"repository"`
+	Replace string `mapstructure:"replace"`
 }
 
 func (c *Config) Validate() error { //nolint:gocognit,gocyclo
+	// build_args
+	for k := range c.Velox {
+		for j := 0; j < len(c.Velox[k]); j++ {
+			s := os.ExpandEnv(c.Velox[k][j])
+			c.Velox[k][j] = s
+		}
+	}
+
 	if _, ok := c.Roadrunner[ref]; !ok {
 		c.Roadrunner[ref] = defaultBranch
 	}
@@ -77,6 +86,8 @@ func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 		if c.GitHub.Token == nil || c.GitHub.Token.Token == "" {
 			return errors.New("github.token should not be empty, create a token with any permissions: https://github.com/settings/tokens")
 		}
+
+		c.GitHub.Token.Token = os.ExpandEnv(c.GitHub.Token.Token)
 	}
 
 	if c.GitLab != nil {
@@ -101,6 +112,8 @@ func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 		if c.GitLab.Token == nil || c.GitLab.Token.Token == "" {
 			return errors.New("gitlab.token should not be empty, create a token with at least [api, read_api] permissions: https://gitlab.com/-/profile/personal_access_tokens")
 		}
+
+		c.GitLab.Token.Token = os.ExpandEnv(c.GitLab.Token.Token)
 	}
 
 	if len(c.Log) == 0 {
