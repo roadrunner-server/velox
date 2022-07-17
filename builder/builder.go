@@ -15,12 +15,14 @@ import (
 
 const (
 	// path to the file which should be generated from the template
-	pluginsPath        string = "/internal/container/plugins.go"
+	pluginsPath        string = "/container/plugins.go"
 	letterBytes               = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	goModStr           string = "go.mod"
 	pluginStructureStr string = "Plugin{}"
 	rrMainGo           string = "cmd/rr/main.go"
 	executableName     string = "rr"
+	// cleanup pattern
+	cleanupPattern string = "roadrunner-server*"
 )
 
 type Builder struct {
@@ -62,12 +64,23 @@ func (b *Builder) Build() error { //nolint:gocyclo
 		return err
 	}
 
+	b.log.Debug("[RESULTING TEMPLATE]", zap.String("template", buf.String()))
+
 	f, err := os.Open(b.rrTempPath)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		_ = f.Close()
+		files, errGl := filepath.Glob(filepath.Join(os.TempDir(), cleanupPattern))
+		if errGl != nil {
+			return
+		}
+
+		for i := 0; i < len(files); i++ {
+			b.log.Info("[CLEANING UP]", zap.String("file/folder", files[i]))
+			_ = os.RemoveAll(files[i])
+		}
 	}()
 
 	// remove old plugins.go
