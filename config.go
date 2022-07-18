@@ -61,13 +61,23 @@ func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 	}
 
 	if _, ok := c.Roadrunner[ref]; !ok {
+		if c.Roadrunner == nil {
+			c.Roadrunner = make(map[string]string)
+		}
+
 		c.Roadrunner[ref] = defaultBranch
 	}
 
+	if c.GitHub == nil || c.GitHub.Token == nil || c.GitHub.Token.Token == "" {
+		return errors.New("github section should contain a token to download RoadRunner")
+	}
+
+	// section exists, but no plugin specified
 	if (c.GitLab != nil && len(c.GitLab.Plugins) == 0) && (c.GitHub != nil && len(c.GitHub.Plugins) == 0) {
 		return errors.New("no plugins specified in the configuration")
 	}
 
+	// we have a GitHub section
 	if c.GitHub != nil {
 		for k, v := range c.GitHub.Plugins {
 			if v.Owner == "" {
@@ -90,6 +100,7 @@ func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 		c.GitHub.Token.Token = os.ExpandEnv(c.GitHub.Token.Token)
 	}
 
+	// we have a GitLab section
 	if c.GitLab != nil {
 		for k, v := range c.GitLab.Plugins {
 			if v.Owner == "" {

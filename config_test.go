@@ -51,3 +51,12 @@ func TestExpandEnvs(t *testing.T) {
 	assert.Equal(t, token, c.GitHub.Token.Token)
 	assert.Equal(t, token, c.GitLab.Token.Token)
 }
+
+func TestNils(t *testing.T) {
+	c := &Config{
+		Velox: map[string][]string{"build_args": {"github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=${TIME}", "github.com/roadrunner-server/roadrunner/v2/internal/meta.version=${VERSION}"}},
+		Log:   nil,
+	}
+
+	require.Error(t, c.Validate())
+}
