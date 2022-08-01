@@ -248,7 +248,7 @@ func (b *Builder) getDepsReplace(repl string) []*Entry {
 	b.log.Info("[REPLACING DEPENDENCIES]", zap.String("dependency", repl))
 	modFile, err := os.ReadFile(path.Join(repl, goModStr))
 	if err != nil {
-		return []*Entry{}
+		return nil
 	}
 
 	result := []*Entry{}
@@ -256,6 +256,7 @@ func (b *Builder) getDepsReplace(repl string) []*Entry {
 	for i := 0; i < len(replaces); i++ {
 		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
 		if len(split) != 2 {
+			b.log.Error("Error while trying to split", zap.String("replace", replaces[i][0]))
 			continue
 		}
 
