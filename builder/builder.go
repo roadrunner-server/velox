@@ -251,7 +251,8 @@ func (b *Builder) getDepsReplace(repl string) []*Entry {
 		return nil
 	}
 
-	result := []*Entry{}
+	//nolint:prealloc
+	var result []*Entry
 	replaces := replaceRegexp.FindAllStringSubmatch(string(modFile), -1)
 	for i := 0; i < len(replaces); i++ {
 		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
