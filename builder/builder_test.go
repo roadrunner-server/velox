@@ -52,13 +52,26 @@ replace (
 	github.com/dummy/package_two => /tmp/dummy_two
 )
 `
+	replaceGoModMultipleRemote = `module go.dev/my/module
+go 1.18
+
+require (
+	github.com/fatih/color v1.13.0
+)
+
+replace (
+	github.com/dummy/package_one => https://github.com/my/package_one
+	github.com/dummy/package_two => https://github.com/my/package_two
+)
+`
 )
 
 var associated = map[string][]byte{
-	"dummy_one_relative":      []byte(replaceGoModOneRelative),
-	"dummy_one_absolute":      []byte(replaceGoModOneAbsolute),
-	"dummy_multiple_relative": []byte(replaceGoModMultipleRelative),
-	"dummy_multiple_absolute": []byte(replaceGoModMultipleAbsolute),
+	"dummy_one_relative":             []byte(replaceGoModOneRelative),
+	"dummy_one_absolute":             []byte(replaceGoModOneAbsolute),
+	"dummy_multiple_relative":        []byte(replaceGoModMultipleRelative),
+	"dummy_multiple_absolute":        []byte(replaceGoModMultipleAbsolute),
+	"dummy_multiple_absolute_remote": []byte(replaceGoModMultipleRemote),
 }
 
 func Test_Builder_getDepsReplace(t *testing.T) {
@@ -84,6 +97,11 @@ func Test_Builder_getDepsReplace(t *testing.T) {
 			Version:    "master",
 			ModuleName: "dummy_multiple_absolute",
 			Replace:    "/tmp/dummy_multiple_absolute",
+		},
+		{
+			Version:    "master",
+			ModuleName: "dummy_multiple_absolute_remote",
+			Replace:    "/tmp/dummy_multiple_absolute_remote",
 		},
 	}
 
@@ -134,5 +152,16 @@ func Test_Builder_getDepsReplace(t *testing.T) {
 	}
 	if toReplace[0].Module != "github.com/dummy/package" || toReplace[0].Replace != "/tmp/dummy_one_relative/something" {
 		t.Error("The module to replace must be github.com/dummy/package with the replacer /tmp/dummy_one_relative/something")
+	}
+
+	toReplace = b.getDepsReplace("/tmp/dummy_multiple_absolute_remote")
+	if len(toReplace) != 2 {
+		t.Error("/tmp/dummy_multiple_relative must have 2 elements to replace")
+	}
+	if toReplace[0].Module != "github.com/dummy/package_one" || toReplace[0].Replace != "https://github.com/my/package_one" {
+		t.Error("The first module to replace must be github.com/dummy/package_one with the replacer https://github.com/my/package_one")
+	}
+	if toReplace[1].Module != "github.com/dummy/package_two" || toReplace[1].Replace != "https://github.com/my/package_two" {
+		t.Error("The first module to replace must be github.com/dummy/package_two with the replacer https://github.com/my/package_two")
 	}
 }
