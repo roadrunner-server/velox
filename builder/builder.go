@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"syscall"
 
 	"github.com/roadrunner-server/velox/common"
@@ -24,6 +26,8 @@ const (
 	// cleanup pattern
 	cleanupPattern string = "roadrunner-server*"
 )
+
+var replaceRegexp = regexp.MustCompile("(\t| )(.+) => (.+)")
 
 type Builder struct {
 	rrTempPath string
@@ -105,6 +109,12 @@ func (b *Builder) Build() error { //nolint:gocyclo
 	}
 
 	buf.Reset()
+
+	for i := 0; i < len(t.Entries); i++ {
+		if t.Entries[i].Replace != "" {
+			t.Entries = append(t.Entries, b.getDepsReplace(t.Entries[i].Replace)...)
+		}
+	}
 
 	err = compileGoModTemplate(buf, t)
 	if err != nil {
@@ -232,6 +242,32 @@ func (b *Builder) goGetMod(repo, hash string) error {
 		return err
 	}
 	return nil
+}
+
+func (b *Builder) getDepsReplace(repl string) (result []*Entry) {
+	b.log.Info("[REPLACING DEPENDENCIES]", zap.String("dependency", repl))
+	modFile, err := os.ReadFile(path.Join(repl, goModStr))
+	if err != nil {
+		return
+	}
+
+	replaces := replaceRegexp.FindAllStringSubmatch(string(modFile), -1)
+	for _, replace := range replaces {
+		split := strings.Split(strings.TrimSpace(replace[0]), " => ")
+		moduleName := split[0]
+		moduleReplace := split[1]
+
+		if strings.HasPrefix(moduleReplace, ".") {
+			moduleReplace = path.Join(repl, moduleReplace)
+		}
+
+		result = append(result, &Entry{
+			Module:  moduleName,
+			Replace: moduleReplace,
+		})
+	}
+
+	return
 }
 
 func moveFile(from, to string) error {

@@ -21,7 +21,8 @@ require (
 )
 
 replace (
-{{range $v := .Entries}}{{if (ne $v.Replace "")}}{{$v.Module}} => {{$v.Replace}}{{end}}{{end}}
+	{{range $v := .Entries}}{{if (ne $v.Replace "")}}{{$v.Module}} => {{$v.Replace}}
+	{{end}}{{end}}
 )
 `
 
