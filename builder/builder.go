@@ -110,12 +110,6 @@ func (b *Builder) Build() error { //nolint:gocyclo
 
 	buf.Reset()
 
-	for i := 0; i < len(t.Entries); i++ {
-		if t.Entries[i].Replace != "" {
-			t.Entries = append(t.Entries, b.getDepsReplace(t.Entries[i].Replace)...)
-		}
-	}
-
 	err = compileGoModTemplate(buf, t)
 	if err != nil {
 		return err
@@ -137,6 +131,7 @@ func (b *Builder) Build() error { //nolint:gocyclo
 	for i := 0; i < len(t.Entries); i++ {
 		// go get only deps w/o replace
 		if t.Entries[i].Replace != "" {
+			t.Entries = append(t.Entries, b.getDepsReplace(t.Entries[i].Replace)...)
 			continue
 		}
 		err = b.goGetMod(t.Entries[i].Module, t.Entries[i].Version)
@@ -251,13 +246,12 @@ func (b *Builder) getDepsReplace(repl string) []*Entry {
 		return nil
 	}
 
-	//nolint:prealloc
-	var result []*Entry
+	var result []*Entry //nolint:prealloc
 	replaces := replaceRegexp.FindAllStringSubmatch(string(modFile), -1)
 	for i := 0; i < len(replaces); i++ {
 		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
 		if len(split) != 2 {
-			b.log.Error("Error while trying to split", zap.String("replace", replaces[i][0]))
+			b.log.Error("not enough split args", zap.String("replace", replaces[i][0]))
 			continue
 		}
 
