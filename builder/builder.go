@@ -244,16 +244,21 @@ func (b *Builder) goGetMod(repo, hash string) error {
 	return nil
 }
 
-func (b *Builder) getDepsReplace(repl string) (result []*Entry) {
+func (b *Builder) getDepsReplace(repl string) []*Entry {
 	b.log.Info("[REPLACING DEPENDENCIES]", zap.String("dependency", repl))
 	modFile, err := os.ReadFile(path.Join(repl, goModStr))
 	if err != nil {
-		return
+		return []*Entry{}
 	}
 
+	result := []*Entry{}
 	replaces := replaceRegexp.FindAllStringSubmatch(string(modFile), -1)
-	for _, replace := range replaces {
-		split := strings.Split(strings.TrimSpace(replace[0]), " => ")
+	for i := 0; i < len(replaces); i++ {
+		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
+		if len(split) != 2 {
+			continue
+		}
+
 		moduleName := split[0]
 		moduleReplace := split[1]
 
@@ -267,7 +272,7 @@ func (b *Builder) getDepsReplace(repl string) (result []*Entry) {
 		})
 	}
 
-	return
+	return result
 }
 
 func moveFile(from, to string) error {

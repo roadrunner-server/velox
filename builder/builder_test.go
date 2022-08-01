@@ -10,6 +10,12 @@ import (
 )
 
 const (
+	rights                  = 0700
+	dummyPackage            = "github.com/dummy/package"
+	dummyPackageOne         = "github.com/dummy/package_one"
+	dummyPackageTwo         = "github.com/dummy/package_two"
+	remotePackageOne        = "https://github.com/my/package_one"
+	remotePackageTwo        = "https://github.com/my/package_two"
 	replaceGoModOneRelative = `module go.dev/my/module
 go 1.18
 
@@ -66,15 +72,15 @@ replace (
 `
 )
 
-var associated = map[string][]byte{
-	"dummy_one_relative":             []byte(replaceGoModOneRelative),
-	"dummy_one_absolute":             []byte(replaceGoModOneAbsolute),
-	"dummy_multiple_relative":        []byte(replaceGoModMultipleRelative),
-	"dummy_multiple_absolute":        []byte(replaceGoModMultipleAbsolute),
-	"dummy_multiple_absolute_remote": []byte(replaceGoModMultipleRemote),
-}
+func setup() *Builder {
+	associated := map[string][]byte{
+		"dummy_one_relative":             []byte(replaceGoModOneRelative),
+		"dummy_one_absolute":             []byte(replaceGoModOneAbsolute),
+		"dummy_multiple_relative":        []byte(replaceGoModMultipleRelative),
+		"dummy_multiple_absolute":        []byte(replaceGoModMultipleAbsolute),
+		"dummy_multiple_absolute_remote": []byte(replaceGoModMultipleRemote),
+	}
 
-func Test_Builder_getDepsReplace(t *testing.T) {
 	b := NewBuilder("/tmp", []*common.ModulesInfo{}, "", zap.NewNop(), []string{})
 
 	b.modules = []*common.ModulesInfo{
@@ -106,62 +112,93 @@ func Test_Builder_getDepsReplace(t *testing.T) {
 	}
 
 	for _, v := range b.modules {
-		_ = os.Mkdir(v.Replace, 0777)
-		_ = os.WriteFile(path.Join(v.Replace, goModStr), associated[v.ModuleName], 0777)
+		_ = os.Mkdir(v.Replace, rights)
+		_ = os.WriteFile(path.Join(v.Replace, goModStr), associated[v.ModuleName], rights)
 	}
 
-	defer func() {
-		for _, v := range b.modules {
-			_ = os.RemoveAll(v.Replace)
-		}
-	}()
+	return b
+}
+
+func clean(b *Builder) {
+	for _, v := range b.modules {
+		_ = os.RemoveAll(v.Replace)
+	}
+}
+
+func Test_Builder_getDepsReplace_multipleAbsolute(t *testing.T) {
+	b := setup()
 
 	toReplace := b.getDepsReplace("/tmp/dummy_multiple_absolute")
+	clean(b)
 	if len(toReplace) != 2 {
 		t.Error("/tmp/dummy_multiple_absolute must have 2 elements to replace")
 	}
-	if toReplace[0].Module != "github.com/dummy/package_one" || toReplace[0].Replace != "/tmp/dummy_one" {
+	if toReplace[0].Module != dummyPackageOne || toReplace[0].Replace != "/tmp/dummy_one" {
 		t.Error("The first module to replace must be github.com/dummy/package_one with the replacer /tmp/dummy_one")
 	}
-	if toReplace[1].Module != "github.com/dummy/package_two" || toReplace[1].Replace != "/tmp/dummy_two" {
+	if toReplace[1].Module != dummyPackageTwo || toReplace[1].Replace != "/tmp/dummy_two" {
 		t.Error("The first module to replace must be github.com/dummy/package_two with the replacer /tmp/dummy_two")
 	}
+}
 
-	toReplace = b.getDepsReplace("/tmp/dummy_multiple_relative")
+func Test_Builder_getDepsReplace_multipleRelative(t *testing.T) {
+	b := setup()
+
+	defer clean(b)
+
+	toReplace := b.getDepsReplace("/tmp/dummy_multiple_relative")
 	if len(toReplace) != 2 {
 		t.Error("/tmp/dummy_multiple_relative must have 2 elements to replace")
 	}
-	if toReplace[0].Module != "github.com/dummy/package" || toReplace[0].Replace != "/tmp/dummy_multiple_relative/something" {
+	if toReplace[0].Module != dummyPackage || toReplace[0].Replace != "/tmp/dummy_multiple_relative/something" {
 		t.Error("The first module to replace must be github.com/dummy/package with the replacer /tmp/dummy_multiple_relative/something")
 	}
 	if toReplace[1].Module != "github.com/dummy/another" || toReplace[1].Replace != "/another" {
 		t.Error("The first module to replace must be github.com/dummy/another with the replacer /another")
 	}
+}
 
-	toReplace = b.getDepsReplace("/tmp/dummy_one_absolute")
+func Test_Builder_getDepsReplace_oneAbsolute(t *testing.T) {
+	b := setup()
+
+	defer clean(b)
+
+	toReplace := b.getDepsReplace("/tmp/dummy_one_absolute")
 	if len(toReplace) != 1 {
 		t.Error("/tmp/dummy_one_absolute must have 1 element to replace")
 	}
-	if toReplace[0].Module != "github.com/dummy/package" || toReplace[0].Replace != "/tmp/dummy" {
+	if toReplace[0].Module != dummyPackage || toReplace[0].Replace != "/tmp/dummy" {
 		t.Error("The module to replace must be github.com/dummy/package with the replacer /tmp/dummy")
 	}
+}
 
-	toReplace = b.getDepsReplace("/tmp/dummy_one_relative")
+func Test_Builder_getDepsReplace_oneRelative(t *testing.T) {
+	b := setup()
+
+	defer clean(b)
+
+	toReplace := b.getDepsReplace("/tmp/dummy_one_relative")
 	if len(toReplace) != 1 {
 		t.Error("/tmp/dummy_one_relative must have 1 element to replace")
 	}
-	if toReplace[0].Module != "github.com/dummy/package" || toReplace[0].Replace != "/tmp/dummy_one_relative/something" {
+	if toReplace[0].Module != dummyPackage || toReplace[0].Replace != "/tmp/dummy_one_relative/something" {
 		t.Error("The module to replace must be github.com/dummy/package with the replacer /tmp/dummy_one_relative/something")
 	}
+}
 
-	toReplace = b.getDepsReplace("/tmp/dummy_multiple_absolute_remote")
+func Test_Builder_getDepsReplace_multipleAbsoluteRemote(t *testing.T) {
+	b := setup()
+
+	defer clean(b)
+
+	toReplace := b.getDepsReplace("/tmp/dummy_multiple_absolute_remote")
 	if len(toReplace) != 2 {
 		t.Error("/tmp/dummy_multiple_relative must have 2 elements to replace")
 	}
-	if toReplace[0].Module != "github.com/dummy/package_one" || toReplace[0].Replace != "https://github.com/my/package_one" {
+	if toReplace[0].Module != dummyPackageOne || toReplace[0].Replace != remotePackageOne {
 		t.Error("The first module to replace must be github.com/dummy/package_one with the replacer https://github.com/my/package_one")
 	}
-	if toReplace[1].Module != "github.com/dummy/package_two" || toReplace[1].Replace != "https://github.com/my/package_two" {
+	if toReplace[1].Module != dummyPackageTwo || toReplace[1].Replace != remotePackageTwo {
 		t.Error("The first module to replace must be github.com/dummy/package_two with the replacer https://github.com/my/package_two")
 	}
 }
