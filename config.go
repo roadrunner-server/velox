@@ -48,6 +48,7 @@ type PluginConfig struct {
 	Ref     string `mapstructure:"ref"`
 	Owner   string `mapstructure:"owner"`
 	Repo    string `mapstructure:"repository"`
+	Folder  string `mapstructure:"folder"`
 	Replace string `mapstructure:"replace"`
 }
 

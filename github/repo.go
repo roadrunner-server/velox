@@ -201,13 +201,13 @@ func (r *GHRepo) GetPluginsModData() ([]*common.ModulesInfo, error) {
 
 	for k, v := range r.config.GitHub.Plugins {
 		modInfo := new(common.ModulesInfo)
-		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("plugin", k), zap.String("ref", v.Ref))
+		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("folder", v.Folder), zap.String("plugin", k), zap.String("ref", v.Ref))
 
 		if v.Ref == "" {
 			return nil, errors.New("ref can't be empty")
 		}
 
-		rc, resp, err := r.client.Repositories.DownloadContents(context.Background(), v.Owner, v.Repo, "go.mod", &github.RepositoryContentGetOptions{Ref: v.Ref})
+		rc, resp, err := r.client.Repositories.DownloadContents(context.Background(), v.Owner, v.Repo, path.Join(v.Folder, "go.mod"), &github.RepositoryContentGetOptions{Ref: v.Ref})
 		if err != nil {
 			return nil, err
 		}
