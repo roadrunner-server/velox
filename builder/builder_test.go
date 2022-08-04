@@ -17,7 +17,7 @@ const (
 	remotePackageOne        = "https://github.com/my/package_one"
 	remotePackageTwo        = "https://github.com/my/package_two"
 	replaceGoModOneRelative = `module go.dev/my/module
-go 1.18
+go 1.19
 
 require (
 	github.com/fatih/color v1.13.0
@@ -26,7 +26,7 @@ require (
 replace github.com/dummy/package => ./something
 `
 	replaceGoModOneAbsolute = `module go.dev/my/module
-go 1.18
+go 1.19
 
 require (
 	github.com/fatih/color v1.13.0
@@ -35,7 +35,7 @@ require (
 replace github.com/dummy/package => /tmp/dummy
 `
 	replaceGoModMultipleRelative = `module go.dev/my/module
-go 1.18
+go 1.19
 
 require (
 	github.com/fatih/color v1.13.0
@@ -47,7 +47,7 @@ replace (
 )
 `
 	replaceGoModMultipleAbsolute = `module go.dev/my/module
-go 1.18
+go 1.19
 
 require (
 	github.com/fatih/color v1.13.0
@@ -59,7 +59,7 @@ replace (
 )
 `
 	replaceGoModMultipleRemote = `module go.dev/my/module
-go 1.18
+go 1.19
 
 require (
 	github.com/fatih/color v1.13.0

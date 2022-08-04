@@ -140,7 +140,7 @@ func (b *Builder) Build() error { //nolint:gocyclo
 		}
 	}
 
-	// upgrade to 1.18
+	// upgrade to 1.19
 	err = b.goModTidyCmd()
 	if err != nil {
 		return err
@@ -209,8 +209,8 @@ func (b *Builder) goBuildCmd(out string) error {
 }
 
 func (b *Builder) goModTidyCmd() error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy -go=1.18"))
-	cmd := exec.Command("go", "mod", "tidy", "-go=1.18")
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy -go=1.19"))
+	cmd := exec.Command("go", "mod", "tidy", "-go=1.19")
 	cmd.Stderr = b
 	err := cmd.Start()
 	if err != nil {

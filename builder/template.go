@@ -8,7 +8,7 @@ import (
 const GoModTemplate string = `
 module github.com/roadrunner-server/roadrunner/v2
 
-go 1.18
+go 1.19
 
 require (
         github.com/buger/goterm v1.0.4
