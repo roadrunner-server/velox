@@ -43,13 +43,13 @@ func (r *GLRepo) GetPluginsModData() ([]*common.ModulesInfo, error) {
 
 	for k, v := range r.config.GitLab.Plugins {
 		modInfo := new(common.ModulesInfo)
-		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("plugin", k), zap.String("ref", v.Ref))
+		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("folder", v.Folder), zap.String("plugin", k), zap.String("ref", v.Ref))
 
 		if v.Ref == "" {
 			return nil, errors.New("ref can't be empty")
 		}
 
-		file, resp, err := r.client.RepositoryFiles.GetFile(v.Repo, "go.mod", &gitlab.GetFileOptions{
+		file, resp, err := r.client.RepositoryFiles.GetFile(v.Repo, path.Join(v.Folder, "go.mod"), &gitlab.GetFileOptions{
 			Ref: toPtr(v.Ref),
 		})
 		if err != nil {
