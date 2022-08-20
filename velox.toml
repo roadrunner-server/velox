@@ -13,7 +13,7 @@ ref = "master"
     logger = { ref = "master", owner = "roadrunner-server", repository = "logger" }
     temporal = { ref = "master", owner = "temporalio", repository = "roadrunner-temporal" }
     metrics = { ref = "master", owner = "roadrunner-server", repository = "metrics" }
-    cache = { ref = "master", owner = "roadrunner-server", repository = "cache" }
+    cache = { ref = "v1.6.18", owner = "darkweak", repository = "souin", folder="plugins/roadrunner" }
     reload = { ref = "master", owner = "roadrunner-server", repository = "reload" }
     otel = { ref = "master", owner = "roadrunner-server", repository = "otel" }
     server = { ref = "master", owner = "roadrunner-server", repository = "server" }
@@ -39,6 +39,7 @@ ref = "master"
     kv = { ref = "master", owner = "roadrunner-server", repository = "kv" }
     memcached = { ref = "master", owner = "roadrunner-server", repository = "memcached" }
     tcp = { ref = "master", owner = "roadrunner-server", repository = "tcp" }
+    kafka = { ref = "master", owner = "roadrunner-server", repository = "kafka" }
 
 [gitlab]
     [gitlab.token]
