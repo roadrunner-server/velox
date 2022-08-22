@@ -20,8 +20,8 @@ import (
 	
 )
 
-func Plugins() []interface{} {
-		return []interface{} {
+func Plugins() []any {
+		return []any {
 		// bundled
 		// informer plugin (./rr workers, ./rr workers -i)
 		&informer.Plugin{},
