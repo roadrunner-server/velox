@@ -81,6 +81,9 @@ func (r *GHRepo) DownloadTemplate(version string) (string, error) { //nolint:goc
 	_, _ = io.Copy(io.Discard, do.Body)
 	_ = do.Body.Close()
 
+	// replace '/' in the branch name or tag with the '_' to prevent using '/' as a path separator
+	version = strings.ReplaceAll(version, "/", "_")
+
 	tmp := os.TempDir()
 	name := path.Join(tmp, "roadrunner-server-"+version)
 	_ = os.RemoveAll(name)
