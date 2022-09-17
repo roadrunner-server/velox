@@ -47,6 +47,7 @@ func NewBuilder(rrTmpPath string, modules []*common.ModulesInfo, out string, log
 	}
 }
 
+// Build builds a RR based on the provided modules info
 func (b *Builder) Build() error { //nolint:gocyclo
 	t := new(Template)
 	t.Entries = make([]*Entry, len(b.modules))
