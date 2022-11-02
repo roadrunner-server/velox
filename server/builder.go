@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/roadrunner-server/velox"
 	"github.com/roadrunner-server/velox/builder"
 	"github.com/roadrunner-server/velox/github"
@@ -17,38 +19,48 @@ import (
 )
 
 type Builder struct {
-	log *zap.Logger
+	log     *zap.Logger
+	cfgPool sync.Pool
 }
 
-func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*veloxv1.BuildResponse, error) {
+func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*veloxv1.BuildResponse, error) { //nolint:gocyclo
 	var (
 		gh *velox.CodeHosting
 		gl *velox.CodeHosting
 		mi []*velox.ModulesInfo
 	)
 
-	if request.GetGithub() != nil {
-		gh = &velox.CodeHosting{
-			Token: &velox.Token{
-				Token: request.GetGithub().GetToken(),
-			},
-			Plugins: make(map[string]*velox.PluginConfig),
-		}
+	if request.GetGithub() == nil {
+		return nil, errors.New("github section could not be null")
+	}
 
-		for i := 0; i < len(request.GetGithub().GetPlugins()); i++ {
-			plugin := request.GetGithub().GetPlugins()[i]
+	gh = &velox.CodeHosting{
+		Token: &velox.Token{
+			Token: request.GetGithub().GetToken(),
+		},
+		Plugins: make(map[string]*velox.PluginConfig),
+	}
 
-			gh.Plugins[plugin.GetRepository()] = &velox.PluginConfig{
-				Ref:     plugin.GetRef(),
-				Owner:   plugin.GetOwner(),
-				Repo:    plugin.GetRepository(),
-				Folder:  plugin.GetFolder(),
-				Replace: plugin.GetReplace(),
-			}
+	// convert proto plugins declarations into domain structures
+	for i := 0; i < len(request.GetGithub().GetPlugins()); i++ {
+		plugin := request.GetGithub().GetPlugins()[i]
+
+		gh.Plugins[plugin.GetRepository()] = &velox.PluginConfig{
+			Ref:     plugin.GetRef(),
+			Owner:   plugin.GetOwner(),
+			Repo:    plugin.GetRepository(),
+			Folder:  plugin.GetFolder(),
+			Replace: plugin.GetReplace(),
 		}
 	}
 
+	// GitLab section is optional
 	if request.GetGitlab() != nil {
+		// token is mandatory
+		if request.GetGitlab().GetToken() == "" {
+			return nil, errors.New("should provide a GitLab token")
+		}
+
 		gl = &velox.CodeHosting{
 			Token: &velox.Token{
 				Token: request.GetGitlab().GetToken(),
@@ -56,6 +68,7 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 			Plugins: make(map[string]*velox.PluginConfig),
 		}
 
+		// convert proto plugins declarations into domain structures
 		for i := 0; i < len(request.GetGitlab().GetPlugins()); i++ {
 			plugin := request.GetGitlab().GetPlugins()[i]
 
@@ -69,22 +82,25 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 		}
 	}
 
+	// get version for the RR
 	v := request.GetMetaVersion()
 	if v == "" {
 		v = "2.12.0"
 	}
 
+	// get build time
 	t := request.GetBuildTime()
 	if t == "" {
 		t = time.Now().String()
 	}
 
-	cfg := &velox.Config{
-		Roadrunner: map[string]string{"roadrunner": request.GetRoadrunnerRef()},
-		GitHub:     gh,
-		GitLab:     gl,
-		Log:        nil,
-	}
+	//
+	cfg := b.get()
+	defer b.put(cfg)
+
+	cfg.Roadrunner = map[string]string{"roadrunner": request.GetRoadrunnerRef()}
+	cfg.GitHub = gh
+	cfg.GitLab = gl
 
 	err := cfg.Validate()
 	if err != nil {
@@ -128,6 +144,20 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 	}
 
 	return &veloxv1.BuildResponse{Path: outputPath}, nil
+}
+
+func (b *Builder) get() *velox.Config {
+	return b.cfgPool.Get().(*velox.Config)
+}
+
+func (b *Builder) put(cfg *velox.Config) {
+	cfg.GitLab = nil
+	cfg.GitHub = nil
+	cfg.Velox = nil
+	cfg.Log = nil
+	cfg.Roadrunner = nil
+
+	b.cfgPool.Put(cfg)
 }
 
 func buildArgs(version, buildtime string) []string {

@@ -2,8 +2,10 @@ package server
 
 import (
 	"net"
+	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/roadrunner-server/velox"
 	veloxv1 "go.buf.build/grpc/go/roadrunner-server/api/velox/v1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -27,7 +29,15 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	veloxv1.RegisterBuilderServiceServer(s.srv, &Builder{s.log})
+	veloxv1.RegisterBuilderServiceServer(s.srv, &Builder{
+		log: s.log,
+		cfgPool: sync.Pool{
+			New: func() any {
+				return new(velox.Config)
+			},
+		},
+	},
+	)
 	err = s.srv.Serve(l)
 	if err != nil {
 		if errors.Is(err, grpc.ErrServerStopped) {
