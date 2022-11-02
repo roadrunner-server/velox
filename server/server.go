@@ -27,7 +27,7 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	veloxv1.RegisterBuilderServiceServer(s.srv, &Builder{})
+	veloxv1.RegisterBuilderServiceServer(s.srv, &Builder{s.log})
 	err = s.srv.Serve(l)
 	if err != nil {
 		if errors.Is(err, grpc.ErrServerStopped) {

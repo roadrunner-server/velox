@@ -11,6 +11,7 @@ import (
 	"github.com/roadrunner-server/velox"
 	"github.com/roadrunner-server/velox/builder"
 	"github.com/roadrunner-server/velox/github"
+	"github.com/roadrunner-server/velox/gitlab"
 	veloxv1 "go.buf.build/grpc/go/roadrunner-server/api/velox/v1"
 	"go.uber.org/zap"
 )
@@ -20,8 +21,11 @@ type Builder struct {
 }
 
 func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*veloxv1.BuildResponse, error) {
-	var gh *velox.CodeHosting
-	var gl *velox.CodeHosting
+	var (
+		gh *velox.CodeHosting
+		gl *velox.CodeHosting
+		mi []*velox.ModulesInfo
+	)
 
 	if request.GetGithub() != nil {
 		gh = &velox.CodeHosting{
@@ -87,6 +91,18 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 		return nil, err
 	}
 
+	if request.GetGitlab() != nil {
+		rp, errGL := gitlab.NewGLRepoInfo(cfg, b.log)
+		if errGL != nil {
+			return nil, errGL
+		}
+
+		mi, err = rp.GetPluginsModData()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	rp := github.NewGHRepoInfo(cfg, b.log)
 
 	tmp := filepath.Join(os.TempDir(), uuid.NewString())
@@ -98,6 +114,11 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 	pMod, err := rp.GetPluginsModData()
 	if err != nil {
 		return nil, err
+	}
+
+	// append data from gitlab
+	if mi != nil {
+		pMod = append(pMod, mi...)
 	}
 
 	outputPath := filepath.Join(tmp, "bin")
