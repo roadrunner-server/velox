@@ -18,6 +18,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	bin            string = "bin"
+	defaultVersion string = "v2.12.0"
+)
+
 type Builder struct {
 	log     *zap.Logger
 	cfgPool sync.Pool
@@ -85,7 +90,7 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 	// get version for the RR
 	v := request.GetMetaVersion()
 	if v == "" {
-		v = "2.12.0"
+		v = defaultVersion
 	}
 
 	// get build time
@@ -98,7 +103,6 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 	cfg := b.get()
 	defer b.put(cfg)
 
-	cfg.Roadrunner = map[string]string{"roadrunner": request.GetRoadrunnerRef()}
 	cfg.GitHub = gh
 	cfg.GitLab = gl
 
@@ -121,8 +125,9 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 
 	rp := github.NewGHRepoInfo(cfg, b.log)
 
+	// create unique tmp path for the every build
 	tmp := filepath.Join(os.TempDir(), uuid.NewString())
-	path, err := rp.DownloadTemplate(tmp, cfg.Roadrunner["ref"])
+	path, err := rp.DownloadTemplate(tmp, request.GetRoadrunnerRef())
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +142,7 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 		pMod = append(pMod, mi...)
 	}
 
-	outputPath := filepath.Join(tmp, "bin")
+	outputPath := filepath.Join(tmp, bin)
 	err = builder.NewBuilder(path, pMod, outputPath, b.log, buildArgs(v, t)).Build()
 	if err != nil {
 		return nil, err
