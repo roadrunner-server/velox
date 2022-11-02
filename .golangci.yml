@@ -47,7 +47,6 @@ linters: # All available linters list: <https://golangci-lint.run/usage/linters/
     - bodyclose # Checks whether HTTP response body is closed successfully
     - depguard # Go linter that checks if package imports are in a list of acceptable packages
     - dogsled # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
-    - dupl # Tool for code clone detection
     - errcheck # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
     - errorlint # find code that will cause problems with the error wrapping scheme introduced in Go 1.13
     - exhaustive # check exhaustiveness of enum switch statements

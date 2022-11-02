@@ -11,7 +11,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/roadrunner-server/velox/common"
+	"github.com/roadrunner-server/velox"
 	"go.uber.org/zap"
 )
 
@@ -32,12 +32,12 @@ var replaceRegexp = regexp.MustCompile("(\t| )(.+) => (.+)")
 type Builder struct {
 	rrTempPath string
 	out        string
-	modules    []*common.ModulesInfo
+	modules    []*velox.ModulesInfo
 	log        *zap.Logger
 	buildArgs  []string
 }
 
-func NewBuilder(rrTmpPath string, modules []*common.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
+func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
 	return &Builder{
 		rrTempPath: rrTmpPath,
 		modules:    modules,

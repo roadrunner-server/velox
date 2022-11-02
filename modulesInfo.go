@@ -1,4 +1,4 @@
-package common
+package velox
 
 // ModulesInfo represents single go module
 type ModulesInfo struct {

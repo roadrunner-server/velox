@@ -17,7 +17,6 @@ import (
 
 	"github.com/google/go-github/v45/github"
 	"github.com/roadrunner-server/velox"
-	"github.com/roadrunner-server/velox/common"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -54,7 +53,7 @@ func NewGHRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 }
 
 // DownloadTemplate downloads template repository ->
-func (r *GHRepo) DownloadTemplate(version string) (string, error) { //nolint:gocyclo
+func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolint:gocyclo
 	r.log.Info("[GET ARCHIVE LINK]", zap.String("owner", rrOwner), zap.String("repository", rrRepo), zap.String("encoding", "zip"), zap.String("ref", version))
 	url, resp, err := r.client.Repositories.GetArchiveLink(context.Background(), rrOwner, rrRepo, github.Zipball, &github.RepositoryContentGetOptions{Ref: version}, true)
 	if err != nil {
@@ -84,7 +83,6 @@ func (r *GHRepo) DownloadTemplate(version string) (string, error) { //nolint:goc
 	// replace '/' in the branch name or tag with the '_' to prevent using '/' as a path separator
 	version = strings.ReplaceAll(version, "/", "_")
 
-	tmp := os.TempDir()
 	name := path.Join(tmp, "roadrunner-server-"+version)
 	_ = os.RemoveAll(name)
 
@@ -199,11 +197,11 @@ func extract(dest string, zf *zip.File) error {
 // https://github.com/roadrunner-server/static/archive/refs/heads/master.zip
 // https://github.com/spiral/roadrunner-binary/archive/refs/tags/v2.7.0.zip
 
-func (r *GHRepo) GetPluginsModData() ([]*common.ModulesInfo, error) {
-	modInfoRet := make([]*common.ModulesInfo, 0, 5)
+func (r *GHRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
+	modInfoRet := make([]*velox.ModulesInfo, 0, 5)
 
 	for k, v := range r.config.GitHub.Plugins {
-		modInfo := new(common.ModulesInfo)
+		modInfo := new(velox.ModulesInfo)
 		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("folder", v.Folder), zap.String("plugin", k), zap.String("ref", v.Ref))
 
 		if v.Ref == "" {

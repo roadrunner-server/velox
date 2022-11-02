@@ -5,7 +5,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/roadrunner-server/velox/common"
+	"github.com/roadrunner-server/velox"
 	"go.uber.org/zap"
 )
 
@@ -81,9 +81,9 @@ func setup() *Builder {
 		"dummy_multiple_absolute_remote": []byte(replaceGoModMultipleRemote),
 	}
 
-	b := NewBuilder("/tmp", []*common.ModulesInfo{}, "", zap.NewNop(), []string{})
+	b := NewBuilder("/tmp", []*velox.ModulesInfo{}, "", zap.NewNop(), []string{})
 
-	b.modules = []*common.ModulesInfo{
+	b.modules = []*velox.ModulesInfo{
 		{
 			Version:    "master",
 			ModuleName: "dummy_one_relative",
