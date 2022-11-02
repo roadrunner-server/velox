@@ -45,7 +45,7 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 	}
 
 	if request.GetGitlab() != nil {
-		gh = &velox.CodeHosting{
+		gl = &velox.CodeHosting{
 			Token: &velox.Token{
 				Token: request.GetGitlab().GetToken(),
 			},
@@ -55,7 +55,7 @@ func (b *Builder) Build(_ context.Context, request *veloxv1.BuildRequest) (*velo
 		for i := 0; i < len(request.GetGitlab().GetPlugins()); i++ {
 			plugin := request.GetGitlab().GetPlugins()[i]
 
-			gh.Plugins[plugin.GetRepository()] = &velox.PluginConfig{
+			gl.Plugins[plugin.GetRepository()] = &velox.PluginConfig{
 				Ref:     plugin.GetRef(),
 				Owner:   plugin.GetOwner(),
 				Repo:    plugin.GetRepository(),
