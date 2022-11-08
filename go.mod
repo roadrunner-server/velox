@@ -7,7 +7,7 @@ require (
 	github.com/google/go-github/v45 v45.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.6.1
-	github.com/spf13/viper v1.13.0
+	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
 	github.com/xanzy/go-gitlab v0.74.0
 	go.uber.org/zap v1.23.0
