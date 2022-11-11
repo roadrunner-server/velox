@@ -1,11 +1,11 @@
 package build
 
 import (
+	"os"
 	"syscall"
 
 	"github.com/roadrunner-server/velox"
 	"github.com/roadrunner-server/velox/builder"
-	"github.com/roadrunner-server/velox/common"
 	"github.com/roadrunner-server/velox/github"
 	"github.com/roadrunner-server/velox/gitlab"
 	"github.com/spf13/cobra"
@@ -30,7 +30,7 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				*out = wd
 			}
 
-			var mi []*common.ModulesInfo
+			var mi []*velox.ModulesInfo
 			if cfg.GitLab != nil {
 				rp, err := gitlab.NewGLRepoInfo(cfg, zlog)
 				if err != nil {
@@ -45,7 +45,7 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 
 			// roadrunner located on the github
 			rp := github.NewGHRepoInfo(cfg, zlog)
-			path, err := rp.DownloadTemplate(cfg.Roadrunner[ref])
+			path, err := rp.DownloadTemplate(os.TempDir(), cfg.Roadrunner[ref])
 			if err != nil {
 				zlog.Fatal("[DOWNLOAD TEMPLATE]", zap.Error(err))
 			}

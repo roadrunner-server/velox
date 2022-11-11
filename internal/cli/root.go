@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/roadrunner-server/velox"
 	"github.com/roadrunner-server/velox/internal/cli/build"
+	"github.com/roadrunner-server/velox/internal/cli/server"
 	"github.com/roadrunner-server/velox/internal/version"
 	"github.com/roadrunner-server/velox/logger"
 	"github.com/spf13/cobra"
@@ -78,6 +79,7 @@ func NewCommand(executableName string) *cobra.Command {
 
 	cmd.AddCommand(
 		build.BindCommand(config, cfgPath, zapLogger),
+		server.ServeCommand(zapLogger),
 	)
 	return cmd
 }
