@@ -14,7 +14,7 @@ require (
 	go.buf.build/grpc/go/roadrunner-server/api v1.4.27
 	go.uber.org/zap v1.23.0
 	golang.org/x/oauth2 v0.2.0
-	google.golang.org/grpc v1.50.1
+	google.golang.org/grpc v1.51.0
 )
 
 require (
