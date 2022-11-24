@@ -13,12 +13,11 @@ go 1.19
 require (
         github.com/buger/goterm v1.0.4
         github.com/dustin/go-humanize v1.0.0
-        github.com/fatih/color v1.13.0
         github.com/joho/godotenv v1.4.0
         github.com/olekukonko/tablewriter v0.0.5
-        github.com/spf13/cobra v1.5.0
-		github.com/spf13/viper v1.13.0
-        github.com/stretchr/testify v1.8.0
+        github.com/spf13/cobra v1.6.1
+		github.com/spf13/viper v1.14.0
+        github.com/stretchr/testify v1.8.1
 )
 
 replace (

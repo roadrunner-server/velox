@@ -31,7 +31,7 @@ ARG BUILD_TIME="undefined"
 LABEL \
     org.opencontainers.image.title="velox" \
     org.opencontainers.image.description="Automated build system for the RR and roadrunner-plugins" \
-    org.opencontainers.image.url="https://github.com/roadrunner-server/velox" \
+    org.opencontainers.image.url="https://roadrunner.dev" \
     org.opencontainers.image.source="https://github.com/roadrunner-server/velox" \
     org.opencontainers.image.vendor="SpiralScout" \
     org.opencontainers.image.version="$APP_VERSION" \
