@@ -13,7 +13,7 @@ require (
 	github.com/xanzy/go-gitlab v0.76.0
 	go.buf.build/grpc/go/roadrunner-server/api v1.4.27
 	go.uber.org/zap v1.24.0
-	golang.org/x/oauth2 v0.2.0
+	golang.org/x/oauth2 v0.3.0
 	google.golang.org/grpc v1.51.0
 )
 
