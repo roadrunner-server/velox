@@ -12,7 +12,7 @@ COPY velox.toml .
 ENV CGO_ENABLED=0
 RUN vx build -c velox.toml -o /usr/bin/
 
-FROM --platform=${TARGETPLATFORM:-linux/amd64} php:8.1-cli
+FROM --platform=${TARGETPLATFORM:-linux/amd64} php:8.2-cli
 
 # copy required files from builder image
 COPY --from=velox /usr/bin/rr /usr/bin/rr
