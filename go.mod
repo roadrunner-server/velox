@@ -10,7 +10,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
-	github.com/xanzy/go-gitlab v0.76.0
+	github.com/xanzy/go-gitlab v0.77.0
 	go.buf.build/grpc/go/roadrunner-server/api v1.4.27
 	go.uber.org/zap v1.24.0
 	golang.org/x/oauth2 v0.3.0
