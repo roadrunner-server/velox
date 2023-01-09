@@ -1,5 +1,10 @@
 Automated build system for the RR with plugins.
 
+# Compatibility with the plugins:
+
+1. ⚠️ Do not use the plugin's `master` branch.
+2. ⚠️ Use tags with the **same** **major** version (e.g `logger` v3.0.3 + `amqp` v3.0.5, but not `logger` v4.0.0 + `amqp` v3.0.5)
+
 <p align="center">
  <img src="https://user-images.githubusercontent.com/796136/50286124-6f7f3780-046f-11e9-9f45-e8fedd4f786d.png" height="75px" alt="RoadRunner">
 </p>
