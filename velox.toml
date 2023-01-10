@@ -2,7 +2,7 @@
 build_args = ['-trimpath', '-ldflags', '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=${VERSION} -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=${TIME}']
 
 [roadrunner]
-ref = "master"
+ref = "v2.12.1"
 
 [github]
     [github.token]
@@ -11,62 +11,61 @@ ref = "master"
     # ref -> master, commit or tag
     [github.plugins]
     # LOGS
-    appLogger = { ref = "master", owner = "roadrunner-server", repository = "app-logger" }
-    logger = { ref = "master", owner = "roadrunner-server", repository = "logger" }
+    appLogger = { ref = "v3.2.0", owner = "roadrunner-server", repository = "app-logger" }
+    logger = { ref = "v3.2.0", owner = "roadrunner-server", repository = "logger" }
 
     # CENTRIFUGE BROADCASTING PLATFORM
-    centrifuge = { ref = "master", owner = "roadrunner-server", repository = "centrifuge" }
+    centrifuge = { ref = "v3.2.0", owner = "roadrunner-server", repository = "centrifuge" }
 
     # WORKFLOWS ENGINE
-    temporal = { ref = "master", owner = "temporalio", repository = "roadrunner-temporal" }
+    temporal = { ref = "v3.0.0", owner = "temporalio", repository = "roadrunner-temporal" }
 
     # METRICS
-    metrics = { ref = "master", owner = "roadrunner-server", repository = "metrics" }
+    metrics = { ref = "v3.3.0", owner = "roadrunner-server", repository = "metrics" }
 
     # HTTP + MIDDLEWARE
-    http = { ref = "master", owner = "roadrunner-server", repository = "http" }
-    gzip = { ref = "master", owner = "roadrunner-server", repository = "gzip" }
-    prometheus = { ref = "master", owner = "roadrunner-server", repository = "prometheus" }
-    headers = { ref = "master", owner = "roadrunner-server", repository = "headers" }
-    static = { ref = "master", owner = "roadrunner-server", repository = "static" }
-    cache = { ref = "v1.6.22", owner = "darkweak", repository = "souin", folder="plugins/roadrunner" }
-    otel = { ref = "master", owner = "roadrunner-server", repository = "otel" }
+    http = { ref = "v3.2.0", owner = "roadrunner-server", repository = "http" }
+    gzip = { ref = "v3.2.0", owner = "roadrunner-server", repository = "gzip" }
+    prometheus = { ref = "v3.2.0", owner = "roadrunner-server", repository = "prometheus" }
+    headers = { ref = "v3.2.0", owner = "roadrunner-server", repository = "headers" }
+    static = { ref = "v3.2.0", owner = "roadrunner-server", repository = "static" }
+    otel = { ref = "v3.2.0", owner = "roadrunner-server", repository = "otel" }
 
     # RELOAD (for the DEV)
-    reload = { ref = "master", owner = "roadrunner-server", repository = "reload" }
+    reload = { ref = "v3.2.0", owner = "roadrunner-server", repository = "reload" }
 
     # SERVER
-    server = { ref = "master", owner = "roadrunner-server", repository = "server" }
+    server = { ref = "v3.2.0", owner = "roadrunner-server", repository = "server" }
 
     # SERVICE aka lightweit systemd
-    service = { ref = "master", owner = "roadrunner-server", repository = "service" }
+    service = { ref = "v3.2.0", owner = "roadrunner-server", repository = "service" }
 
     # JOBS
-    jobs = { ref = "master", owner = "roadrunner-server", repository = "jobs" }
-    amqp = { ref = "master", owner = "roadrunner-server", repository = "amqp" }
-    sqs = { ref = "master", owner = "roadrunner-server", repository = "sqs" }
-    beanstalk = { ref = "master", owner = "roadrunner-server", repository = "beanstalk" }
-    nats = { ref = "master", owner = "roadrunner-server", repository = "nats" }
-    kafka = { ref = "master", owner = "roadrunner-server", repository = "kafka" }
+    jobs = { ref = "v3.2.0", owner = "roadrunner-server", repository = "jobs" }
+    amqp = { ref = "v3.3.0", owner = "roadrunner-server", repository = "amqp" }
+    sqs = { ref = "v3.3.0", owner = "roadrunner-server", repository = "sqs" }
+    beanstalk = { ref = "v3.2.0", owner = "roadrunner-server", repository = "beanstalk" }
+    nats = { ref = "v3.2.0", owner = "roadrunner-server", repository = "nats" }
+    kafka = { ref = "v3.0.4", owner = "roadrunner-server", repository = "kafka" }
 
     # KV
-    kv = { ref = "master", owner = "roadrunner-server", repository = "kv" }
-    boltdb = { ref = "master", owner = "roadrunner-server", repository = "boltdb" }
-    memory = { ref = "master", owner = "roadrunner-server", repository = "memory" }
-    redis = { ref = "master", owner = "roadrunner-server", repository = "redis" }
-    memcached = { ref = "master", owner = "roadrunner-server", repository = "memcached" }
+    kv = { ref = "v3.2.0", owner = "roadrunner-server", repository = "kv" }
+    boltdb = { ref = "v3.2.0", owner = "roadrunner-server", repository = "boltdb" }
+    memory = { ref = "v3.3.0", owner = "roadrunner-server", repository = "memory" }
+    redis = { ref = "v3.2.0", owner = "roadrunner-server", repository = "redis" }
+    memcached = { ref = "v3.2.0", owner = "roadrunner-server", repository = "memcached" }
 
     # FILESERVER (static files)
-    fileserver = { ref = "master", owner = "roadrunner-server", repository = "fileserver" }
+    fileserver = { ref = "v3.2.0", owner = "roadrunner-server", repository = "fileserver" }
 
     # gRPC plugin
-    grpc = { ref = "master", owner = "roadrunner-server", repository = "grpc" }
+    grpc = { ref = "v3.2.0", owner = "roadrunner-server", repository = "grpc" }
 
     # HEALTHCHECKS + READINESS CHECKS
-    status = { ref = "master", owner = "roadrunner-server", repository = "status" }
+    status = { ref = "v3.2.0", owner = "roadrunner-server", repository = "status" }
 
     # TCP for the RAW TCP PAYLOADS
-    tcp = { ref = "master", owner = "roadrunner-server", repository = "tcp" }
+    tcp = { ref = "v3.2.0", owner = "roadrunner-server", repository = "tcp" }
 
 [gitlab]
     [gitlab.token]
