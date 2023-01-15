@@ -8,7 +8,7 @@
 </p>
 <p align="center">
  <a href="https://packagist.org/packages/spiral/roadrunner"><img src="https://poser.pugx.org/spiral/roadrunner/version"></a>
-	<a href="https://pkg.go.dev/github.com/roadrunner-server/velox/v2?tab=doc"><img src="https://godoc.org/github.com/roadrunner-server/velox/v2?status.svg"></a>
+	<a href="https://pkg.go.dev/github.com/roadrunner-server/velox?tab=doc"><img src="https://godoc.org/github.com/roadrunner-server/velox?status.svg"></a>
     <a href="https://twitter.com/spiralphp"><img src="https://img.shields.io/twitter/follow/spiralphp?style=social"></a>
 	<a href="https://github.com/roadrunner-server/velox/actions"><img src="https://github.com/roadrunner-server/velox/workflows/Linters/badge.svg" alt=""></a>
 	<a href="https://github.com/roadrunner-server/velox/actions"><img src="https://github.com/roadrunner-server/velox/workflows/Linux/badge.svg" alt=""></a>
