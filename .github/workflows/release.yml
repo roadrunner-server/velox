@@ -51,9 +51,9 @@ jobs:
       - name: Generate builder values
         id: values
         run: |
-          echo "::set-output name=version::`echo ${GITHUB_REF##*/} | sed -e 's/^[vV ]*//'`"
-          echo "::set-output name=timestamp::`date +%FT%T%z`"
-          echo "::set-output name=binary-name::vx`[ ${{ matrix.os }} = 'windows' ] && echo '.exe'`"
+          echo "version=$(echo ${GITHUB_REF##*/} | sed -e 's/^[vV ]*//')" >> $GITHUB_OUTPUT
+          echo "timestamp=$(echo $(date +%FT%T%z))" >> $GITHUB_OUTPUT
+          echo "binary-name=$(echo $(echo vx`[ ${{ matrix.os }} = 'windows' ] && echo '.exe'`))" >> $GITHUB_OUTPUT
 
       - name: Compile binary file
         env:
@@ -72,22 +72,22 @@ jobs:
       - name: Generate distributive directory name
         id: dist-dir
         run: >
-          echo "::set-output name=name::velox-${{ steps.values.outputs.version }}-$(
+          echo "name=$(echo velox-${{ steps.values.outputs.version }}-$(
             [ ${{ matrix.os }} != '' ] && echo '${{ matrix.os }}' || echo 'unknown'
           )$(
             [ ${{ matrix.compiler }} = 'musl-gcc' ] && echo '-musl'
-          )-${{ matrix.arch }}"
+          ))-${{ matrix.arch }}" >> $GITHUB_OUTPUT
 
       - name: Generate distributive archive name
         id: dist-arch
         run: >
-          echo "::set-output name=name::${{ steps.dist-dir.outputs.name }}.$(
+          echo "name=$(echo ${{ steps.dist-dir.outputs.name }}.$(
             case ${{ matrix.archiver }} in
               zip) echo 'zip';;
               tar) echo 'tar.gz';;
               *)   exit 10;
             esac
-          )"
+          ))" >> $GITHUB_OUTPUT
 
       - name: Create distributive
         run: |
@@ -148,8 +148,8 @@ jobs:
       - name: Generate builder values
         id: values
         run: |
-          echo "::set-output name=version::`echo ${GITHUB_REF##*/} | sed -e 's/^[vV ]*//'`"
-          echo "::set-output name=timestamp::`date +%FT%T%z`"
+          echo "version=$(echo ${GITHUB_REF##*/} | sed -e 's/^[vV ]*//')" >> $GITHUB_OUTPUT
+          echo "timestamp=$(echo $(date +%FT%T%z))" >> $GITHUB_OUTPUT
 
       - name: Build image
         uses: docker/build-push-action@v3 # Action page: <https://github.com/docker/build-push-action>
