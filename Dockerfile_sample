@@ -7,15 +7,20 @@ FROM --platform=${TARGETPLATFORM:-linux/amd64} ghcr.io/roadrunner-server/velox:l
 ARG APP_VERSION="undefined"
 ARG BUILD_TIME="undefined"
 
+# Copy the configuration file
 COPY velox.toml .
 
+# RR doesn't use CGO
 ENV CGO_ENABLED=0
+
+# Build the RR binary and put the file into `/usr/bin`
 RUN vx build -c velox.toml -o /usr/bin/
 
+# PHP image
 FROM --platform=${TARGETPLATFORM:-linux/amd64} php:8.2-cli
 
 # copy required files from builder image
 COPY --from=velox /usr/bin/rr /usr/bin/rr
 
-# use roadrunner binary as image entrypoint
+# use the RR binary as image entrypoint
 CMD ["/usr/bin/rr"]

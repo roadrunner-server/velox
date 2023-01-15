@@ -52,15 +52,13 @@ func (b *Builder) Build() error { //nolint:gocyclo
 	t := new(Template)
 	t.Entries = make([]*Entry, len(b.modules))
 	for i := 0; i < len(b.modules); i++ {
-		e := new(Entry)
-
-		e.Module = b.modules[i].ModuleName
-		e.Prefix = RandStringBytes(5)
-		e.Structure = pluginStructureStr
-		e.Version = b.modules[i].Version
-		e.Replace = b.modules[i].Replace
-
-		t.Entries[i] = e
+		t.Entries[i] = &Entry{
+			Module:    b.modules[i].ModuleName,
+			Prefix:    randStringBytes(5),
+			Structure: pluginStructureStr,
+			Version:   b.modules[i].Version,
+			Replace:   b.modules[i].Replace,
+		}
 	}
 
 	buf := new(bytes.Buffer)
@@ -167,7 +165,7 @@ func (b *Builder) Build() error { //nolint:gocyclo
 	return nil
 }
 
-func RandStringBytes(n int) string {
+func randStringBytes(n int) string {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))] //nolint:gosec

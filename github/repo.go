@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v45/github"
+	"github.com/google/go-github/v49/github"
 	"github.com/roadrunner-server/velox"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
