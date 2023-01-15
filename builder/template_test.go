@@ -11,12 +11,12 @@ const res string = `
 package container
 
 import (
-	"github.com/roadrunner-server/informer/v2"
-	"github.com/roadrunner-server/resetter/v2"
-	ab "github.com/roadrunner-server/rpc/v2"
-	cd "github.com/roadrunner-server/http/v2"
-	ef "github.com/roadrunner-server/grpc/v2"
-	jk "github.com/roadrunner-server/logger/v2"
+	"github.com/roadrunner-server/informer/v3"
+	"github.com/roadrunner-server/resetter/v3"
+	ab "github.com/roadrunner-server/rpc/v3"
+	cd "github.com/roadrunner-server/http/v3"
+	ef "github.com/roadrunner-server/grpc/v3"
+	jk "github.com/roadrunner-server/logger/v3"
 	
 )
 
@@ -44,22 +44,22 @@ func TestCompile(t *testing.T) {
 	}
 
 	tt.Entries = append(tt.Entries, &Entry{
-		Module:    "github.com/roadrunner-server/rpc/v2",
+		Module:    "github.com/roadrunner-server/rpc/v3",
 		Structure: "Plugin{}",
 		Prefix:    "ab",
 	})
 	tt.Entries = append(tt.Entries, &Entry{
-		Module:    "github.com/roadrunner-server/http/v2",
+		Module:    "github.com/roadrunner-server/http/v3",
 		Structure: "Plugin{}",
 		Prefix:    "cd",
 	})
 	tt.Entries = append(tt.Entries, &Entry{
-		Module:    "github.com/roadrunner-server/grpc/v2",
+		Module:    "github.com/roadrunner-server/grpc/v3",
 		Structure: "Plugin{}",
 		Prefix:    "ef",
 	})
 	tt.Entries = append(tt.Entries, &Entry{
-		Module:    "github.com/roadrunner-server/logger/v2",
+		Module:    "github.com/roadrunner-server/logger/v3",
 		Structure: "Plugin{}",
 		Prefix:    "jk",
 	})
