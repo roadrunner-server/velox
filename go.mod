@@ -3,7 +3,7 @@ module github.com/roadrunner-server/velox
 go 1.19
 
 require (
-	github.com/fatih/color v1.13.0
+	github.com/fatih/color v1.14.1
 	github.com/google/go-github/v49 v49.1.0
 	github.com/google/uuid v1.3.0
 	github.com/pkg/errors v0.9.1
