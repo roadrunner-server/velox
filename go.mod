@@ -5,16 +5,13 @@ go 1.19
 require (
 	github.com/fatih/color v1.14.1
 	github.com/google/go-github/v49 v49.1.0
-	github.com/google/uuid v1.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.1
 	github.com/xanzy/go-gitlab v0.79.0
-	go.buf.build/grpc/go/roadrunner-server/api v1.4.27
 	go.uber.org/zap v1.24.0
 	golang.org/x/oauth2 v0.4.0
-	google.golang.org/grpc v1.52.0
 )
 
 require (
@@ -45,7 +42,6 @@ require (
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230113154510-dbe35b8444a5 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
