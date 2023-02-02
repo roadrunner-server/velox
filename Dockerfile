@@ -1,6 +1,6 @@
 # https://docs.docker.com/buildx/working-with-buildx/
 # TARGETPLATFORM if not empty OR linux/amd64 by default
-FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.19-alpine as builder
+FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.20-alpine as builder
 
 # app version and build date must be passed during image building (version without any prefix).
 # e.g.: `docker build --build-arg "APP_VERSION=1.2.3" --build-arg "BUILD_TIME=$(date +%FT%T%z)" .`
@@ -22,7 +22,7 @@ RUN go mod tidy -go 1.19
 
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o ./velox ./cmd/vx
 
-FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.19-alpine
+FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.20-alpine
 
 # use same build arguments for image labels
 ARG APP_VERSION="undefined"
