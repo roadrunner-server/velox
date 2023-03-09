@@ -2,7 +2,7 @@
 build_args = ['-trimpath', '-ldflags', '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=${VERSION} -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=${TIME}']
 
 [roadrunner]
-ref = "v2.12.1"
+ref = "v2.12.3"
 
 [github]
     [github.token]
@@ -59,7 +59,7 @@ ref = "v2.12.1"
     fileserver = { ref = "v3.2.0", owner = "roadrunner-server", repository = "fileserver" }
 
     # gRPC plugin
-    grpc = { ref = "v3.2.0", owner = "roadrunner-server", repository = "grpc" }
+    grpc = { ref = "v3.3.0", owner = "roadrunner-server", repository = "grpc" }
 
     # HEALTHCHECKS + READINESS CHECKS
     status = { ref = "v3.2.0", owner = "roadrunner-server", repository = "status" }
