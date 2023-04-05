@@ -10,22 +10,20 @@ import (
 const (
 	ref           string = "ref"
 	defaultBranch string = "master"
+	V2023         string = "v2023"
+	V2            string = "v2"
 	gitlabBaseURL string = "https://gitlab.com"
 )
 
 type Config struct {
 	// build args
 	Velox map[string][]string `mapstructure:"velox"`
-
 	// Version
 	Roadrunner map[string]string `mapstructure:"roadrunner"`
-
 	// GitHub configuration
 	GitHub *CodeHosting `mapstructure:"github"`
-
 	// GitLab configuration
 	GitLab *CodeHosting `mapstructure:"gitlab"`
-
 	// Log contains log configuration
 	Log map[string]string `mapstructure:"log"`
 }

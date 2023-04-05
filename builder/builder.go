@@ -2,6 +2,7 @@ package builder
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -11,7 +12,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/hashicorp/go-version"
 	"github.com/roadrunner-server/velox"
+	"github.com/roadrunner-server/velox/builder/templates"
 	"go.uber.org/zap"
 )
 
@@ -48,11 +51,18 @@ func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, out string, log 
 }
 
 // Build builds a RR based on the provided modules info
-func (b *Builder) Build() error { //nolint:gocyclo
-	t := new(Template)
-	t.Entries = make([]*Entry, len(b.modules))
+func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
+	t := new(templates.Template)
+
+	module, err := validateModule(rrModule)
+	if err != nil {
+		return err
+	}
+
+	t.ModuleVersion = module
+	t.Entries = make([]*templates.Entry, len(b.modules))
 	for i := 0; i < len(b.modules); i++ {
-		t.Entries[i] = &Entry{
+		t.Entries[i] = &templates.Entry{
 			Module:    b.modules[i].ModuleName,
 			Prefix:    randStringBytes(5),
 			Structure: pluginStructureStr,
@@ -62,9 +72,21 @@ func (b *Builder) Build() error { //nolint:gocyclo
 	}
 
 	buf := new(bytes.Buffer)
-	err := compileTemplate(buf, t)
-	if err != nil {
-		return err
+
+	// compatibility with the version 2
+	switch t.ModuleVersion {
+	case velox.V2023:
+		err = templates.CompileTemplateV2023(buf, t)
+		if err != nil {
+			return err
+		}
+	case velox.V2:
+		err = templates.CompileTemplateV2(buf, t)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
 
 	b.log.Debug("[RESULTING TEMPLATE]", zap.String("template", buf.String()))
@@ -109,9 +131,20 @@ func (b *Builder) Build() error { //nolint:gocyclo
 
 	buf.Reset()
 
-	err = compileGoModTemplate(buf, t)
-	if err != nil {
-		return err
+	// compatibility with the version 2
+	switch t.ModuleVersion {
+	case velox.V2023:
+		err = templates.CompileGoModTemplate2023(buf, t)
+		if err != nil {
+			return err
+		}
+	case velox.V2:
+		err = templates.CompileGoModTemplateV2(buf, t)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
 
 	_, err = goModFile.Write(buf.Bytes())
@@ -139,7 +172,7 @@ func (b *Builder) Build() error { //nolint:gocyclo
 		}
 	}
 
-	// upgrade to 1.19
+	// upgrade to 1.20
 	err = b.goModTidyCmd()
 	if err != nil {
 		return err
@@ -163,6 +196,26 @@ func (b *Builder) Build() error { //nolint:gocyclo
 	}
 
 	return nil
+}
+
+func (b *Builder) Write(d []byte) (int, error) {
+	b.log.Debug("[STDERR OUTPUT]", zap.ByteString("log", d))
+	return len(d), nil
+}
+
+func validateModule(module string) (string, error) {
+	if module == "master" {
+		// default branch
+		return velox.V2023, nil
+	}
+
+	v, err := version.NewVersion(module)
+	if err != nil {
+		return "", err
+	}
+
+	// return major version (v2, v2023, etc)
+	return fmt.Sprintf("v%d", v.Segments()[0]), nil
 }
 
 func randStringBytes(n int) string {
@@ -208,8 +261,8 @@ func (b *Builder) goBuildCmd(out string) error {
 }
 
 func (b *Builder) goModTidyCmd() error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy -go=1.19"))
-	cmd := exec.Command("go", "mod", "tidy", "-go=1.19")
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy -go=1.20"))
+	cmd := exec.Command("go", "mod", "tidy", "-go=1.20")
 	cmd.Stderr = b
 	err := cmd.Start()
 	if err != nil {
@@ -238,14 +291,14 @@ func (b *Builder) goGetMod(repo, hash string) error {
 	return nil
 }
 
-func (b *Builder) getDepsReplace(repl string) []*Entry {
+func (b *Builder) getDepsReplace(repl string) []*templates.Entry {
 	b.log.Info("[REPLACING DEPENDENCIES]", zap.String("dependency", repl))
 	modFile, err := os.ReadFile(path.Join(repl, goModStr))
 	if err != nil {
 		return nil
 	}
 
-	var result []*Entry //nolint:prealloc
+	var result []*templates.Entry //nolint:prealloc
 	replaces := replaceRegexp.FindAllStringSubmatch(string(modFile), -1)
 	for i := 0; i < len(replaces); i++ {
 		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
@@ -261,7 +314,7 @@ func (b *Builder) getDepsReplace(repl string) []*Entry {
 			moduleReplace = path.Join(repl, moduleReplace)
 		}
 
-		result = append(result, &Entry{
+		result = append(result, &templates.Entry{
 			Module:  moduleName,
 			Replace: moduleReplace,
 		})
@@ -297,9 +350,4 @@ func moveFile(from, to string) error {
 	}
 
 	return toFile.Close()
-}
-
-func (b *Builder) Write(d []byte) (int, error) {
-	b.log.Debug("[STDERR OUTPUT]", zap.ByteString("log", d))
-	return len(d), nil
 }
