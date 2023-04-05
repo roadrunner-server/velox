@@ -72,6 +72,11 @@ ref = "v2.12.3"
     # api, read-api, read-repo
     token = "${GL_TOKEN}"
 
+[gitlab]
+    [gitlab.token]
+    # api, read-api, read-repo
+    token = "${GL_TOKEN}"
+
     [gitlab.endpoint]
     endpoint = "https://gitlab.com"
 
