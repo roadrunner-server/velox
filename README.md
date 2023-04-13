@@ -23,5 +23,4 @@
 3. ⚠️ **Currently supported plugins version is: `v4.x.x`**
 4. ⚠️ **Currently supported RR version is: `>=v2023.x.x`**
 
-
-# Docs: [link](https://roadrunner.dev/docs/app-server-build/2.x/en)
+# Docs: [link](https://roadrunner.dev/docs/customization-build/2023.x/en)
