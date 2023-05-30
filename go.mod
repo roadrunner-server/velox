@@ -9,7 +9,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	github.com/xanzy/go-gitlab v0.83.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/oauth2 v0.8.0
