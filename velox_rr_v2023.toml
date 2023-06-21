@@ -2,7 +2,7 @@
 build_args = ['-trimpath', '-ldflags', '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=${VERSION} -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=${TIME}']
 
 [roadrunner]
-ref = "v2023.1.0-rc.1"
+ref = "v2023.1.5"
 
 [github]
     [github.token]
