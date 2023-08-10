@@ -18,7 +18,7 @@ ENV LDFLAGS="-s \
 # verbose
 RUN set -x
 RUN go mod download
-RUN go mod tidy -go 1.20
+RUN go mod tidy -go 1.21
 
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o ./velox ./cmd/vx
 
