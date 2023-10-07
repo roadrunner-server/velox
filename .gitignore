@@ -18,3 +18,4 @@
 **/target
 **/plugins_dev.toml
 .vscode
+rr
