@@ -63,17 +63,17 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 	t.Entries = make([]*templates.Entry, len(b.modules))
 	for i := 0; i < len(b.modules); i++ {
 		t.Entries[i] = &templates.Entry{
-			Module:    b.modules[i].ModuleName,
-			Prefix:    randStringBytes(5),
-			Structure: pluginStructureStr,
-			Version:   b.modules[i].Version,
-			Replace:   b.modules[i].Replace,
+			Module:        b.modules[i].ModuleName,
+			Prefix:        randStringBytes(5),
+			Structure:     pluginStructureStr,
+			PseudoVersion: b.modules[i].PseudoVersion,
+			Replace:       b.modules[i].Replace,
 		}
 	}
 
 	buf := new(bytes.Buffer)
 
-	// compatibility with the version 2
+	// compatibility with version 2
 	switch t.ModuleVersion {
 	case velox.V2023:
 		err = templates.CompileTemplateV2023(buf, t)
@@ -131,7 +131,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	buf.Reset()
 
-	// compatibility with the version 2
+	// compatibility with version 2
 	switch t.ModuleVersion {
 	case velox.V2023:
 		err = templates.CompileGoModTemplate2023(buf, t)
@@ -147,6 +147,8 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
 
+	b.log.Debug("[RESULTING TEMPLATE]", zap.String("template", buf.String()))
+
 	_, err = goModFile.Write(buf.Bytes())
 	if err != nil {
 		return err
@@ -160,16 +162,9 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
-	for i := 0; i < len(t.Entries); i++ {
-		// go get only deps w/o replace
-		if t.Entries[i].Replace != "" {
-			t.Entries = append(t.Entries, b.getDepsReplace(t.Entries[i].Replace)...)
-			continue
-		}
-		err = b.goGetMod(t.Entries[i].Module, t.Entries[i].Version)
-		if err != nil {
-			return err
-		}
+	err = b.goModDowloadCmd()
+	if err != nil {
+		return err
 	}
 
 	err = b.goModTidyCmd()
@@ -259,9 +254,9 @@ func (b *Builder) goBuildCmd(out string) error {
 	return nil
 }
 
-func (b *Builder) goModTidyCmd() error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy"))
-	cmd := exec.Command("go", "mod", "tidy")
+func (b *Builder) goModDowloadCmd() error {
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod download"))
+	cmd := exec.Command("go", "mod", "download")
 	cmd.Stderr = b
 	err := cmd.Start()
 	if err != nil {
@@ -274,11 +269,10 @@ func (b *Builder) goModTidyCmd() error {
 	return nil
 }
 
-func (b *Builder) goGetMod(repo, hash string) error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go get "+repo+"@"+hash))
-	cmd := exec.Command("go", "get", repo+"@"+hash) //nolint:gosec
+func (b *Builder) goModTidyCmd() error {
+	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy"))
+	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Stderr = b
-
 	err := cmd.Start()
 	if err != nil {
 		return err

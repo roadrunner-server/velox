@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	// os.Args[0] always contains path to the executable, like foo/bar/rr -> rr
+	// os.Args[0] always contains a path to the executable, like foo/bar/rr -> rr
 	cmd := cli.NewCommand(filepath.Base(os.Args[0]))
 	err := cmd.Execute()
 	if err != nil {

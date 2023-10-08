@@ -2,11 +2,11 @@ module github.com/roadrunner-server/velox
 
 go 1.21
 
-toolchain go1.21.0
+toolchain go1.21.1
 
 require (
 	github.com/fatih/color v1.15.0
-	github.com/google/go-github/v49 v49.1.0
+	github.com/google/go-github/v53 v53.2.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.7.0
@@ -14,10 +14,13 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/xanzy/go-gitlab v0.93.0
 	go.uber.org/zap v1.26.0
+	golang.org/x/mod v0.13.0
 	golang.org/x/oauth2 v0.13.0
 )
 
 require (
+	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
+	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect

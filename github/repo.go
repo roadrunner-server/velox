@@ -2,7 +2,6 @@ package github
 
 import (
 	"archive/zip"
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -13,9 +12,8 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/google/go-github/v49/github"
+	"github.com/google/go-github/v53/github"
 	"github.com/roadrunner-server/velox"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -38,7 +36,7 @@ type GHRepo struct {
 func NewGHRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 	var client *http.Client
 
-	// if token exists, use it to increase rate limiter
+	// if a token exists, use it to increase rate limiter
 	if t := cfg.GitHub.Token; t != nil {
 		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: t.Token})
@@ -198,74 +196,22 @@ func extract(dest string, zf *zip.File) error {
 // https://github.com/spiral/roadrunner-binary/archive/refs/tags/v2.7.0.zip
 
 func (r *GHRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
-	modInfoRet := make([]*velox.ModulesInfo, 0, 5)
-
+	poolExecutor := newPool(r.log, r.client)
 	for k, v := range r.config.GitHub.Plugins {
-		modInfo := new(velox.ModulesInfo)
-		r.log.Debug("[FETCHING PLUGIN DATA]", zap.String("repository", v.Repo), zap.String("owner", v.Owner), zap.String("folder", v.Folder), zap.String("plugin", k), zap.String("ref", v.Ref))
-
-		if v.Ref == "" {
-			return nil, errors.New("ref can't be empty")
-		}
-
-		rc, resp, err := r.client.Repositories.DownloadContents(context.Background(), v.Owner, v.Repo, path.Join(v.Folder, "go.mod"), &github.RepositoryContentGetOptions{Ref: v.Ref})
-		if err != nil {
-			return nil, err
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("bad response status: %d", resp.StatusCode)
-		}
-
-		rdr := bufio.NewReader(rc)
-		ret, err := rdr.ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
-
-		r.log.Debug("[READING MODULE INFO]", zap.String("plugin", k), zap.String("mod", ret))
-
-		// module github.com/roadrunner-server/logger/v2, we split and get the second part
-		retMod := strings.Split(ret, " ")
-		if len(retMod) < 2 {
-			return nil, fmt.Errorf("failed to parse module info for the plugin: %s", ret)
-		}
-
-		err = resp.Body.Close()
-		if err != nil {
-			return nil, err
-		}
-
-		modInfo.ModuleName = strings.TrimRight(retMod[1], "\n")
-
-		r.log.Debug("[REQUESTING COMMIT SHA-1]", zap.String("plugin", k), zap.String("ref", v.Ref))
-		commits, rsp, err := r.client.Repositories.ListCommits(context.Background(), v.Owner, v.Repo, &github.CommitsListOptions{
-			SHA:   v.Ref,
-			Until: time.Now(),
-			ListOptions: github.ListOptions{
-				Page:    1,
-				PerPage: 1,
-			},
+		poolExecutor.add(&pcfg{
+			pluginCfg: v,
+			name:      k,
 		})
-		if err != nil {
-			return nil, err
-		}
-
-		if rsp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("bad response status: %d", rsp.StatusCode)
-		}
-
-		for i := 0; i < len(commits); i++ {
-			modInfo.Version = *commits[i].SHA
-		}
-
-		if v.Replace != "" {
-			r.log.Debug("[REPLACE REQUESTED]", zap.String("plugin", k), zap.String("path", v.Replace))
-		}
-
-		modInfo.Replace = v.Replace
-		modInfoRet = append(modInfoRet, modInfo)
 	}
 
-	return modInfoRet, nil
+	poolExecutor.wait()
+
+	if len(poolExecutor.errors()) != 0 {
+		return nil, errors.Join(poolExecutor.errors()...)
+	}
+
+	mi := poolExecutor.moduleinfo()
+	poolExecutor.stop()
+
+	return mi, nil
 }
