@@ -9,7 +9,7 @@ import (
 	m "golang.org/x/mod/module"
 )
 
-var vr = regexp.MustCompile(`/v(\\d+)$`)
+var vr = regexp.MustCompile("/v(\\d+)$") //nolint:gosimple
 
 // here we accept a module name and return the version
 // e.g.: github.com/roadrunner-server/logger/v2 => v2
