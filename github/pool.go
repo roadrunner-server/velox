@@ -120,7 +120,6 @@ func (p *processor) run() {
 				}
 
 			out:
-
 				if errs := scanner.Err(); errs != nil {
 					p.mu.Lock()
 					p.errs = append(p.errs, errs)
