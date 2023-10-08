@@ -43,7 +43,7 @@ func newPool(log *zap.Logger, client *github.Client) *processor {
 		log:        log,
 		client:     client,
 		modinfo:    make([]*velox.ModulesInfo, 0, 10),
-		queueCh:    make(chan *pcfg, 1),
+		queueCh:    make(chan *pcfg, 100),
 		wg:         sync.WaitGroup{},
 		mu:         sync.Mutex{},
 		errs:       make([]error, 0, 1),
