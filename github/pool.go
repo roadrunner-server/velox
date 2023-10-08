@@ -43,7 +43,7 @@ func newPool(log *zap.Logger, client *github.Client) *processor {
 		log:        log,
 		client:     client,
 		modinfo:    make([]*velox.ModulesInfo, 0, 10),
-		queueCh:    make(chan *pcfg, 1),
+		queueCh:    make(chan *pcfg, 100),
 		wg:         sync.WaitGroup{},
 		mu:         sync.Mutex{},
 		errs:       make([]error, 0, 1),
@@ -69,10 +69,7 @@ func (p *processor) run() {
 				)
 
 				if v.pluginCfg.Ref == "" {
-					p.mu.Lock()
-					p.errs = append(p.errs, fmt.Errorf("ref can't be empty"))
-					p.mu.Unlock()
-					p.wg.Done()
+					p.appendErr(errors.New("ref can't be empty"))
 					continue
 				}
 
@@ -82,18 +79,12 @@ func (p *processor) run() {
 					path.Join(v.pluginCfg.Folder, gomod), &github.RepositoryContentGetOptions{Ref: v.pluginCfg.Ref},
 				)
 				if err != nil {
-					p.mu.Lock()
-					p.errs = append(p.errs, err)
-					p.mu.Unlock()
-					p.wg.Done()
+					p.appendErr(err)
 					continue
 				}
 
 				if resp.StatusCode != http.StatusOK {
-					p.mu.Lock()
-					p.errs = append(p.errs, fmt.Errorf("bad response status: %d", resp.StatusCode))
-					p.mu.Unlock()
-					p.wg.Done()
+					p.appendErr(fmt.Errorf("bad response status: %d", resp.StatusCode))
 					continue
 				}
 
@@ -107,10 +98,7 @@ func (p *processor) run() {
 						// module github.com/roadrunner-server/logger/v2, we split and get the second part
 						retMod := strings.Split(line, " ")
 						if len(retMod) < 2 || len(retMod) > 2 {
-							p.mu.Lock()
-							p.errs = append(p.errs, fmt.Errorf("failed to parse module info for the plugin: %s", line))
-							p.mu.Unlock()
-							p.wg.Done()
+							p.appendErr(fmt.Errorf("failed to parse module info for the plugin: %s", line))
 							continue
 						}
 
@@ -121,10 +109,7 @@ func (p *processor) run() {
 
 			out:
 				if errs := scanner.Err(); errs != nil {
-					p.mu.Lock()
-					p.errs = append(p.errs, errs)
-					p.mu.Unlock()
-					p.wg.Done()
+					p.appendErr(errs)
 					continue
 				}
 
@@ -143,26 +128,17 @@ func (p *processor) run() {
 					},
 				})
 				if err != nil {
-					p.mu.Lock()
-					p.errs = append(p.errs, err)
-					p.mu.Unlock()
-					p.wg.Done()
+					p.appendErr(err)
 					continue
 				}
 
 				if rsp.StatusCode != http.StatusOK {
-					p.mu.Lock()
-					p.errs = append(p.errs, fmt.Errorf("bad response status: %d", rsp.StatusCode))
-					p.mu.Unlock()
-					p.wg.Done()
+					p.appendErr(fmt.Errorf("bad response status: %d", rsp.StatusCode))
 					continue
 				}
 
 				if len(commits) == 0 {
-					p.mu.Lock()
-					p.errs = append(p.errs, errors.New("empty commit SHA"))
-					p.mu.Unlock()
-					p.wg.Done()
+					p.appendErr(errors.New("no commits in the repository"))
 					continue
 				}
 
@@ -170,10 +146,7 @@ func (p *processor) run() {
 				at := commits[0].GetCommit().GetCommitter().GetDate()
 				// [:12] because of go.mod pseudo format specs
 				if len(commits[0].GetSHA()) < 12 {
-					p.mu.Lock()
-					p.errs = append(p.errs, fmt.Errorf("commit SHA is too short: %s", commits[0].GetSHA()))
-					p.mu.Unlock()
-					p.wg.Done()
+					p.appendErr(fmt.Errorf("commit SHA is too short: %s", commits[0].GetSHA()))
 					continue
 				}
 
@@ -194,6 +167,13 @@ func (p *processor) run() {
 	}
 }
 
+func (p *processor) appendErr(err error) {
+	p.mu.Lock()
+	p.errs = append(p.errs, err)
+	p.mu.Unlock()
+	p.wg.Done()
+}
+
 func (p *processor) add(pjob *pcfg) {
 	p.wg.Add(1)
 	p.queueCh <- pjob
@@ -202,13 +182,17 @@ func (p *processor) add(pjob *pcfg) {
 func (p *processor) errors() []error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.errs
+	errs := make([]error, len(p.errs))
+	copy(errs, p.errs)
+	return errs
 }
 
 func (p *processor) moduleinfo() []*velox.ModulesInfo {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.modinfo
+	modinfo := make([]*velox.ModulesInfo, len(p.modinfo))
+	copy(modinfo, p.modinfo)
+	return modinfo
 }
 
 func (p *processor) wait() {
