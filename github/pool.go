@@ -202,13 +202,17 @@ func (p *processor) add(pjob *pcfg) {
 func (p *processor) errors() []error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.errs
+	errs := make([]error, len(p.errs))
+	copy(errs, p.errs)
+	return errs
 }
 
 func (p *processor) moduleinfo() []*velox.ModulesInfo {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.modinfo
+	modinfo := make([]*velox.ModulesInfo, len(p.modinfo))
+	copy(modinfo, p.modinfo)
+	return modinfo
 }
 
 func (p *processor) wait() {
