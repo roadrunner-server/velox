@@ -3,6 +3,7 @@ package github
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -16,7 +17,8 @@ import (
 )
 
 const (
-	referenceFormat string = "20060102150405"
+	gomod   string = "go.mod"
+	modLine string = "module"
 )
 
 type processor struct {
@@ -77,7 +79,7 @@ func (p *processor) run() {
 				rc, resp, err := p.client.Repositories.DownloadContents(context.Background(),
 					v.pluginCfg.Owner,
 					v.pluginCfg.Repo,
-					path.Join(v.pluginCfg.Folder, "go.mod"), &github.RepositoryContentGetOptions{Ref: v.pluginCfg.Ref},
+					path.Join(v.pluginCfg.Folder, gomod), &github.RepositoryContentGetOptions{Ref: v.pluginCfg.Ref},
 				)
 				if err != nil {
 					p.mu.Lock()
@@ -95,23 +97,33 @@ func (p *processor) run() {
 					continue
 				}
 
-				rdr := bufio.NewReader(rc)
-				ret, err := rdr.ReadString('\n')
-				if err != nil {
-					p.mu.Lock()
-					p.errs = append(p.errs, err)
-					p.mu.Unlock()
-					p.wg.Done()
-					continue
+				scanner := bufio.NewScanner(rc)
+				for scanner.Scan() {
+					line := scanner.Text()
+					switch { //nolint:gocritic
+					case strings.HasPrefix(line, modLine):
+						p.log.Debug("[READING MODULE INFO]", zap.String("plugin", v.name), zap.String("module", line))
+
+						// module github.com/roadrunner-server/logger/v2, we split and get the second part
+						retMod := strings.Split(line, " ")
+						if len(retMod) < 2 || len(retMod) > 2 {
+							p.mu.Lock()
+							p.errs = append(p.errs, fmt.Errorf("failed to parse module info for the plugin: %s", line))
+							p.mu.Unlock()
+							p.wg.Done()
+							continue
+						}
+
+						modInfo.ModuleName = strings.TrimRight(retMod[1], "\n")
+						goto out
+					}
 				}
 
-				p.log.Debug("[READING MODULE INFO]", zap.String("plugin", v.name), zap.String("mod", ret))
+			out:
 
-				// module github.com/roadrunner-server/logger/v2, we split and get the second part
-				retMod := strings.Split(ret, " ")
-				if len(retMod) < 2 {
+				if errs := scanner.Err(); errs != nil {
 					p.mu.Lock()
-					p.errs = append(p.errs, fmt.Errorf("failed to parse module info for the plugin: %s", ret))
+					p.errs = append(p.errs, errs)
 					p.mu.Unlock()
 					p.wg.Done()
 					continue
@@ -119,14 +131,8 @@ func (p *processor) run() {
 
 				err = resp.Body.Close()
 				if err != nil {
-					p.mu.Lock()
-					p.errs = append(p.errs, err)
-					p.mu.Unlock()
-					p.wg.Done()
-					continue
+					p.log.Warn("[FAILED TO CLOSE RESPONSE BODY]", zap.Error(err))
 				}
-
-				modInfo.ModuleName = strings.TrimRight(retMod[1], "\n")
 
 				p.log.Debug("[REQUESTING COMMIT SHA-1]", zap.String("plugin", v.name), zap.String("ref", v.pluginCfg.Ref))
 				commits, rsp, err := p.client.Repositories.ListCommits(context.Background(), v.pluginCfg.Owner, v.pluginCfg.Repo, &github.CommitsListOptions{
@@ -153,12 +159,27 @@ func (p *processor) run() {
 					continue
 				}
 
-				for j := 0; j < len(commits); j++ {
-					at := commits[j].GetCommit().GetCommitter().GetDate()
-					modInfo.Time = at.Format(referenceFormat)
-					// [:12] because of go.mod pseudo format specs
-					modInfo.Version = commits[j].GetSHA()[:12]
+				if len(commits) == 0 {
+					p.mu.Lock()
+					p.errs = append(p.errs, errors.New("empty commit SHA"))
+					p.mu.Unlock()
+					p.wg.Done()
+					continue
 				}
+
+				// should be only one commit
+				at := commits[0].GetCommit().GetCommitter().GetDate()
+				// [:12] because of go.mod pseudo format specs
+				if len(commits[0].GetSHA()) < 12 {
+					p.mu.Lock()
+					p.errs = append(p.errs, fmt.Errorf("commit SHA is too short: %s", commits[0].GetSHA()))
+					p.mu.Unlock()
+					p.wg.Done()
+					continue
+				}
+
+				modInfo.Version = commits[0].GetSHA()[:12]
+				modInfo.PseudoVersion = parseModuleInfo(modInfo.ModuleName, at.Time, commits[0].GetSHA()[:12])
 
 				if v.pluginCfg.Replace != "" {
 					p.log.Debug("[REPLACE REQUESTED]", zap.String("plugin", v.name), zap.String("path", v.pluginCfg.Replace))

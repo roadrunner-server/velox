@@ -63,12 +63,11 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 	t.Entries = make([]*templates.Entry, len(b.modules))
 	for i := 0; i < len(b.modules); i++ {
 		t.Entries[i] = &templates.Entry{
-			Time:      b.modules[i].Time,
-			Module:    b.modules[i].ModuleName,
-			Prefix:    randStringBytes(5),
-			Structure: pluginStructureStr,
-			Version:   b.modules[i].Version,
-			Replace:   b.modules[i].Replace,
+			Module:        b.modules[i].ModuleName,
+			Prefix:        randStringBytes(5),
+			Structure:     pluginStructureStr,
+			PseudoVersion: b.modules[i].PseudoVersion,
+			Replace:       b.modules[i].Replace,
 		}
 	}
 
@@ -147,6 +146,8 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 	default:
 		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
+
+	b.log.Debug("[RESULTING TEMPLATE]", zap.String("template", buf.String()))
 
 	_, err = goModFile.Write(buf.Bytes())
 	if err != nil {

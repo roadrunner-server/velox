@@ -13,12 +13,14 @@ require (
         github.com/joho/godotenv v1.5.1
         github.com/olekukonko/tablewriter v0.0.5
         github.com/spf13/cobra v1.7.0
-		github.com/spf13/viper v1.15.0
+		github.com/spf13/viper v1.17.0
         github.com/stretchr/testify v1.8.2
 		go.uber.org/automaxprocs v1.5.2
+		github.com/roadrunner-server/informer/v4 latest
+		github.com/roadrunner-server/resetter/v4 latest
 
 		// Go module pseudo-version
-		{{range $v := .Entries}}{{$v.Module}} v4.0.0-{{$v.Time}}-{{$v.Version}}
+		{{range $v := .Entries}}{{$v.Module}} {{$v.PseudoVersion}}
 		{{end}}
 )
 

@@ -86,5 +86,5 @@ ref = "v2023.3.0"
 #    test_plugin_2 = { ref = "main", owner = "rustatian", repository = "36405235" }
 #
 [log]
-level = "debug"
+level = "info"
 mode = "development"

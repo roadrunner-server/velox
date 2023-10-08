@@ -7,11 +7,13 @@ import (
 
 // Entry represents all info about module
 type Entry struct {
-	Time      string
+	// Module is the module name (github.com/roadrunner-server/logger/v2)
 	Module    string
 	Structure string
-	Prefix    string
-	Version   string
+	// Prefix is the prefix for the plugin to avoid collisions
+	Prefix string
+	// PseudoVersion is the pseudo version of the module (v0.0.0-20210101000000-000000000000)
+	PseudoVersion string
 	// Replace directive, should include a path
 	Replace string
 }
