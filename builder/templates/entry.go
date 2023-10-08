@@ -7,11 +7,12 @@ import (
 
 // Entry represents all info about module
 type Entry struct {
+	Time      string
 	Module    string
 	Structure string
 	Prefix    string
 	Version   string
-	// Replace directive, should include path
+	// Replace directive, should include a path
 	Replace string
 }
 

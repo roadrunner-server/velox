@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/go-github/v49/github"
+	"github.com/google/go-github/v53/github"
 	"github.com/roadrunner-server/velox"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -28,7 +28,6 @@ const (
 GHRepo represents template repository
 */
 type GHRepo struct {
-	pool   *processor
 	client *github.Client
 	config *velox.Config
 	log    *zap.Logger
@@ -37,7 +36,7 @@ type GHRepo struct {
 func NewGHRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 	var client *http.Client
 
-	// if token exists, use it to increase rate limiter
+	// if a token exists, use it to increase rate limiter
 	if t := cfg.GitHub.Token; t != nil {
 		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: t.Token})
@@ -45,7 +44,6 @@ func NewGHRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 	}
 
 	return &GHRepo{
-		pool:   newPool(log, github.NewClient(client)),
 		log:    log,
 		config: cfg,
 		client: github.NewClient(client),
@@ -198,21 +196,22 @@ func extract(dest string, zf *zip.File) error {
 // https://github.com/spiral/roadrunner-binary/archive/refs/tags/v2.7.0.zip
 
 func (r *GHRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
+	poolExecutor := newPool(r.log, r.client)
 	for k, v := range r.config.GitHub.Plugins {
-		r.pool.add(&pcfg{
+		poolExecutor.add(&pcfg{
 			pluginCfg: v,
 			name:      k,
 		})
 	}
 
-	r.pool.wait()
+	poolExecutor.wait()
 
-	if len(r.pool.errors()) != 0 {
-		return nil, errors.Join(r.pool.errors()...)
+	if len(poolExecutor.errors()) != 0 {
+		return nil, errors.Join(poolExecutor.errors()...)
 	}
 
-	mi := r.pool.moduleinfo()
-	r.pool.stop()
+	mi := poolExecutor.moduleinfo()
+	poolExecutor.stop()
 
 	return mi, nil
 }

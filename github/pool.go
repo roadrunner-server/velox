@@ -10,9 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v49/github"
+	"github.com/google/go-github/v53/github"
 	"github.com/roadrunner-server/velox"
 	"go.uber.org/zap"
+)
+
+const (
+	referenceFormat string = "20060102150405"
 )
 
 type processor struct {
@@ -150,7 +154,10 @@ func (p *processor) run() {
 				}
 
 				for j := 0; j < len(commits); j++ {
-					modInfo.Version = *commits[j].SHA
+					at := commits[j].GetCommit().GetCommitter().GetDate()
+					modInfo.Time = at.Format(referenceFormat)
+					// [:12] because of go.mod pseudo format specs
+					modInfo.Version = commits[j].GetSHA()[:12]
 				}
 
 				if v.pluginCfg.Replace != "" {

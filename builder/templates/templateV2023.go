@@ -5,7 +5,7 @@ module github.com/roadrunner-server/roadrunner/{{.ModuleVersion}}
 
 go 1.21
 
-toolchain go1.21.0
+toolchain go1.21.1
 
 require (
         github.com/buger/goterm v1.0.4
@@ -16,6 +16,10 @@ require (
 		github.com/spf13/viper v1.15.0
         github.com/stretchr/testify v1.8.2
 		go.uber.org/automaxprocs v1.5.2
+
+		// Go module pseudo-version
+		{{range $v := .Entries}}{{$v.Module}} v4.0.0-{{$v.Time}}-{{$v.Version}}
+		{{end}}
 )
 
 replace (
