@@ -40,6 +40,9 @@ func ParseModuleInfo(module string, t time.Time, rev string) string {
 }
 
 func IsDigit(num string) bool {
+	if num == "" {
+		return false
+	}
 	_, err := strconv.ParseInt(num, 10, 64)
 	return err == nil
 }
