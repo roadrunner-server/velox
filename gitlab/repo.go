@@ -102,11 +102,25 @@ func (r *GLRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
 			return nil, fmt.Errorf("bad response status: %d", rsp.StatusCode)
 		}
 
-		if len(commits) == 0 {
-			return nil, errors.New("no commits in the repository")
+		// should be only one commit
+		if len(commits) == 0 || len(commits) > 1 {
+			return nil, errors.New("no commits/more than 1 commit selected")
 		}
 
 		modInfo.Version = commits[0].ID
+		if len(commits[0].ID) < 12 {
+			return nil, errors.New("commit SHA is too short")
+		}
+
+		// [:12] because of go.mod pseudo format specs
+		modInfo.Version = commits[0].ID[:12]
+
+		at := commits[0].CommittedDate
+		if at == nil {
+			return nil, errors.New("commit date is nil")
+		}
+
+		modInfo.PseudoVersion = velox.ParseModuleInfo(modInfo.ModuleName, *at, modInfo.Version)
 
 		if v.Replace != "" {
 			r.log.Debug("[REPLACE REQUESTED]", zap.String("plugin", k), zap.String("path", v.Replace))

@@ -151,7 +151,7 @@ func (p *processor) run() {
 				}
 
 				modInfo.Version = commits[0].GetSHA()[:12]
-				modInfo.PseudoVersion = parseModuleInfo(modInfo.ModuleName, at.Time, commits[0].GetSHA()[:12])
+				modInfo.PseudoVersion = velox.ParseModuleInfo(modInfo.ModuleName, at.Time, commits[0].GetSHA()[:12])
 
 				if v.pluginCfg.Replace != "" {
 					p.log.Debug("[REPLACE REQUESTED]", zap.String("plugin", v.name), zap.String("path", v.pluginCfg.Replace))

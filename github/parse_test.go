@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/roadrunner-server/velox"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,7 +57,7 @@ func TestParse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		out := parseModuleInfo(tt.module, tt.tm, tt.sha)
+		out := velox.ParseModuleInfo(tt.module, tt.tm, tt.sha)
 		assert.Equal(t, tt.expect, out)
 	}
 }
