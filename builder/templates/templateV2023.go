@@ -18,7 +18,6 @@ require (
 		go.uber.org/automaxprocs v1.5.2
 		github.com/roadrunner-server/informer/v4 latest
 		github.com/roadrunner-server/resetter/v4 latest
-		github.com/roadrunner-server/rpc/v4 latest
 		github.com/roadrunner-server/config/v4 latest
 
 		// Go module pseudo-version

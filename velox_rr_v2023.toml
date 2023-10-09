@@ -18,6 +18,7 @@ ref = "v2023.3.0"
     appLogger = { ref = "v4.2.1", owner = "roadrunner-server", repository = "app-logger" }
     logger = { ref = "v4.2.4", owner = "roadrunner-server", repository = "logger" }
     lock = { ref = "v4.5.2", owner = "roadrunner-server", repository = "lock" }
+    rpc = { ref = "v4.2.5", owner = "roadrunner-server", repository = "rpc" }
 
     # CENTRIFUGE BROADCASTING PLATFORM
     centrifuge = { ref = "v4.5.0", owner = "roadrunner-server", repository = "centrifuge" }
