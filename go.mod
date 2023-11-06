@@ -9,7 +9,7 @@ require (
 	github.com/google/go-github/v53 v53.2.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.17.0
 	github.com/stretchr/testify v1.8.4
 	github.com/xanzy/go-gitlab v0.93.2
