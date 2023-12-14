@@ -6,7 +6,7 @@ build_args = [
 ]
 
 [roadrunner]
-ref = "v2023.3.0"
+ref = "v2023.3.7"
 
 [github]
     [github.token]
@@ -41,7 +41,7 @@ ref = "v2023.3.0"
     otel = { ref = "v4.3.2", owner = "roadrunner-server", repository = "otel" }
 
     # SERVER
-    server = { ref = "v4.4.2", owner = "roadrunner-server", repository = "server" }
+    server = { ref = "v4.5.3", owner = "roadrunner-server", repository = "server" }
 
     # SERVICE aka lightweit systemd
     service = { ref = "v4.4.4", owner = "roadrunner-server", repository = "service" }
