@@ -7,6 +7,9 @@ on:
   pull_request:
     branches:
       - master
+  schedule:
+      # * is a special character in YAML so you have to quote this string
+      - cron:  '30 5 * * *'
 
 jobs:
   golang:
@@ -39,3 +42,41 @@ jobs:
 
       - name: Run golang tests with coverage
         run: make test
+  build-sample-rr:
+    name: Build (Go ${{ matrix.go }}, OS ${{matrix.os}})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        go: [ stable ]
+        os: [ "ubuntu-latest" ]
+    steps:
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v5 # action page: <https://github.com/actions/setup-go>
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Build RoadRunner
+        env:
+          RT_TOKEN: ${{ secrets.RT_TOKEN }}
+          GL_TOKEN: ${{ secrets.GL_TOKEN }}
+          VERSION: ${{ secrets.VERSION }}
+          TIME: ${{ secrets.TIME }}
+        run: |
+          go install github.com/roadrunner-server/velox/cmd/vx@latest
+          vx build -c velox_rr_v2023.toml -o="."
+          ./rr --version
