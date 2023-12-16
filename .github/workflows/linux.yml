@@ -42,6 +42,7 @@ jobs:
 
       - name: Run golang tests with coverage
         run: make test
+
   build-sample-rr:
     name: Build (Go ${{ matrix.go }}, OS ${{matrix.os}})
     runs-on: ${{ matrix.os }}
