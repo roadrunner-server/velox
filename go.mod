@@ -2,7 +2,7 @@ module github.com/roadrunner-server/velox
 
 go 1.21
 
-toolchain go1.21.1
+toolchain go1.21.5
 
 require (
 	github.com/fatih/color v1.16.0
@@ -10,17 +10,12 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.0
-	github.com/spf13/viper v1.17.0
+	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/xanzy/go-gitlab v0.95.2
 	go.uber.org/zap v1.26.0
 	golang.org/x/mod v0.14.0
 	golang.org/x/oauth2 v0.15.0
-)
-
-exclude (
-	github.com/spf13/viper v1.18.0
-	github.com/spf13/viper v1.18.1
 )
 
 require (
@@ -48,7 +43,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.16.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
