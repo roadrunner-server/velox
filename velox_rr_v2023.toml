@@ -6,7 +6,7 @@ build_args = [
 ]
 
 [roadrunner]
-ref = "v2023.3.8"
+ref = "v2023.3.9"
 
 [github]
     [github.token]

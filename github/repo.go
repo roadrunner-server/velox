@@ -22,6 +22,7 @@ import (
 const (
 	rrOwner string = "roadrunner-server"
 	rrRepo  string = "roadrunner"
+	zipExt  string = ".zip"
 )
 
 /*
@@ -84,8 +85,8 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 	name := path.Join(tmp, "roadrunner-server-"+version)
 	_ = os.RemoveAll(name)
 
-	r.log.Debug("[FLUSHING DATA ON THE DISK]", zap.String("path", name+".zip"))
-	f, err := os.Create(name + ".zip")
+	r.log.Debug("[FLUSHING DATA ON THE DISK]", zap.String("path", name+zipExt))
+	f, err := os.Create(name + zipExt)
 	if err != nil {
 		return "", err
 	}
@@ -101,7 +102,7 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 
 	r.log.Debug("[SAVED]", zap.Int("bytes written", n))
 
-	rc, err := zip.OpenReader(name + ".zip")
+	rc, err := zip.OpenReader(name + zipExt)
 	if err != nil {
 		return "", err
 	}
