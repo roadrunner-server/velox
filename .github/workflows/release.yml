@@ -92,6 +92,7 @@ jobs:
       - name: Create distributive
         run: |
           mkdir ${{ steps.dist-dir.outputs.name }}
+          rm velox.toml && mv velox_rr_v2023.toml velox.toml
           mv "./${{ steps.values.outputs.binary-name }}" ./${{ steps.dist-dir.outputs.name }}/
           cp ./README.md ./LICENSE ./velox.toml ./${{ steps.dist-dir.outputs.name }}/
 
