@@ -2,7 +2,7 @@
 build_args = [
     '-trimpath',
     '-ldflags',
-    '-s -X github.com/roadrunner-server/roadrunner/v2/internal/meta.version=${VERSION} -X github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=${TIME}'
+    '-s -X github.com/roadrunner-server/roadrunner/v2023/internal/meta.version=${VERSION} -X github.com/roadrunner-server/roadrunner/v2023/internal/meta.buildTime=${TIME}'
 ]
 
 [roadrunner]
@@ -73,18 +73,18 @@ ref = "v2023.3.9"
     # TCP for the RAW TCP PAYLOADS
     tcp = { ref = "v4.3.2", owner = "roadrunner-server", repository = "tcp" }
 
-[gitlab]
-    [gitlab.token]
-    # api, read-api, read-repo
-    token = "${GL_TOKEN}"
-
-    [gitlab.endpoint]
-    endpoint = "https://gitlab.com"
-
-    [gitlab.plugins]
-    # ref -> master, commit or tag
-    test_plugin_1 = { ref = "main", owner = "rustatian", repository = "36405203" }
-    test_plugin_2 = { ref = "main", owner = "rustatian", repository = "36405235" }
+# [gitlab]
+#     [gitlab.token]
+#     # api, read-api, read-repo
+#     token = "${GL_TOKEN}"
+#
+#     [gitlab.endpoint]
+#     endpoint = "https://gitlab.com"
+#
+#     [gitlab.plugins]
+#     # ref -> master, commit or tag
+#     test_plugin_1 = { ref = "main", owner = "rustatian", repository = "36405203" }
+#     test_plugin_2 = { ref = "main", owner = "rustatian", repository = "36405235" }
 
 [log]
 level = "debug"
