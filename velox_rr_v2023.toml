@@ -24,7 +24,7 @@ ref = "v2023.3.12"
     centrifuge = { ref = "v4.7.1", owner = "roadrunner-server", repository = "centrifuge" }
 
     # WORKFLOWS ENGINE
-    temporal = { ref = "v4.5.0", owner = "temporalio", repository = "roadrunner-temporal" }
+    temporal = { ref = "v4.6.1", owner = "temporalio", repository = "roadrunner-temporal" }
 
     # METRICS
     metrics = { ref = "v4.1.6", owner = "roadrunner-server", repository = "metrics" }
