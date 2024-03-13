@@ -21,7 +21,7 @@ type ModulesInfo struct {
 	Replace string
 }
 
-var vr = regexp.MustCompile("/v(\\d+)$") //nolint:gosimple
+var vr = regexp.MustCompile(`/v(\d+)$`)
 
 // ParseModuleInfo here we accept a module name and return the version
 // e.g.: github.com/roadrunner-server/logger/v2 => v2
