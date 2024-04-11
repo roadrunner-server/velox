@@ -75,6 +75,11 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	// compatibility with version 2
 	switch t.ModuleVersion {
+	case velox.V2024:
+		err = templates.CompileTemplateV2024(buf, t)
+		if err != nil {
+			return err
+		}
 	case velox.V2023:
 		err = templates.CompileTemplateV2023(buf, t)
 		if err != nil {
@@ -133,6 +138,11 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	// compatibility with version 2
 	switch t.ModuleVersion {
+	case velox.V2024:
+		err = templates.CompileGoModTemplate2024(buf, t)
+		if err != nil {
+			return err
+		}
 	case velox.V2023:
 		err = templates.CompileGoModTemplate2023(buf, t)
 		if err != nil {
@@ -200,7 +210,7 @@ func (b *Builder) Write(d []byte) (int, error) {
 func validateModule(module string) (string, error) {
 	if module == "master" {
 		// default branch
-		return velox.V2023, nil
+		return velox.V2024, nil
 	}
 
 	v, err := version.NewVersion(module)

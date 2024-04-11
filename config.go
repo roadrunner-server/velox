@@ -10,6 +10,7 @@ import (
 const (
 	ref           string = "ref"
 	defaultBranch string = "master"
+	V2024         string = "v2024"
 	V2023         string = "v2023"
 	V2            string = "v2"
 	gitlabBaseURL string = "https://gitlab.com"
