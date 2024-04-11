@@ -79,5 +79,5 @@ jobs:
           TIME: ${{ secrets.TIME }}
         run: |
           go install github.com/roadrunner-server/velox/cmd/vx@latest
-          vx build -c velox_rr_v2023.toml -o="."
+          vx build -c velox_rr_v2024.toml -o="."
           ./rr --version

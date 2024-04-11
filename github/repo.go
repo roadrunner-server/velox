@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/go-github/v53/github"
-	"github.com/roadrunner-server/velox"
+	"github.com/google/go-github/v61/github"
+	"github.com/roadrunner-server/velox/v2024"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -54,7 +54,7 @@ func NewGHRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 // DownloadTemplate downloads template repository ->
 func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolint:gocyclo
 	r.log.Info("[GET ARCHIVE LINK]", zap.String("owner", rrOwner), zap.String("repository", rrRepo), zap.String("encoding", "zip"), zap.String("ref", version))
-	url, resp, err := r.client.Repositories.GetArchiveLink(context.Background(), rrOwner, rrRepo, github.Zipball, &github.RepositoryContentGetOptions{Ref: version}, true)
+	url, resp, err := r.client.Repositories.GetArchiveLink(context.Background(), rrOwner, rrRepo, github.Zipball, &github.RepositoryContentGetOptions{Ref: version}, 10)
 	if err != nil {
 		return "", err
 	}

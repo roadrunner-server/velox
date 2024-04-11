@@ -79,3 +79,31 @@ func CompileGoModTemplate2023(buf *bytes.Buffer, data *Template) error {
 
 	return nil
 }
+
+func CompileTemplateV2024(buf *bytes.Buffer, data *Template) error {
+	tmplt, err := template.New("plugins.go").Parse(PluginsTemplateV2024)
+	if err != nil {
+		return err
+	}
+
+	err = tmplt.Execute(buf, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func CompileGoModTemplate2024(buf *bytes.Buffer, data *Template) error {
+	tmplt, err := template.New("go.mod").Parse(GoModTemplateV2024)
+	if err != nil {
+		return err
+	}
+
+	err = tmplt.Execute(buf, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

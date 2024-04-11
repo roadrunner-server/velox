@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/roadrunner-server/velox"
+	"github.com/roadrunner-server/velox/v2024"
 	"github.com/xanzy/go-gitlab"
 	"go.uber.org/zap"
 )
