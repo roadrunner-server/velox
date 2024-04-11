@@ -12,8 +12,8 @@ WORKDIR /src
 
 # arguments to pass on each go tool link invocation
 ENV LDFLAGS="-s \
--X github.com/roadrunner-server/velox/internal/version.version=$APP_VERSION \
--X github.com/roadrunner-server/velox/internal/version.buildTime=$BUILD_TIME"
+-X github.com/roadrunner-server/velox/v2024/internal/version.version=$APP_VERSION \
+-X github.com/roadrunner-server/velox/v2024/internal/version.buildTime=$BUILD_TIME"
 
 # verbose
 RUN set -x

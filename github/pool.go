@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v53/github"
-	"github.com/roadrunner-server/velox"
+	"github.com/google/go-github/v61/github"
+	"github.com/roadrunner-server/velox/v2024"
 	"go.uber.org/zap"
 )
 

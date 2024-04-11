@@ -21,6 +21,6 @@
 1. ⚠️ Do not use the plugin's `master` branch.
 2. ⚠️ Use tags with the **same** **major** version (e.g `logger` v3.0.3 + `amqp` v3.0.5, but not `logger` v4.0.0 + `amqp` v3.0.5)
 3. ⚠️ **Currently supported plugins version is: `v4.x.x`**
-4. ⚠️ **Currently supported RR version is: `>=v2023.x.x`**
+4. ⚠️ **Currently supported RR version is: `>=v2024.x.x`**
 
 # Docs: [link](https://docs.roadrunner.dev/customization/build)

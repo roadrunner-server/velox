@@ -5,7 +5,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/roadrunner-server/velox"
+	"github.com/roadrunner-server/velox/v2024"
 	"go.uber.org/zap"
 )
 

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/fatih/color"
-	"github.com/roadrunner-server/velox/internal/cli"
+	"github.com/roadrunner-server/velox/v2024/internal/cli"
 )
 
 func main() {

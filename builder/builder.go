@@ -13,8 +13,8 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/go-version"
-	"github.com/roadrunner-server/velox"
-	"github.com/roadrunner-server/velox/builder/templates"
+	"github.com/roadrunner-server/velox/v2024"
+	"github.com/roadrunner-server/velox/v2024/builder/templates"
 	"go.uber.org/zap"
 )
 
