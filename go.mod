@@ -1,6 +1,6 @@
 module github.com/roadrunner-server/velox/v2024
 
-go 1.22.2
+go 1.22.3
 
 require (
 	github.com/fatih/color v1.16.0
