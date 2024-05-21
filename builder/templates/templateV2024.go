@@ -3,9 +3,9 @@ package templates
 const GoModTemplateV2024 string = `
 module github.com/roadrunner-server/roadrunner/{{.ModuleVersion}}
 
-go 1.21
+go 1.22
 
-toolchain go1.21.5
+toolchain go1.22.3
 
 require (
         github.com/buger/goterm v1.0.4
