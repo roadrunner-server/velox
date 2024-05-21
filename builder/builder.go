@@ -119,7 +119,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
-	err = os.WriteFile(path.Join(b.rrTempPath, pluginsPath), buf.Bytes(), os.ModePerm)
+	err = os.WriteFile(path.Join(b.rrTempPath, pluginsPath), buf.Bytes(), 0600)
 	if err != nil {
 		return err
 	}
