@@ -5,7 +5,7 @@ go 1.22.3
 require (
 	github.com/fatih/color v1.17.0
 	github.com/google/go-github/v61 v61.0.0
-	github.com/hashicorp/go-version v1.6.0
+	github.com/hashicorp/go-version v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
