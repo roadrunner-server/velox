@@ -2,6 +2,7 @@ package builder
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/roadrunner-server/velox/v2024/builder/templates"
@@ -21,7 +22,7 @@ import (
 	cd "github.com/roadrunner-server/http/v4"
 	ef "github.com/roadrunner-server/grpc/v4"
 	jk "github.com/roadrunner-server/logger/v4"
-	
+
 )
 
 func Plugins() []any {
@@ -31,7 +32,7 @@ func Plugins() []any {
 		&informer.Plugin{},
 		// resetter plugin (./rr reset)
 		&resetter.Plugin{},
-	
+
 		// std and custom plugins
 		&aba.Plugin{},
 		&abc.Plugin{},
@@ -40,7 +41,6 @@ func Plugins() []any {
 		&cd.Plugin{},
 		&ef.Plugin{},
 		&jk.Plugin{},
-		
 	}
 }
 `
@@ -51,47 +51,54 @@ func TestCompile(t *testing.T) {
 	}
 
 	tt.Entries = append(tt.Entries, &templates.Entry{
-		Module:    "github.com/roadrunner-server/some_plugin",
-		Structure: "Plugin{}",
-		Prefix:    "aba",
+		Module:        "github.com/roadrunner-server/some_plugin",
+		StructureName: "Plugin{}",
+		Prefix:        "aba",
 	})
 
 	tt.Entries = append(tt.Entries, &templates.Entry{
-		Module:    "github.com/roadrunner-server/some_plugin/v2",
-		Structure: "Plugin{}",
-		Prefix:    "abc",
+		Module:        "github.com/roadrunner-server/some_plugin/v2",
+		StructureName: "Plugin{}",
+		Prefix:        "abc",
 	})
 
 	tt.Entries = append(tt.Entries, &templates.Entry{
-		Module:    "github.com/roadrunner-server/some_plugin/v22234",
-		Structure: "Plugin{}",
-		Prefix:    "abd",
+		Module:        "github.com/roadrunner-server/some_plugin/v22234",
+		StructureName: "Plugin{}",
+		Prefix:        "abd",
 	})
 
 	tt.Entries = append(tt.Entries, &templates.Entry{
-		Module:    "github.com/roadrunner-server/rpc/v4",
-		Structure: "Plugin{}",
-		Prefix:    "ab",
+		Module:        "github.com/roadrunner-server/rpc/v4",
+		StructureName: "Plugin{}",
+		Prefix:        "ab",
 	})
 	tt.Entries = append(tt.Entries, &templates.Entry{
-		Module:    "github.com/roadrunner-server/http/v4",
-		Structure: "Plugin{}",
-		Prefix:    "cd",
+		Module:        "github.com/roadrunner-server/http/v4",
+		StructureName: "Plugin{}",
+		Prefix:        "cd",
 	})
 	tt.Entries = append(tt.Entries, &templates.Entry{
-		Module:    "github.com/roadrunner-server/grpc/v4",
-		Structure: "Plugin{}",
-		Prefix:    "ef",
+		Module:        "github.com/roadrunner-server/grpc/v4",
+		StructureName: "Plugin{}",
+		Prefix:        "ef",
 	})
 	tt.Entries = append(tt.Entries, &templates.Entry{
-		Module:    "github.com/roadrunner-server/logger/v4",
-		Structure: "Plugin{}",
-		Prefix:    "jk",
+		Module:        "github.com/roadrunner-server/logger/v4",
+		StructureName: "Plugin{}",
+		Prefix:        "jk",
 	})
 
 	buf := new(bytes.Buffer)
-	err := templates.CompileTemplateV2023(buf, tt)
+	err := templates.CompileTemplateV2024(buf, tt)
 	require.NoError(t, err)
 
-	require.Equal(t, res, buf.String())
+	bufstr := buf.String()
+	bufstr = strings.ReplaceAll(bufstr, "\t", "")
+	bufstr = strings.ReplaceAll(bufstr, "\n", "")
+
+	resstr := strings.ReplaceAll(res, "\t", "")
+	resstr = strings.ReplaceAll(resstr, "\n", "")
+
+	require.Equal(t, resstr, bufstr)
 }

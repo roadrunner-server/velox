@@ -1,6 +1,7 @@
 package build
 
 import (
+	"log/slog"
 	"os"
 	"syscall"
 
@@ -9,15 +10,13 @@ import (
 	"github.com/roadrunner-server/velox/v2024/github"
 	"github.com/roadrunner-server/velox/v2024/gitlab"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 const (
-	ref       string = "ref"
-	buildArgs string = "build_args"
+	ref string = "ref"
 )
 
-func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Command {
+func BindCommand(cfg *velox.Config, out *string, zlog *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "build",
 		Short: "Build RR",
@@ -32,7 +31,7 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 
 			var mi []*velox.ModulesInfo
 			if cfg.GitLab != nil {
-				rp, err := gitlab.NewGLRepoInfo(cfg, zlog)
+				rp, err := gitlab.NewGLRepoInfo(cfg, zlog.WithGroup("GITLAB"))
 				if err != nil {
 					return err
 				}
@@ -44,15 +43,17 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 			}
 
 			// roadrunner located on the github
-			rp := github.NewGHRepoInfo(cfg, zlog)
+			rp := github.NewGHRepoInfo(cfg, zlog.WithGroup("GITHUB"))
 			path, err := rp.DownloadTemplate(os.TempDir(), cfg.Roadrunner[ref])
 			if err != nil {
-				zlog.Fatal("[DOWNLOAD TEMPLATE]", zap.Error(err))
+				zlog.Error("downloading template", slog.Any("error", err))
+				os.Exit(1)
 			}
 
 			pMod, err := rp.GetPluginsModData()
 			if err != nil {
-				zlog.Fatal("[PLUGINS GET MOD INFO]", zap.Error(err))
+				zlog.Error("get plugins mod data", slog.Any("error", err))
+				os.Exit(1)
 			}
 
 			// append data from gitlab
@@ -60,12 +61,13 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				pMod = append(pMod, mi...)
 			}
 
-			err = builder.NewBuilder(path, pMod, *out, zlog, cfg.Velox[buildArgs]).Build(cfg.Roadrunner[ref])
+			err = builder.NewBuilder(path, pMod, *out, cfg.Roadrunner[ref], cfg.Debug.Enabled, zlog.WithGroup("BUILDER")).Build(cfg.Roadrunner[ref])
 			if err != nil {
-				zlog.Fatal("[BUILD FAILED]", zap.Error(err))
+				zlog.Error("fatal", slog.Any("error", err))
+				os.Exit(1)
 			}
 
-			zlog.Info("[BUILD]", zap.String("build finished, path", *out))
+			zlog.Info("========= build finished successfully =========", slog.Any("RoadRunner binary can be found at", *out))
 			return nil
 		},
 	}

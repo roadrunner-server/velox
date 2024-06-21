@@ -8,8 +8,8 @@ on:
     branches:
       - master
   schedule:
-      # * is a special character in YAML so you have to quote this string
-      - cron:  '30 5 * * *'
+    # * is a special character in YAML so you have to quote this string
+    - cron: "30 5 * * *"
 
 jobs:
   golang:
@@ -19,8 +19,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go: [ stable ]
-        os: [ "ubuntu-latest" ]
+        go: [stable]
+        os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
         uses: actions/setup-go@v5 # action page: <https://github.com/actions/setup-go>
@@ -50,8 +50,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go: [ stable ]
-        os: [ "ubuntu-latest" ]
+        go: [stable]
+        os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
         uses: actions/setup-go@v5 # action page: <https://github.com/actions/setup-go>
@@ -79,5 +79,5 @@ jobs:
           TIME: ${{ secrets.TIME }}
         run: |
           go install github.com/roadrunner-server/velox/v2024/cmd/vx@latest
-          vx build -c velox_rr_v2024.toml -o="."
+          vx build -c velox.toml -o="."
           ./rr --version

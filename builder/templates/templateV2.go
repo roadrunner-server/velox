@@ -39,9 +39,9 @@ func Plugins() []any {
 		&informer.Plugin{},
 		// resetter plugin (./rr reset)
 		&resetter.Plugin{},
-	
+
 		// std and custom plugins
-		{{range $v := .Entries}}&{{$v.Prefix}}.{{$v.Structure}},
+		{{range $v := .Entries}}&{{$v.Prefix}}.{{$v.StructureName}},
 		{{end}}
 	}
 }

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"log/slog"
 	"runtime"
 
 	"github.com/pkg/errors"
@@ -11,12 +12,11 @@ import (
 	"github.com/roadrunner-server/velox/v2024/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 )
 
 func NewCommand(executableName string) *cobra.Command {
 	var config = &velox.Config{} // velox configuration
-	var zapLogger = &zap.Logger{}
+	var lg = slog.Default()
 	var cfgPath = strPtr("")
 
 	var (
@@ -61,12 +61,8 @@ func NewCommand(executableName string) *cobra.Command {
 			// [log]
 			// level = "debug"
 			// mode = "development"
-			zlog, err := logger.BuildLogger(config.Log["level"], config.Log["mode"])
-			if err != nil {
-				return err
-			}
-
-			*zapLogger = *zlog
+			zlog := logger.BuildLogger(config.Log["level"], config.Log["mode"])
+			*lg = *zlog
 
 			return nil
 		},
@@ -77,7 +73,7 @@ func NewCommand(executableName string) *cobra.Command {
 	flag.StringVarP(&outputFile, "out", "o", ".", "Output path: -o /usr/local/bin")
 
 	cmd.AddCommand(
-		build.BindCommand(config, cfgPath, zapLogger),
+		build.BindCommand(config, cfgPath, lg),
 	)
 	return cmd
 }

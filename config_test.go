@@ -17,8 +17,10 @@ func TestExpandEnvs(t *testing.T) {
 	require.NoError(t, os.Setenv("VERSION", "v2.10.5"))
 	require.NoError(t, os.Setenv("TOKEN", token))
 	c := &Config{
-		Velox:      map[string][]string{"build_args": {"github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=${TIME}", "github.com/roadrunner-server/roadrunner/v2/internal/meta.version=${VERSION}"}},
 		Roadrunner: map[string]string{"": ""},
+		Debug: &Debug{
+			Enabled: true,
+		},
 		GitHub: &CodeHosting{
 			BaseURL: nil,
 			Token:   &Token{Token: "${TOKEN}"},
@@ -46,16 +48,13 @@ func TestExpandEnvs(t *testing.T) {
 
 	require.NoError(t, c.Validate())
 
-	assert.Equal(t, "github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime="+tn, c.Velox["build_args"][0])
-	assert.Equal(t, "github.com/roadrunner-server/roadrunner/v2/internal/meta.version=v2.10.5", c.Velox["build_args"][1])
 	assert.Equal(t, token, c.GitHub.Token.Token)
 	assert.Equal(t, token, c.GitLab.Token.Token)
 }
 
 func TestNils(t *testing.T) {
 	c := &Config{
-		Velox: map[string][]string{"build_args": {"github.com/roadrunner-server/roadrunner/v2/internal/meta.buildTime=${TIME}", "github.com/roadrunner-server/roadrunner/v2/internal/meta.version=${VERSION}"}},
-		Log:   nil,
+		Log: nil,
 	}
 
 	require.Error(t, c.Validate())
