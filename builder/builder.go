@@ -139,6 +139,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
+	// reuse buffer
 	buf.Reset()
 
 	// compatibility with version 2
@@ -169,6 +170,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
+	// reuse buffer
 	buf.Reset()
 
 	b.log.Info("switching working directory", slog.String("wd", b.rrTempPath))

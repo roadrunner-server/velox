@@ -86,5 +86,5 @@ test_plugin_1 = { ref = "main", owner = "rustatian", repository = "36405203" }
 test_plugin_2 = { ref = "main", owner = "rustatian", repository = "36405235" }
 
 [log]
-level = "debug"
-mode = "development"
+level = "info"
+mode = "production"

@@ -67,7 +67,7 @@ func BindCommand(cfg *velox.Config, out *string, zlog *slog.Logger) *cobra.Comma
 				os.Exit(1)
 			}
 
-			zlog.Info("========= build finished successfully =========", slog.Any("RoadRunner can be found at", *out))
+			zlog.Info("========= build finished successfully =========", slog.Any("RoadRunner binary can be found at", *out))
 			return nil
 		},
 	}
