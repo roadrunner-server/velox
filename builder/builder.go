@@ -3,6 +3,7 @@ package builder
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -11,11 +12,11 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/hashicorp/go-version"
 	"github.com/roadrunner-server/velox/v2024"
 	"github.com/roadrunner-server/velox/v2024/builder/templates"
-	"go.uber.org/zap"
 )
 
 const (
@@ -36,16 +37,18 @@ type Builder struct {
 	rrTempPath string
 	out        string
 	modules    []*velox.ModulesInfo
-	log        *zap.Logger
-	buildArgs  []string
+	log        *slog.Logger
+	debug      bool
+	rrVersion  string
 }
 
-func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, out string, log *zap.Logger, buildArgs []string) *Builder {
+func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, out, rrVersion string, debug bool, log *slog.Logger) *Builder {
 	return &Builder{
 		rrTempPath: rrTmpPath,
 		modules:    modules,
-		buildArgs:  buildArgs,
 		out:        out,
+		debug:      debug,
+		rrVersion:  rrVersion,
 		log:        log,
 	}
 }
@@ -63,9 +66,10 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 	t.Entries = make([]*templates.Entry, len(b.modules))
 	for i := 0; i < len(b.modules); i++ {
 		t.Entries[i] = &templates.Entry{
-			Module:        b.modules[i].ModuleName,
+			Module: b.modules[i].ModuleName,
+			// we need to set prefix to avoid collisions
 			Prefix:        randStringBytes(5),
-			Structure:     pluginStructureStr,
+			StructureName: pluginStructureStr,
 			PseudoVersion: b.modules[i].PseudoVersion,
 			Replace:       b.modules[i].Replace,
 		}
@@ -94,7 +98,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
 
-	b.log.Debug("[RESULTING TEMPLATE]", zap.String("template", buf.String()))
+	b.log.Debug("[RESULTING TEMPLATE]", slog.String("template", buf.String()))
 
 	f, err := os.Open(b.rrTempPath)
 	if err != nil {
@@ -108,7 +112,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		}
 
 		for i := 0; i < len(files); i++ {
-			b.log.Info("[CLEANING UP]", zap.String("file/folder", files[i]))
+			b.log.Info("[CLEANING UP]", slog.String("file/folder", files[i]))
 			_ = os.RemoveAll(files[i])
 		}
 	}()
@@ -157,7 +161,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
 
-	b.log.Debug("[RESULTING TEMPLATE]", zap.String("template", buf.String()))
+	b.log.Debug("[RESULTING TEMPLATE]", slog.String("template", buf.String()))
 
 	_, err = goModFile.Write(buf.Bytes())
 	if err != nil {
@@ -166,7 +170,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	buf.Reset()
 
-	b.log.Info("[SWITCHING WORKING DIR]", zap.String("wd", b.rrTempPath))
+	b.log.Info("[SWITCHING WORKING DIR]", slog.String("wd", b.rrTempPath))
 	err = syscall.Chdir(b.rrTempPath)
 	if err != nil {
 		return err
@@ -182,7 +186,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
-	b.log.Info("[CHECKING OUTPUT DIR]", zap.String("dir", b.out))
+	b.log.Info("[CHECKING OUTPUT DIR]", slog.String("dir", b.out))
 	err = os.MkdirAll(b.out, os.ModeDir)
 	if err != nil {
 		return err
@@ -193,7 +197,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
-	b.log.Info("[MOVING EXECUTABLE]", zap.String("file", filepath.Join(b.rrTempPath, executableName)), zap.String("to", filepath.Join(b.out, executableName)))
+	b.log.Info("[MOVING EXECUTABLE]", slog.String("file", filepath.Join(b.rrTempPath, executableName)), slog.String("to", filepath.Join(b.out, executableName)))
 	err = moveFile(filepath.Join(b.rrTempPath, executableName), filepath.Join(b.out, executableName))
 	if err != nil {
 		return err
@@ -203,7 +207,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 }
 
 func (b *Builder) Write(d []byte) (int, error) {
-	b.log.Debug("[STDERR OUTPUT]", zap.ByteString("log", d))
+	b.log.Debug("[STDERR OUTPUT]", slog.Any("log", d))
 	return len(d), nil
 }
 
@@ -232,25 +236,42 @@ func randStringBytes(n int) string {
 
 func (b *Builder) goBuildCmd(out string) error {
 	var cmd *exec.Cmd
-	if len(b.buildArgs) != 0 {
-		buildCmdArgs := make([]string, 0, len(b.buildArgs)+5)
-		buildCmdArgs = append(buildCmdArgs, "build")
-		// verbose
-		buildCmdArgs = append(buildCmdArgs, "-v")
-		// build args
-		buildCmdArgs = append(buildCmdArgs, b.buildArgs...)
-		// output file
-		buildCmdArgs = append(buildCmdArgs, "-o")
-		// path
-		buildCmdArgs = append(buildCmdArgs, out)
-		// path to main.go
-		buildCmdArgs = append(buildCmdArgs, rrMainGo)
-		cmd = exec.Command("go", buildCmdArgs...)
-	} else {
-		cmd = exec.Command("go", "build", "-o", out, rrMainGo)
+
+	buildCmdArgs := make([]string, 0, 5)
+	buildCmdArgs = append(buildCmdArgs, "build", "-v", "-trimpath")
+
+	// var ld []string
+	switch b.debug {
+	case true:
+		// debug flags
+		// turn off optimizations
+		buildCmdArgs = append(buildCmdArgs, "-gcflags", "-N")
+		// turn off inlining
+		buildCmdArgs = append(buildCmdArgs, "-gcflags", "-l")
+		// build with debug tags
+		buildCmdArgs = append(buildCmdArgs, "-tags", "debug")
+	case false:
+		buildCmdArgs = append(buildCmdArgs, "-ldflags", "-s")
 	}
 
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", cmd.String()))
+	// LDFLAGS for version and build time, always appended
+	buildCmdArgs = append(buildCmdArgs, "-ldflags")
+	buildCmdArgs = append(buildCmdArgs, fmt.Sprintf(
+		"-X github.com/roadrunner-server/roadrunner/v2024/internal/meta.version=%s -X github.com/roadrunner-server/roadrunner/v2024/internal/meta.buildTime=%s",
+		b.rrVersion,
+		time.Now().UTC().Format(time.RFC3339)),
+	)
+
+	// output
+	buildCmdArgs = append(buildCmdArgs, "-o")
+	// path
+	buildCmdArgs = append(buildCmdArgs, out)
+	// path to main.go
+	buildCmdArgs = append(buildCmdArgs, rrMainGo)
+
+	cmd = exec.Command("go", buildCmdArgs...)
+
+	b.log.Info("[EXECUTING CMD]", slog.String("cmd", cmd.String()))
 	cmd.Stderr = b
 	cmd.Stdout = b
 	err := cmd.Start()
@@ -265,7 +286,7 @@ func (b *Builder) goBuildCmd(out string) error {
 }
 
 func (b *Builder) goModDowloadCmd() error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod download"))
+	b.log.Info("[EXECUTING CMD]", slog.String("cmd", "go mod download"))
 	cmd := exec.Command("go", "mod", "download")
 	cmd.Stderr = b
 	err := cmd.Start()
@@ -280,7 +301,7 @@ func (b *Builder) goModDowloadCmd() error {
 }
 
 func (b *Builder) goModTidyCmd() error {
-	b.log.Info("[EXECUTING CMD]", zap.String("cmd", "go mod tidy"))
+	b.log.Info("[EXECUTING CMD]", slog.String("cmd", "go mod tidy"))
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Stderr = b
 	err := cmd.Start()
@@ -295,7 +316,7 @@ func (b *Builder) goModTidyCmd() error {
 }
 
 func (b *Builder) getDepsReplace(repl string) []*templates.Entry {
-	b.log.Info("[REPLACING DEPENDENCIES]", zap.String("dependency", repl))
+	b.log.Info("[REPLACING DEPENDENCIES]", slog.String("dependency", repl))
 	modFile, err := os.ReadFile(path.Join(repl, goModStr))
 	if err != nil {
 		return nil
@@ -306,7 +327,7 @@ func (b *Builder) getDepsReplace(repl string) []*templates.Entry {
 	for i := 0; i < len(replaces); i++ {
 		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
 		if len(split) != 2 {
-			b.log.Error("not enough split args", zap.String("replace", replaces[i][0]))
+			b.log.Error("not enough split args", slog.String("replace", replaces[i][0]))
 			continue
 		}
 

@@ -17,16 +17,20 @@ const (
 )
 
 type Config struct {
-	// build args
-	Velox map[string][]string `mapstructure:"velox"`
 	// Version
 	Roadrunner map[string]string `mapstructure:"roadrunner"`
+	// Debug configuration
+	Debug *Debug `mapstructure:"debug"`
 	// GitHub configuration
 	GitHub *CodeHosting `mapstructure:"github"`
 	// GitLab configuration
 	GitLab *CodeHosting `mapstructure:"gitlab"`
 	// Log contains log configuration
 	Log map[string]string `mapstructure:"log"`
+}
+
+type Debug struct {
+	Enabled bool `mapstructure:"enabled"`
 }
 
 type Token struct {
@@ -52,20 +56,18 @@ type PluginConfig struct {
 }
 
 func (c *Config) Validate() error { //nolint:gocognit,gocyclo
-	// build_args
-	for k := range c.Velox {
-		for j := 0; j < len(c.Velox[k]); j++ {
-			s := os.ExpandEnv(c.Velox[k][j])
-			c.Velox[k][j] = s
-		}
-	}
-
 	if _, ok := c.Roadrunner[ref]; !ok {
 		if c.Roadrunner == nil {
 			c.Roadrunner = make(map[string]string)
 		}
 
 		c.Roadrunner[ref] = defaultBranch
+	}
+
+	if c.Debug == nil {
+		c.Debug = &Debug{
+			Enabled: false,
+		}
 	}
 
 	if c.GitHub == nil || c.GitHub.Token == nil || c.GitHub.Token.Token == "" {

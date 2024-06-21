@@ -1,12 +1,10 @@
-[velox]
-build_args = [
-    '-trimpath',
-    '-ldflags',
-    '-s -X github.com/roadrunner-server/roadrunner/v2024/internal/meta.version=${VERSION} -X github.com/roadrunner-server/roadrunner/v2024/internal/meta.buildTime=${TIME}',
-]
-
 [roadrunner]
+# ref -> reference, can be a tag, commit or branch
 ref = "v2024.1.5"
+
+# debug option is used to build RR with debug symbols to profile it with pprof
+[debug]
+enabled = true
 
 [github]
 [github.token]

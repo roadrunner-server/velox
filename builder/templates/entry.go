@@ -8,8 +8,9 @@ import (
 // Entry represents all info about module
 type Entry struct {
 	// Module is the module name (github.com/roadrunner-server/logger/v2)
-	Module    string
-	Structure string
+	Module string
+	// StructureName is the structure name of the plugin (Plugin{})
+	StructureName string
 	// Prefix is the prefix for the plugin to avoid collisions
 	Prefix string
 	// PseudoVersion is the pseudo version of the module (v0.0.0-20210101000000-000000000000)
