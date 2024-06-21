@@ -24,7 +24,7 @@ func BuildLogger(level, mode string) *slog.Logger {
 		return slog.New(lg)
 	case development:
 		lg := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-			AddSource: true,
+			AddSource: false,
 			Level:     stringToSlogLevel(level),
 		})
 		return slog.New(lg)

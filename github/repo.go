@@ -53,7 +53,7 @@ func NewGHRepoInfo(cfg *velox.Config, log *slog.Logger) *GHRepo {
 
 // DownloadTemplate downloads template repository ->
 func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolint:gocyclo
-	r.log.Info("[GET ARCHIVE LINK]", slog.String("owner", rrOwner), slog.String("repository", rrRepo), slog.String("encoding", "zip"), slog.String("ref", version))
+	r.log.Info("obtaining link", slog.String("owner", rrOwner), slog.String("repository", rrRepo), slog.String("encoding", "zip"), slog.String("ref", version))
 	url, resp, err := r.client.Repositories.GetArchiveLink(context.Background(), rrOwner, rrRepo, github.Zipball, &github.RepositoryContentGetOptions{Ref: version}, 10)
 	if err != nil {
 		return "", err
@@ -63,14 +63,14 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 		return "", fmt.Errorf("wrong response status, got: %d", resp.StatusCode)
 	}
 
-	r.log.Info("[REQUESTING REPO]", slog.String("url", url.String()))
+	r.log.Info("seding download request", slog.String("url", url.String()))
 	request, err := r.client.NewRequest(http.MethodGet, url.String(), nil)
 	if err != nil {
 		return "", err
 	}
 
 	buf := new(bytes.Buffer)
-	r.log.Info("[FETCHING CONTENT]", slog.String("url", url.String()))
+	r.log.Info("downloading repository", slog.String("url", url.String()))
 	do, err := r.client.Do(context.Background(), request, buf)
 	if err != nil {
 		return "", err
@@ -85,7 +85,7 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 	name := path.Join(tmp, "roadrunner-server-"+version)
 	_ = os.RemoveAll(name)
 
-	r.log.Debug("[FLUSHING DATA ON THE DISK]", slog.String("path", name+zipExt))
+	r.log.Debug("saving repository in temporary folder", slog.String("path", name+zipExt))
 	f, err := os.Create(name + zipExt)
 	if err != nil {
 		return "", err
@@ -100,7 +100,7 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 		return "", err
 	}
 
-	r.log.Debug("[SAVED]", slog.Int("bytes written", n))
+	r.log.Debug("repository saved", slog.Int("bytes written", n))
 
 	rc, err := zip.OpenReader(name + zipExt)
 	if err != nil {
@@ -142,14 +142,14 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 
 	outDir := rc.File[0].Name
 	for _, zf := range rc.File {
-		r.log.Debug("[EXTRACTING]", slog.String("file", zf.Name), slog.String("path", dest))
+		r.log.Debug("extracting repository", slog.String("file", zf.Name), slog.String("path", dest))
 		err = extract(dest, zf)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	r.log.Info("[REPOSITORY SUCCESSFULLY SAVED]", slog.String("path", filepath.Join(dest, outDir))) //nolint:gosec
+	r.log.Info("repository saved", slog.String("path", filepath.Join(dest, outDir))) //nolint:gosec
 	// first name is the output path
 	return filepath.Join(dest, outDir), nil //nolint:gosec
 }

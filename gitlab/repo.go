@@ -43,7 +43,7 @@ func (r *GLRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
 
 	for k, v := range r.config.GitLab.Plugins {
 		modInfo := new(velox.ModulesInfo)
-		r.log.Debug("[FETCHING PLUGIN DATA]", slog.String("repository", v.Repo), slog.String("owner", v.Owner), slog.String("folder", v.Folder), slog.String("plugin", k), slog.String("ref", v.Ref))
+		r.log.Debug("fetchin plugin data", slog.String("repository", v.Repo), slog.String("owner", v.Owner), slog.String("folder", v.Folder), slog.String("plugin", k), slog.String("ref", v.Ref))
 
 		if v.Ref == "" {
 			return nil, errors.New("ref can't be empty")
@@ -70,7 +70,7 @@ func (r *GLRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
 		scanner.Scan()
 		ret := scanner.Text()
 
-		r.log.Debug("[READING MODULE INFO]", slog.String("plugin", k), slog.String("mod", ret))
+		r.log.Debug("reading module info", slog.String("plugin", k), slog.String("mod", ret))
 
 		// module github.com/roadrunner-server/logger/v2, we split and get the second part
 		retMod := strings.Split(ret, " ")
@@ -85,7 +85,7 @@ func (r *GLRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
 
 		modInfo.ModuleName = strings.TrimRight(retMod[1], "\n")
 
-		r.log.Debug("[REQUESTING REPO BY REF]", slog.String("plugin", k), slog.String("ref", v.Ref))
+		r.log.Debug("downloading repository", slog.String("plugin", k), slog.String("ref", v.Ref))
 		commits, rsp, err := r.client.Commits.ListCommits(v.Repo, &gitlab.ListCommitsOptions{
 			ListOptions: gitlab.ListOptions{
 				Page:    1,
@@ -123,7 +123,7 @@ func (r *GLRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
 		modInfo.PseudoVersion = velox.ParseModuleInfo(modInfo.ModuleName, *at, modInfo.Version)
 
 		if v.Replace != "" {
-			r.log.Debug("[REPLACE REQUESTED]", slog.String("plugin", k), slog.String("path", v.Replace))
+			r.log.Debug("found replace, applying", slog.String("plugin", k), slog.String("path", v.Replace))
 		}
 
 		modInfo.Replace = v.Replace

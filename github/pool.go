@@ -60,7 +60,7 @@ func (p *processor) run() {
 		go func() {
 			for v := range p.queueCh {
 				modInfo := new(velox.ModulesInfo)
-				p.log.Debug("[FETCHING PLUGIN DATA]",
+				p.log.Debug("fetching plugin data",
 					slog.String("repository", v.pluginCfg.Repo),
 					slog.String("owner", v.pluginCfg.Owner),
 					slog.String("folder", v.pluginCfg.Folder),
@@ -93,7 +93,7 @@ func (p *processor) run() {
 					line := scanner.Text()
 					switch { //nolint:gocritic
 					case strings.HasPrefix(line, modLine):
-						p.log.Debug("[READING MODULE INFO]", slog.String("plugin", v.name), slog.String("module", line))
+						p.log.Debug("reading module info", slog.String("plugin", v.name), slog.String("module", line))
 
 						// module github.com/roadrunner-server/logger/v2, we split and get the second part
 						retMod := strings.Split(line, " ")
@@ -115,10 +115,10 @@ func (p *processor) run() {
 
 				err = resp.Body.Close()
 				if err != nil {
-					p.log.Warn("[FAILED TO CLOSE RESPONSE BODY]", slog.Any("error", err))
+					p.log.Warn("failed to close response body, continuing", slog.Any("error", err))
 				}
 
-				p.log.Debug("[REQUESTING COMMIT SHA-1]", slog.String("plugin", v.name), slog.String("ref", v.pluginCfg.Ref))
+				p.log.Debug("requesting commit", slog.String("plugin", v.name), slog.String("ref", v.pluginCfg.Ref))
 				commits, rsp, err := p.client.Repositories.ListCommits(context.Background(), v.pluginCfg.Owner, v.pluginCfg.Repo, &github.CommitsListOptions{
 					SHA:   v.pluginCfg.Ref,
 					Until: time.Now(),
@@ -155,7 +155,7 @@ func (p *processor) run() {
 
 				if v.pluginCfg.Replace != "" {
 					modInfo.Replace = v.pluginCfg.Replace
-					p.log.Debug("[REPLACE REQUESTED]", slog.String("plugin", v.name), slog.String("path", v.pluginCfg.Replace))
+					p.log.Debug("found replace, applying", slog.String("plugin", v.name), slog.String("path", v.pluginCfg.Replace))
 				}
 
 				p.mu.Lock()

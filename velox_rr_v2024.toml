@@ -4,7 +4,7 @@ ref = "v2024.1.5"
 
 # debug option is used to build RR with debug symbols to profile it with pprof
 [debug]
-enabled = true
+enabled = false
 
 [github]
 [github.token]

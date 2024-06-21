@@ -29,6 +29,7 @@ const (
 	executableName     string = "rr"
 	// cleanup pattern
 	cleanupPattern string = "roadrunner-server*"
+	ldflags        string = "-X github.com/roadrunner-server/roadrunner/v2024/internal/meta.version=%s -X github.com/roadrunner-server/roadrunner/v2024/internal/meta.buildTime=%s"
 )
 
 var replaceRegexp = regexp.MustCompile("(\t| )(.+) => (.+)")
@@ -98,7 +99,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
 
-	b.log.Debug("[RESULTING TEMPLATE]", slog.String("template", buf.String()))
+	b.log.Debug("template", slog.String("template", buf.String()))
 
 	f, err := os.Open(b.rrTempPath)
 	if err != nil {
@@ -112,7 +113,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		}
 
 		for i := 0; i < len(files); i++ {
-			b.log.Info("[CLEANING UP]", slog.String("file/folder", files[i]))
+			b.log.Info("cleaning temporary folders", slog.String("file/folder", files[i]))
 			_ = os.RemoveAll(files[i])
 		}
 	}()
@@ -161,7 +162,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
 
-	b.log.Debug("[RESULTING TEMPLATE]", slog.String("template", buf.String()))
+	b.log.Debug("template", slog.String("template", buf.String()))
 
 	_, err = goModFile.Write(buf.Bytes())
 	if err != nil {
@@ -170,7 +171,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	buf.Reset()
 
-	b.log.Info("[SWITCHING WORKING DIR]", slog.String("wd", b.rrTempPath))
+	b.log.Info("switching working directory", slog.String("wd", b.rrTempPath))
 	err = syscall.Chdir(b.rrTempPath)
 	if err != nil {
 		return err
@@ -186,7 +187,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
-	b.log.Info("[CHECKING OUTPUT DIR]", slog.String("dir", b.out))
+	b.log.Info("creating output directory", slog.String("dir", b.out))
 	err = os.MkdirAll(b.out, os.ModeDir)
 	if err != nil {
 		return err
@@ -197,7 +198,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
-	b.log.Info("[MOVING EXECUTABLE]", slog.String("file", filepath.Join(b.rrTempPath, executableName)), slog.String("to", filepath.Join(b.out, executableName)))
+	b.log.Info("moving binary", slog.String("file", filepath.Join(b.rrTempPath, executableName)), slog.String("to", filepath.Join(b.out, executableName)))
 	err = moveFile(filepath.Join(b.rrTempPath, executableName), filepath.Join(b.out, executableName))
 	if err != nil {
 		return err
@@ -256,11 +257,7 @@ func (b *Builder) goBuildCmd(out string) error {
 
 	// LDFLAGS for version and build time, always appended
 	buildCmdArgs = append(buildCmdArgs, "-ldflags")
-	buildCmdArgs = append(buildCmdArgs, fmt.Sprintf(
-		"-X github.com/roadrunner-server/roadrunner/v2024/internal/meta.version=%s -X github.com/roadrunner-server/roadrunner/v2024/internal/meta.buildTime=%s",
-		b.rrVersion,
-		time.Now().UTC().Format(time.RFC3339)),
-	)
+	buildCmdArgs = append(buildCmdArgs, fmt.Sprintf(ldflags, b.rrVersion, time.Now().UTC().Format(time.RFC3339)))
 
 	// output
 	buildCmdArgs = append(buildCmdArgs, "-o")
@@ -271,7 +268,7 @@ func (b *Builder) goBuildCmd(out string) error {
 
 	cmd = exec.Command("go", buildCmdArgs...)
 
-	b.log.Info("[EXECUTING CMD]", slog.String("cmd", cmd.String()))
+	b.log.Info("building RoadRunner", slog.String("cmd", cmd.String()))
 	cmd.Stderr = b
 	cmd.Stdout = b
 	err := cmd.Start()
@@ -286,7 +283,7 @@ func (b *Builder) goBuildCmd(out string) error {
 }
 
 func (b *Builder) goModDowloadCmd() error {
-	b.log.Info("[EXECUTING CMD]", slog.String("cmd", "go mod download"))
+	b.log.Info("downloading dependencies", slog.String("cmd", "go mod download"))
 	cmd := exec.Command("go", "mod", "download")
 	cmd.Stderr = b
 	err := cmd.Start()
@@ -301,7 +298,7 @@ func (b *Builder) goModDowloadCmd() error {
 }
 
 func (b *Builder) goModTidyCmd() error {
-	b.log.Info("[EXECUTING CMD]", slog.String("cmd", "go mod tidy"))
+	b.log.Info("updating dependencies", slog.String("cmd", "go mod tidy"))
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Stderr = b
 	err := cmd.Start()
@@ -316,7 +313,7 @@ func (b *Builder) goModTidyCmd() error {
 }
 
 func (b *Builder) getDepsReplace(repl string) []*templates.Entry {
-	b.log.Info("[REPLACING DEPENDENCIES]", slog.String("dependency", repl))
+	b.log.Info("found replace, processing", slog.String("dependency", repl))
 	modFile, err := os.ReadFile(path.Join(repl, goModStr))
 	if err != nil {
 		return nil
