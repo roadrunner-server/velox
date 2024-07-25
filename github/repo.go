@@ -141,6 +141,10 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 	}
 
 	outDir := rc.File[0].Name
+	if strings.Contains(outDir, "..") {
+		return "", errors.New("CWE-22, output dir from a zip file can't contain a '..' filesystem operation, more info: https://cwe.mitre.org/data/definitions/22.html")
+	}
+
 	for _, zf := range rc.File {
 		r.log.Debug("extracting repository", slog.String("file", zf.Name), slog.String("path", dest))
 		err = extract(dest, zf)
