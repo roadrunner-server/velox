@@ -164,10 +164,10 @@ jobs:
           tags: |
             spiralscout/velox:latest
             spiralscout/velox:${{ steps.values.outputs.version }}
-            spiralscout/velox:2024.1
+            spiralscout/velox:2024.2
             spiralscout/velox:2024
 
             ghcr.io/roadrunner-server/velox:latest
             ghcr.io/roadrunner-server/velox:${{ steps.values.outputs.version }}
-            ghcr.io/roadrunner-server/velox:2024.1
+            ghcr.io/roadrunner-server/velox:2024.2
             ghcr.io/roadrunner-server/velox:2024
