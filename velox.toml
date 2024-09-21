@@ -37,7 +37,7 @@ proxy = { ref = "v5.0.4", owner = "roadrunner-server", repository = "proxy_ip_pa
 send = { ref = "v5.0.1", owner = "roadrunner-server", repository = "send" }
 
 # SERVER
-server = { ref = "v5.1.12", owner = "roadrunner-server", repository = "server" }
+server = { ref = "v5.1.2", owner = "roadrunner-server", repository = "server" }
 
 # SERVICE aka lightweit systemd
 service = { ref = "v5.0.4", owner = "roadrunner-server", repository = "service" }
