@@ -1,12 +1,12 @@
 package builder
 
 import (
-	"log/slog"
 	"os"
 	"path"
 	"testing"
 
 	"github.com/roadrunner-server/velox/v2024"
+	"go.uber.org/zap"
 )
 
 const (
@@ -81,7 +81,8 @@ func setup() *Builder {
 		"dummy_multiple_absolute_remote": []byte(replaceGoModMultipleRemote),
 	}
 
-	b := NewBuilder("/tmp", []*velox.ModulesInfo{}, "", "v2024.1.0", false, slog.Default())
+	l, _ := zap.NewDevelopment()
+	b := NewBuilder("/tmp", []*velox.ModulesInfo{}, "", "v2024.1.0", false, l)
 
 	b.modules = []*velox.ModulesInfo{
 		{

@@ -3,7 +3,6 @@ package builder
 import (
 	"bytes"
 	"fmt"
-	"log/slog"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -17,6 +16,7 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/roadrunner-server/velox/v2024"
 	"github.com/roadrunner-server/velox/v2024/builder/templates"
+	"go.uber.org/zap"
 )
 
 const (
@@ -38,12 +38,12 @@ type Builder struct {
 	rrTempPath string
 	out        string
 	modules    []*velox.ModulesInfo
-	log        *slog.Logger
+	log        *zap.Logger
 	debug      bool
 	rrVersion  string
 }
 
-func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, out, rrVersion string, debug bool, log *slog.Logger) *Builder {
+func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, out, rrVersion string, debug bool, log *zap.Logger) *Builder {
 	return &Builder{
 		rrTempPath: rrTmpPath,
 		modules:    modules,
@@ -99,7 +99,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
 
-	b.log.Debug("template", slog.String("template", buf.String()))
+	b.log.Debug("template", zap.String("template", buf.String()))
 
 	f, err := os.Open(b.rrTempPath)
 	if err != nil {
@@ -113,7 +113,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		}
 
 		for i := 0; i < len(files); i++ {
-			b.log.Info("cleaning temporary folders", slog.String("file/folder", files[i]))
+			b.log.Info("cleaning temporary folders", zap.String("file/folder", files[i]))
 			_ = os.RemoveAll(files[i])
 		}
 	}()
@@ -163,7 +163,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
 	}
 
-	b.log.Debug("template", slog.String("template", buf.String()))
+	b.log.Debug("template", zap.String("template", buf.String()))
 
 	_, err = goModFile.Write(buf.Bytes())
 	if err != nil {
@@ -173,7 +173,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 	// reuse buffer
 	buf.Reset()
 
-	b.log.Info("switching working directory", slog.String("wd", b.rrTempPath))
+	b.log.Info("switching working directory", zap.String("wd", b.rrTempPath))
 	err = syscall.Chdir(b.rrTempPath)
 	if err != nil {
 		return err
@@ -189,7 +189,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
-	b.log.Info("creating output directory", slog.String("dir", b.out))
+	b.log.Info("creating output directory", zap.String("dir", b.out))
 	err = os.MkdirAll(b.out, os.ModeDir)
 	if err != nil {
 		return err
@@ -200,7 +200,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
-	b.log.Info("moving binary", slog.String("file", filepath.Join(b.rrTempPath, executableName)), slog.String("to", filepath.Join(b.out, executableName)))
+	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, executableName)), zap.String("to", filepath.Join(b.out, executableName)))
 	err = moveFile(filepath.Join(b.rrTempPath, executableName), filepath.Join(b.out, executableName))
 	if err != nil {
 		return err
@@ -210,7 +210,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 }
 
 func (b *Builder) Write(d []byte) (int, error) {
-	b.log.Debug("[STDERR OUTPUT]", slog.Any("log", d))
+	b.log.Debug("[STDERR OUTPUT]", zap.ByteString("log", d))
 	return len(d), nil
 }
 
@@ -270,7 +270,7 @@ func (b *Builder) goBuildCmd(out string) error {
 
 	cmd = exec.Command("go", buildCmdArgs...)
 
-	b.log.Info("building RoadRunner", slog.String("cmd", cmd.String()))
+	b.log.Info("building RoadRunner", zap.String("cmd", cmd.String()))
 	cmd.Stderr = b
 	cmd.Stdout = b
 	err := cmd.Start()
@@ -285,7 +285,7 @@ func (b *Builder) goBuildCmd(out string) error {
 }
 
 func (b *Builder) goModDowloadCmd() error {
-	b.log.Info("downloading dependencies", slog.String("cmd", "go mod download"))
+	b.log.Info("downloading dependencies", zap.String("cmd", "go mod download"))
 	cmd := exec.Command("go", "mod", "download")
 	cmd.Stderr = b
 	err := cmd.Start()
@@ -300,7 +300,7 @@ func (b *Builder) goModDowloadCmd() error {
 }
 
 func (b *Builder) goModTidyCmd() error {
-	b.log.Info("updating dependencies", slog.String("cmd", "go mod tidy"))
+	b.log.Info("updating dependencies", zap.String("cmd", "go mod tidy"))
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Stderr = b
 	err := cmd.Start()
@@ -315,7 +315,7 @@ func (b *Builder) goModTidyCmd() error {
 }
 
 func (b *Builder) getDepsReplace(repl string) []*templates.Entry {
-	b.log.Info("found replace, processing", slog.String("dependency", repl))
+	b.log.Info("found replace, processing", zap.String("dependency", repl))
 	modFile, err := os.ReadFile(path.Join(repl, goModStr))
 	if err != nil {
 		return nil
@@ -326,7 +326,7 @@ func (b *Builder) getDepsReplace(repl string) []*templates.Entry {
 	for i := 0; i < len(replaces); i++ {
 		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
 		if len(split) != 2 {
-			b.log.Error("not enough split args", slog.String("replace", replaces[i][0]))
+			b.log.Error("not enough split args", zap.String("replace", replaces[i][0]))
 			continue
 		}
 
