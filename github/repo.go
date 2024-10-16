@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"path"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/google/go-github/v61/github"
 	"github.com/roadrunner-server/velox/v2024"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
@@ -31,10 +31,10 @@ GHRepo represents template repository
 type GHRepo struct {
 	client *github.Client
 	config *velox.Config
-	log    *slog.Logger
+	log    *zap.Logger
 }
 
-func NewGHRepoInfo(cfg *velox.Config, log *slog.Logger) *GHRepo {
+func NewGHRepoInfo(cfg *velox.Config, log *zap.Logger) *GHRepo {
 	var client *http.Client
 
 	// if a token exists, use it to increase rate limiter
@@ -53,7 +53,7 @@ func NewGHRepoInfo(cfg *velox.Config, log *slog.Logger) *GHRepo {
 
 // DownloadTemplate downloads template repository ->
 func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolint:gocyclo
-	r.log.Info("obtaining link", slog.String("owner", rrOwner), slog.String("repository", rrRepo), slog.String("encoding", "zip"), slog.String("ref", version))
+	r.log.Info("obtaining link", zap.String("owner", rrOwner), zap.String("repository", rrRepo), zap.String("encoding", "zip"), zap.String("ref", version))
 	url, resp, err := r.client.Repositories.GetArchiveLink(context.Background(), rrOwner, rrRepo, github.Zipball, &github.RepositoryContentGetOptions{Ref: version}, 10)
 	if err != nil {
 		return "", err
@@ -63,14 +63,14 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 		return "", fmt.Errorf("wrong response status, got: %d", resp.StatusCode)
 	}
 
-	r.log.Info("seding download request", slog.String("url", url.String()))
+	r.log.Info("seding download request", zap.String("url", url.String()))
 	request, err := r.client.NewRequest(http.MethodGet, url.String(), nil)
 	if err != nil {
 		return "", err
 	}
 
 	buf := new(bytes.Buffer)
-	r.log.Info("downloading repository", slog.String("url", url.String()))
+	r.log.Info("downloading repository", zap.String("url", url.String()))
 	do, err := r.client.Do(context.Background(), request, buf)
 	if err != nil {
 		return "", err
@@ -85,7 +85,7 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 	name := path.Join(tmp, "roadrunner-server-"+version)
 	_ = os.RemoveAll(name)
 
-	r.log.Debug("saving repository in temporary folder", slog.String("path", name+zipExt))
+	r.log.Debug("saving repository in temporary folder", zap.String("path", name+zipExt))
 	f, err := os.Create(name + zipExt)
 	if err != nil {
 		return "", err
@@ -100,7 +100,7 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 		return "", err
 	}
 
-	r.log.Debug("repository saved", slog.Int("bytes written", n))
+	r.log.Debug("repository saved", zap.Int("bytes written", n))
 
 	rc, err := zip.OpenReader(name + zipExt)
 	if err != nil {
@@ -146,14 +146,14 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 	}
 
 	for _, zf := range rc.File {
-		r.log.Debug("extracting repository", slog.String("file", zf.Name), slog.String("path", dest))
+		r.log.Debug("extracting repository", zap.String("file", zf.Name), zap.String("path", dest))
 		err = extract(dest, zf)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	r.log.Info("repository saved", slog.String("path", filepath.Join(dest, outDir))) //nolint:gosec
+	r.log.Info("repository saved", zap.String("path", filepath.Join(dest, outDir))) //nolint:gosec
 	// first name is the output path
 	return filepath.Join(dest, outDir), nil //nolint:gosec
 }
@@ -201,7 +201,7 @@ func extract(dest string, zf *zip.File) error {
 // https://github.com/spiral/roadrunner-binary/archive/refs/tags/v2.7.0.zip
 
 func (r *GHRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
-	poolExecutor := newPool(r.log, r.client)
+	poolExecutor := newPool(r.log.Named("pool"), r.client)
 	for k, v := range r.config.GitHub.Plugins {
 		poolExecutor.add(&pcfg{
 			pluginCfg: v,
