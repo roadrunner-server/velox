@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/roadrunner-server/velox/v2024"
-	"github.com/xanzy/go-gitlab"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 	"go.uber.org/zap"
 )
 

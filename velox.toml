@@ -1,6 +1,6 @@
 [roadrunner]
 # ref -> reference, tag, commit or branch
-ref = "v2024.3.0"
+ref = "v2024.3.1"
 
 # the debug option is used to build RR with debug symbols to profile it with pprof
 [debug]
