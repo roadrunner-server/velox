@@ -1,5 +1,5 @@
 [roadrunner]
-ref = "v2024.3.2"
+ref = "v2024.3.3"
 
 [debug]
 enabled = false
