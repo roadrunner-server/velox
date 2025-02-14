@@ -22,7 +22,7 @@ RUN go mod tidy
 
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o ./velox ./cmd/vx
 
-FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.23-alpine
+FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.24-alpine
 
 # use same build arguments for image labels
 ARG APP_VERSION="undefined"
