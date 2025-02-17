@@ -9,7 +9,7 @@ require (
 	github.com/google/go-github/v61 v61.0.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
 	gitlab.com/gitlab-org/api/client-go v0.123.0
@@ -40,7 +40,7 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
+	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
