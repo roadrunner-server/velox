@@ -44,19 +44,22 @@ api_url_template = "https://api.github.com/repos/{owner}/{repo}/releases/latest"
 
 
 # Function to get the latest release tag
-def get_latest_release(owner, repo):
+def get_latest_release(owner: str, repo: str) -> str:
     url = api_url_template.format(owner=owner, repo=repo)
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()["tag_name"]
     else:
-        return None
+        raise Exception(f"Failed to fetch the latest release for {owner}/{repo}.")
 
 
 # Fetch the latest release for each plugin
-latest_versions = {}
+latest_versions = dict[str, str]()
 for plugin, info in plugins.items():
-    latest_versions[plugin] = get_latest_release(info["owner"], info["repo"])
+    try:
+        latest_versions[plugin] = get_latest_release(info["owner"], info["repo"])
+    except Exception as e:
+        exit(f"Error: {e}")
 
 # Load the existing velox.toml file
 with open(file_path, "r") as file:
