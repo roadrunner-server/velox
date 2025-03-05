@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	gitlab.com/gitlab-org/api/client-go v0.123.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/mod v0.23.0
+	golang.org/x/mod v0.24.0
 	golang.org/x/oauth2 v0.27.0
 )
 
