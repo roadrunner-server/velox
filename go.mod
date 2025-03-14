@@ -2,8 +2,6 @@ module github.com/roadrunner-server/velox/v2024
 
 go 1.24
 
-toolchain go1.24.0
-
 require (
 	github.com/fatih/color v1.18.0
 	github.com/google/go-github/v61 v61.0.0
@@ -12,7 +10,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	gitlab.com/gitlab-org/api/client-go v0.124.0
+	gitlab.com/gitlab-org/api/client-go v0.125.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.24.0
 	golang.org/x/oauth2 v0.28.0
