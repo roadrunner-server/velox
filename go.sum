@@ -61,8 +61,8 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
-gitlab.com/gitlab-org/api/client-go v0.125.0 h1:T+L13tpjE1s3Hkqyq+ontvYVSwRyMlfOLDd75IiRY5g=
-gitlab.com/gitlab-org/api/client-go v0.125.0/go.mod h1:SEN5CKASOsKoA6rv6Y3cPiM5ikH2HxFaqCUwZOquttI=
+gitlab.com/gitlab-org/api/client-go v0.126.0 h1:VV5TdkF6pMbEdFGvbR2CwEgJwg6qdg1u3bj5eD2tiWk=
+gitlab.com/gitlab-org/api/client-go v0.126.0/go.mod h1:bYC6fPORKSmtuPRyD9Z2rtbAjE7UeNatu2VWHRf4/LE=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
 go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 go.uber.org/multierr v1.11.0 h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=
