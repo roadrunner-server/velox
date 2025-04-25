@@ -65,7 +65,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	t.ModuleVersion = module
 	t.Entries = make([]*templates.Entry, len(b.modules))
-	for i := 0; i < len(b.modules); i++ {
+	for i := range b.modules {
 		t.Entries[i] = &templates.Entry{
 			Module: b.modules[i].ModuleName,
 			// we need to set prefix to avoid collisions
@@ -112,7 +112,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 			return
 		}
 
-		for i := 0; i < len(files); i++ {
+		for i := range files {
 			b.log.Info("cleaning temporary folders", zap.String("file/folder", files[i]))
 			_ = os.RemoveAll(files[i])
 		}
@@ -323,7 +323,7 @@ func (b *Builder) getDepsReplace(repl string) []*templates.Entry {
 
 	var result []*templates.Entry //nolint:prealloc
 	replaces := replaceRegexp.FindAllStringSubmatch(string(modFile), -1)
-	for i := 0; i < len(replaces); i++ {
+	for i := range replaces {
 		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
 		if len(split) != 2 {
 			b.log.Error("not enough split args", zap.String("replace", replaces[i][0]))

@@ -56,7 +56,7 @@ func newPool(log *zap.Logger, client *github.Client) *processor {
 }
 
 func (p *processor) run() {
-	for i := 0; i < p.maxWorkers; i++ {
+	for range p.maxWorkers {
 		go func() {
 			for v := range p.queueCh {
 				modInfo := new(velox.ModulesInfo)
