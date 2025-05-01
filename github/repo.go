@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/go-github/v61/github"
-	"github.com/roadrunner-server/velox/v2024"
+	"github.com/google/go-github/v71/github"
+	"github.com/roadrunner-server/velox/v2025"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )

@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
-	"github.com/roadrunner-server/velox/v2024"
-	"github.com/roadrunner-server/velox/v2024/builder/templates"
+	"github.com/roadrunner-server/velox/v2025"
+	"github.com/roadrunner-server/velox/v2025/builder/templates"
 	"go.uber.org/zap"
 )
 
@@ -29,7 +29,7 @@ const (
 	executableName     string = "rr"
 	// cleanup pattern
 	cleanupPattern string = "roadrunner-server*"
-	ldflags        string = "-X github.com/roadrunner-server/roadrunner/v2024/internal/meta.version=%s -X github.com/roadrunner-server/roadrunner/v2024/internal/meta.buildTime=%s"
+	ldflags        string = "-X github.com/roadrunner-server/roadrunner/v2025/internal/meta.version=%s -X github.com/roadrunner-server/roadrunner/v2025/internal/meta.buildTime=%s"
 )
 
 var replaceRegexp = regexp.MustCompile("(\t| )(.+) => (.+)")
@@ -80,6 +80,11 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	// compatibility with version 2
 	switch t.ModuleVersion {
+	case velox.V2025:
+		err = templates.CompileTemplateV2025(buf, t)
+		if err != nil {
+			return err
+		}
 	case velox.V2024:
 		err = templates.CompileTemplateV2024(buf, t)
 		if err != nil {
@@ -144,6 +149,11 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	// compatibility with version 2
 	switch t.ModuleVersion {
+	case velox.V2025:
+		err = templates.CompileGoModTemplate2025(buf, t)
+		if err != nil {
+			return err
+		}
 	case velox.V2024:
 		err = templates.CompileGoModTemplate2024(buf, t)
 		if err != nil {
@@ -217,7 +227,7 @@ func (b *Builder) Write(d []byte) (int, error) {
 func validateModule(module string) (string, error) {
 	if module == "master" {
 		// default branch
-		return velox.V2024, nil
+		return velox.V2025, nil
 	}
 
 	v, err := version.NewVersion(module)

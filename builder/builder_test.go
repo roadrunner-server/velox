@@ -5,7 +5,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/roadrunner-server/velox/v2024"
+	"github.com/roadrunner-server/velox/v2025"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
 
@@ -72,7 +73,7 @@ replace (
 `
 )
 
-func setup() *Builder {
+func setup(version string) *Builder {
 	associated := map[string][]byte{
 		"dummy_one_relative":             []byte(replaceGoModOneRelative),
 		"dummy_one_absolute":             []byte(replaceGoModOneAbsolute),
@@ -82,7 +83,7 @@ func setup() *Builder {
 	}
 
 	l, _ := zap.NewDevelopment()
-	b := NewBuilder("/tmp", []*velox.ModulesInfo{}, "", "v2024.1.0", false, l)
+	b := NewBuilder("/tmp", []*velox.ModulesInfo{}, "", version, false, l)
 
 	b.modules = []*velox.ModulesInfo{
 		{
@@ -126,80 +127,104 @@ func clean(b *Builder) {
 	}
 }
 
-func Test_Builder_getDepsReplace_multipleAbsolute(t *testing.T) {
-	b := setup()
+// Helper function to run the getDepsReplace tests
+func runGetDepsReplaceTest(t *testing.T, b *Builder, modulePath string, expectedCount int, expectedReplacements map[string]string) {
+	t.Helper()
+	toReplace := b.getDepsReplace(modulePath)
+	assert.Len(t, toReplace, expectedCount, "%s must have %d elements to replace", modulePath, expectedCount)
 
-	toReplace := b.getDepsReplace("/tmp/dummy_multiple_absolute")
-	clean(b)
-	if len(toReplace) != 2 {
-		t.Error("/tmp/dummy_multiple_absolute must have 2 elements to replace")
+	actualReplacements := make(map[string]string)
+	for _, r := range toReplace {
+		actualReplacements[r.Module] = r.Replace
 	}
-	if toReplace[0].Module != dummyPackageOne || toReplace[0].Replace != "/tmp/dummy_one" {
-		t.Error("The first module to replace must be github.com/dummy/package_one with the replacer /tmp/dummy_one")
-	}
-	if toReplace[1].Module != dummyPackageTwo || toReplace[1].Replace != "/tmp/dummy_two" {
-		t.Error("The first module to replace must be github.com/dummy/package_two with the replacer /tmp/dummy_two")
-	}
+
+	assert.Equal(t, expectedReplacements, actualReplacements, "Replacements do not match for %s", modulePath)
 }
 
-func Test_Builder_getDepsReplace_multipleRelative(t *testing.T) {
-	b := setup()
-
+func Test_Builder_getDepsReplace_multipleAbsolute_V2024(t *testing.T) {
+	b := setup("v2024.1.0")
 	defer clean(b)
-
-	toReplace := b.getDepsReplace("/tmp/dummy_multiple_relative")
-	if len(toReplace) != 2 {
-		t.Error("/tmp/dummy_multiple_relative must have 2 elements to replace")
-	}
-	if toReplace[0].Module != dummyPackage || toReplace[0].Replace != "/tmp/dummy_multiple_relative/something" {
-		t.Error("The first module to replace must be github.com/dummy/package with the replacer /tmp/dummy_multiple_relative/something")
-	}
-	if toReplace[1].Module != "github.com/dummy/another" || toReplace[1].Replace != "/another" {
-		t.Error("The first module to replace must be github.com/dummy/another with the replacer /another")
-	}
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_multiple_absolute", 2, map[string]string{
+		dummyPackageOne: "/tmp/dummy_one",
+		dummyPackageTwo: "/tmp/dummy_two",
+	})
 }
 
-func Test_Builder_getDepsReplace_oneAbsolute(t *testing.T) {
-	b := setup()
-
+func Test_Builder_getDepsReplace_multipleRelative_V2024(t *testing.T) {
+	b := setup("v2024.1.0")
 	defer clean(b)
-
-	toReplace := b.getDepsReplace("/tmp/dummy_one_absolute")
-	if len(toReplace) != 1 {
-		t.Error("/tmp/dummy_one_absolute must have 1 element to replace")
-	}
-	if toReplace[0].Module != dummyPackage || toReplace[0].Replace != "/tmp/dummy" {
-		t.Error("The module to replace must be github.com/dummy/package with the replacer /tmp/dummy")
-	}
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_multiple_relative", 2, map[string]string{
+		dummyPackage:               "/tmp/dummy_multiple_relative/something",
+		"github.com/dummy/another": "/another",
+	})
 }
 
-func Test_Builder_getDepsReplace_oneRelative(t *testing.T) {
-	b := setup()
-
+func Test_Builder_getDepsReplace_oneAbsolute_V2024(t *testing.T) {
+	b := setup("v2024.1.0")
 	defer clean(b)
-
-	toReplace := b.getDepsReplace("/tmp/dummy_one_relative")
-	if len(toReplace) != 1 {
-		t.Error("/tmp/dummy_one_relative must have 1 element to replace")
-	}
-	if toReplace[0].Module != dummyPackage || toReplace[0].Replace != "/tmp/dummy_one_relative/something" {
-		t.Error("The module to replace must be github.com/dummy/package with the replacer /tmp/dummy_one_relative/something")
-	}
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_one_absolute", 1, map[string]string{
+		dummyPackage: "/tmp/dummy",
+	})
 }
 
-func Test_Builder_getDepsReplace_multipleAbsoluteRemote(t *testing.T) {
-	b := setup()
-
+func Test_Builder_getDepsReplace_oneRelative_V2024(t *testing.T) {
+	b := setup("v2024.1.0")
 	defer clean(b)
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_one_relative", 1, map[string]string{
+		dummyPackage: "/tmp/dummy_one_relative/something",
+	})
+}
 
-	toReplace := b.getDepsReplace("/tmp/dummy_multiple_absolute_remote")
-	if len(toReplace) != 2 {
-		t.Error("/tmp/dummy_multiple_relative must have 2 elements to replace")
-	}
-	if toReplace[0].Module != dummyPackageOne || toReplace[0].Replace != remotePackageOne {
-		t.Error("The first module to replace must be github.com/dummy/package_one with the replacer https://github.com/my/package_one")
-	}
-	if toReplace[1].Module != dummyPackageTwo || toReplace[1].Replace != remotePackageTwo {
-		t.Error("The first module to replace must be github.com/dummy/package_two with the replacer https://github.com/my/package_two")
-	}
+func Test_Builder_getDepsReplace_multipleAbsoluteRemote_V2024(t *testing.T) {
+	b := setup("v2024.1.0")
+	defer clean(b)
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_multiple_absolute_remote", 2, map[string]string{
+		dummyPackageOne: remotePackageOne,
+		dummyPackageTwo: remotePackageTwo,
+	})
+}
+
+// --- V2025 Tests ---
+
+func Test_Builder_getDepsReplace_multipleAbsolute_V2025(t *testing.T) {
+	b := setup("v2025.0.0") // Use a v2025 version
+	defer clean(b)
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_multiple_absolute", 2, map[string]string{
+		dummyPackageOne: "/tmp/dummy_one",
+		dummyPackageTwo: "/tmp/dummy_two",
+	})
+}
+
+func Test_Builder_getDepsReplace_multipleRelative_V2025(t *testing.T) {
+	b := setup("v2025.0.0")
+	defer clean(b)
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_multiple_relative", 2, map[string]string{
+		dummyPackage:               "/tmp/dummy_multiple_relative/something",
+		"github.com/dummy/another": "/another",
+	})
+}
+
+func Test_Builder_getDepsReplace_oneAbsolute_V2025(t *testing.T) {
+	b := setup("v2025.0.0")
+	defer clean(b)
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_one_absolute", 1, map[string]string{
+		dummyPackage: "/tmp/dummy",
+	})
+}
+
+func Test_Builder_getDepsReplace_oneRelative_V2025(t *testing.T) {
+	b := setup("v2025.0.0")
+	defer clean(b)
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_one_relative", 1, map[string]string{
+		dummyPackage: "/tmp/dummy_one_relative/something",
+	})
+}
+
+func Test_Builder_getDepsReplace_multipleAbsoluteRemote_V2025(t *testing.T) {
+	b := setup("v2025.0.0")
+	defer clean(b)
+	runGetDepsReplaceTest(t, b, "/tmp/dummy_multiple_absolute_remote", 2, map[string]string{
+		dummyPackageOne: remotePackageOne,
+		dummyPackageTwo: remotePackageTwo,
+	})
 }

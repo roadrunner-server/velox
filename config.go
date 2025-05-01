@@ -10,6 +10,7 @@ import (
 const (
 	ref           string = "ref"
 	defaultBranch string = "master"
+	V2025         string = "v2025"
 	V2024         string = "v2024"
 	V2023         string = "v2023"
 	V2            string = "v2"

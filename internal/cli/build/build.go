@@ -4,10 +4,10 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/roadrunner-server/velox/v2024"
-	"github.com/roadrunner-server/velox/v2024/builder"
-	"github.com/roadrunner-server/velox/v2024/github"
-	"github.com/roadrunner-server/velox/v2024/gitlab"
+	"github.com/roadrunner-server/velox/v2025"
+	"github.com/roadrunner-server/velox/v2025/builder"
+	"github.com/roadrunner-server/velox/v2025/github"
+	"github.com/roadrunner-server/velox/v2025/gitlab"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
