@@ -81,6 +81,20 @@ func CompileGoModTemplate2023(buf *bytes.Buffer, data *Template) error {
 	return nil
 }
 
+func CompileTemplateV2025(buf *bytes.Buffer, data *Template) error {
+	tmplt, err := template.New("plugins.go").Parse(PluginsTemplateV2025)
+	if err != nil {
+		return err
+	}
+
+	err = tmplt.Execute(buf, data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func CompileTemplateV2024(buf *bytes.Buffer, data *Template) error {
 	tmplt, err := template.New("plugins.go").Parse(PluginsTemplateV2024)
 	if err != nil {

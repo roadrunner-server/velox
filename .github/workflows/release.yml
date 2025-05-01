@@ -63,8 +63,8 @@ jobs:
           CGO_ENABLED: 0
           LDFLAGS: >-
             -s
-            -X github.com/roadrunner-server/velox/v2024/internal/version.version=${{ steps.values.outputs.version }}
-            -X github.com/roadrunner-server/velox/v2024/internal/version.buildTime=${{ steps.values.outputs.timestamp }}
+            -X github.com/roadrunner-server/velox/v2025/internal/version.version=${{ steps.values.outputs.version }}
+            -X github.com/roadrunner-server/velox/v2025/internal/version.buildTime=${{ steps.values.outputs.timestamp }}
         run: |
           go build -trimpath -ldflags "$LDFLAGS" -o "./${{ steps.values.outputs.binary-name }}" ./cmd/vx
           stat "./${{ steps.values.outputs.binary-name }}"
@@ -164,10 +164,10 @@ jobs:
           tags: |
             spiralscout/velox:latest
             spiralscout/velox:${{ steps.values.outputs.version }}
-            spiralscout/velox:2024.3
-            spiralscout/velox:2024
+            spiralscout/velox:2025
+            spiralscout/velox:2025.1
 
             ghcr.io/roadrunner-server/velox:latest
             ghcr.io/roadrunner-server/velox:${{ steps.values.outputs.version }}
-            ghcr.io/roadrunner-server/velox:2024.3
-            ghcr.io/roadrunner-server/velox:2024
+            ghcr.io/roadrunner-server/velox:2025
+            ghcr.io/roadrunner-server/velox:2025.1

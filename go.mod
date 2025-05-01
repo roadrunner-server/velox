@@ -1,4 +1,4 @@
-module github.com/roadrunner-server/velox/v2024
+module github.com/roadrunner-server/velox/v2025
 
 go 1.24
 
@@ -6,7 +6,7 @@ toolchain go1.24.0
 
 require (
 	github.com/fatih/color v1.18.0
-	github.com/google/go-github/v61 v61.0.0
+	github.com/google/go-github/v71 v71.0.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.9.1
