@@ -227,7 +227,7 @@ func (b *Builder) Write(d []byte) (int, error) {
 func validateModule(module string) (string, error) {
 	if module == "master" {
 		// default branch
-		return velox.V2024, nil
+		return velox.V2025, nil
 	}
 
 	v, err := version.NewVersion(module)
