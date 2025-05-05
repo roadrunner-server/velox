@@ -15,7 +15,7 @@ require (
 	gitlab.com/gitlab-org/api/client-go v0.128.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.24.0
-	golang.org/x/oauth2 v0.29.0
+	golang.org/x/oauth2 v0.30.0
 )
 
 require (
