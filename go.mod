@@ -12,7 +12,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	gitlab.com/gitlab-org/api/client-go v0.136.0
+	gitlab.com/gitlab-org/api/client-go v0.137.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.26.0
 	golang.org/x/oauth2 v0.30.0
