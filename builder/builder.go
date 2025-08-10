@@ -2,6 +2,7 @@ package builder
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -278,7 +279,7 @@ func (b *Builder) goBuildCmd(out string) error {
 	// path to main.go
 	buildCmdArgs = append(buildCmdArgs, rrMainGo)
 
-	cmd = exec.Command("go", buildCmdArgs...)
+	cmd = exec.CommandContext(context.Background(), "go", buildCmdArgs...)
 
 	b.log.Info("building RoadRunner", zap.String("cmd", cmd.String()))
 	cmd.Stderr = b
@@ -296,7 +297,7 @@ func (b *Builder) goBuildCmd(out string) error {
 
 func (b *Builder) goModDowloadCmd() error {
 	b.log.Info("downloading dependencies", zap.String("cmd", "go mod download"))
-	cmd := exec.Command("go", "mod", "download")
+	cmd := exec.CommandContext(context.Background(), "go", "mod", "download")
 	cmd.Stderr = b
 	err := cmd.Start()
 	if err != nil {
@@ -311,7 +312,7 @@ func (b *Builder) goModDowloadCmd() error {
 
 func (b *Builder) goModTidyCmd() error {
 	b.log.Info("updating dependencies", zap.String("cmd", "go mod tidy"))
-	cmd := exec.Command("go", "mod", "tidy")
+	cmd := exec.CommandContext(context.Background(), "go", "mod", "tidy")
 	cmd.Stderr = b
 	err := cmd.Start()
 	if err != nil {
