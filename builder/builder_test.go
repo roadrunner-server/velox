@@ -83,7 +83,11 @@ func setup(version string) *Builder {
 	}
 
 	l, _ := zap.NewDevelopment()
-	b := NewBuilder("/tmp", []*velox.ModulesInfo{}, "", version, false, l)
+	b := NewBuilder("/tmp", []*velox.ModulesInfo{},
+		WithRRVersion(version),
+		WithDebug(false),
+		WithLogger(l),
+	)
 
 	b.modules = []*velox.ModulesInfo{
 		{

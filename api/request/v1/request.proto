@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package api.request.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1;requestV1";
+
+message Platform {
+  string os = 1;
+  string arch = 2;
+}
+
+message BuildRequest {
+  // request_id is optional and needed to match requests with their responses on the client side
+  string request_id = 1 [
+    (buf.validate.field).string.max_len = 100,
+    (buf.validate.field).required = false
+  ];
+  string rr_version = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "rr_version.format"
+      message: "rr_version must be a semantic version starting with 'v' (e.g., v2025.1.0), 'master', or a git commit SHA (7-40 hex characters)"
+      expression: "this.matches('^(v\\\\d+\\\\.\\\\d+\\\\.\\\\d+.*|master|[a-f0-9]{7,40})$')"
+    }
+  ];
+  bool force_rebuild = 3 [(buf.validate.field).required = false];
+  Platform build_platform = 4 [(buf.validate.field).required = false];
+  map<string, PluginInfo> plugins_info = 5 [(buf.validate.field).required = true];
+}
+
+message PluginInfo {
+  repeated Plugin plugins = 2 [(buf.validate.field).required = true]; // list of plugins to be built
+}
+
+message Plugin {
+  string name = 1 [(buf.validate.field).required = false]; // optional, if not set, ref+owner+repository will be used
+  string ref = 2 [(buf.validate.field).required = true]; // git ref, branch, tag, commit
+  string owner = 3 [(buf.validate.field).required = true]; // roadrunner-server
+  string repository = 4 [(buf.validate.field).required = true]; // static
+}

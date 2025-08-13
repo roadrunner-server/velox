@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/hashicorp/go-version"
@@ -36,23 +35,32 @@ const (
 var replaceRegexp = regexp.MustCompile("(\t| )(.+) => (.+)")
 
 type Builder struct {
+	// rrTempPath - path, where RR was saved
 	rrTempPath string
-	out        string
-	modules    []*velox.ModulesInfo
-	log        *zap.Logger
-	debug      bool
-	rrVersion  string
+	// outputDir - output directory
+	outputDir string
+	modules   []*velox.ModulesInfo
+	log       *zap.Logger
+	sb        *strings.Builder
+	debug     bool
+	rrVersion string
+	goos      string
+	goarch    string
 }
 
-func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, out, rrVersion string, debug bool, log *zap.Logger) *Builder {
-	return &Builder{
+// NewBuilder creates a new Builder with the given required parameters and optional configuration
+func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, opts ...Option) *Builder {
+	b := &Builder{
 		rrTempPath: rrTmpPath,
 		modules:    modules,
-		out:        out,
-		debug:      debug,
-		rrVersion:  rrVersion,
-		log:        log,
 	}
+
+	// Apply all options
+	for _, opt := range opts {
+		opt(b)
+	}
+
+	return b
 }
 
 // Build builds a RR based on the provided modules info
@@ -184,24 +192,18 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 	// reuse buffer
 	buf.Reset()
 
-	b.log.Info("switching working directory", zap.String("wd", b.rrTempPath))
-	err = syscall.Chdir(b.rrTempPath)
+	err = b.exec([]string{"go", "mod", "download"})
 	if err != nil {
 		return err
 	}
 
-	err = b.goModDowloadCmd()
+	err = b.exec([]string{"go", "mod", "tidy"})
 	if err != nil {
 		return err
 	}
 
-	err = b.goModTidyCmd()
-	if err != nil {
-		return err
-	}
-
-	b.log.Info("creating output directory", zap.String("dir", b.out))
-	err = os.MkdirAll(b.out, os.ModeDir)
+	b.log.Info("creating output directory", zap.String("dir", b.outputDir))
+	err = os.MkdirAll(b.outputDir, os.ModeDir)
 	if err != nil {
 		return err
 	}
@@ -211,8 +213,8 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		return err
 	}
 
-	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, executableName)), zap.String("to", filepath.Join(b.out, executableName)))
-	err = moveFile(filepath.Join(b.rrTempPath, executableName), filepath.Join(b.out, executableName))
+	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, executableName)), zap.String("to", filepath.Join(b.outputDir, executableName)))
+	err = moveFile(filepath.Join(b.rrTempPath, executableName), filepath.Join(b.outputDir, executableName))
 	if err != nil {
 		return err
 	}
@@ -222,6 +224,10 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 func (b *Builder) Write(d []byte) (int, error) {
 	b.log.Debug("[STDERR OUTPUT]", zap.ByteString("log", d))
+	if b.sb != nil {
+		// error is always nil
+		_, _ = b.sb.Write(d)
+	}
 	return len(d), nil
 }
 
@@ -252,7 +258,8 @@ func (b *Builder) goBuildCmd(out string) error {
 	var cmd *exec.Cmd
 
 	buildCmdArgs := make([]string, 0, 5)
-	buildCmdArgs = append(buildCmdArgs, "build", "-v", "-trimpath")
+	// regular Go build command starts here.
+	buildCmdArgs = append(buildCmdArgs, "go", "build", "-v", "-trimpath")
 
 	// var ld []string
 	switch b.debug {
@@ -279,7 +286,16 @@ func (b *Builder) goBuildCmd(out string) error {
 	// path to main.go
 	buildCmdArgs = append(buildCmdArgs, rrMainGo)
 
-	cmd = exec.CommandContext(context.Background(), "go", buildCmdArgs...)
+	// gosec: don't need here, since we control the input
+	cmd = exec.CommandContext(context.Background(), buildCmdArgs[0], buildCmdArgs[1:]...) //nolint: gosec
+	cmd.Dir = b.rrTempPath
+	// set GOOS and GOARCH if specified (used in the server command)
+	if b.goos != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("GOOS=%s", b.goos))
+	}
+	if b.goarch != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("GOARCH=%s", b.goarch))
+	}
 
 	b.log.Info("building RoadRunner", zap.String("cmd", cmd.String()))
 	cmd.Stderr = b
@@ -295,30 +311,18 @@ func (b *Builder) goBuildCmd(out string) error {
 	return nil
 }
 
-func (b *Builder) goModDowloadCmd() error {
-	b.log.Info("downloading dependencies", zap.String("cmd", "go mod download"))
-	cmd := exec.CommandContext(context.Background(), "go", "mod", "download")
-	cmd.Stderr = b
-	err := cmd.Start()
+func (b *Builder) exec(cmd []string) error {
+	b.log.Info("executing command", zap.String("cmd", strings.Join(cmd, " ")))
+	// gosec: this is not user-controlled input
+	command := exec.CommandContext(context.Background(), cmd[0], cmd[1:]...) //nolint:gosec
+	command.Stderr = b
+	command.Stdout = b
+	command.Dir = b.rrTempPath
+	err := command.Start()
 	if err != nil {
 		return err
 	}
-	err = cmd.Wait()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (b *Builder) goModTidyCmd() error {
-	b.log.Info("updating dependencies", zap.String("cmd", "go mod tidy"))
-	cmd := exec.CommandContext(context.Background(), "go", "mod", "tidy")
-	cmd.Stderr = b
-	err := cmd.Start()
-	if err != nil {
-		return err
-	}
-	err = cmd.Wait()
+	err = command.Wait()
 	if err != nil {
 		return err
 	}
