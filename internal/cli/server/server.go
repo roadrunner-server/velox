@@ -3,7 +3,10 @@ package server
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +14,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/roadrunner-server/velox/v2025"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 
 	"buf.build/go/protovalidate"
 	"github.com/roadrunner-server/velox/v2025/builder"
@@ -27,8 +31,10 @@ type BuildServer struct {
 func NewBuildServer(log *zap.Logger) *BuildServer {
 	return &BuildServer{
 		log: log,
-		lru: lru.NewLRU(100, func(key string, _ any) {
+		lru: lru.NewLRU(100, func(key string, value any) {
+			// key -> hash, value - path. On eviction -> delete file
 			log.Info("evicting cache key", zap.String("key", key))
+			_ = os.RemoveAll(value.(string))
 		}, time.Minute*30),
 	}
 }
@@ -39,6 +45,19 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("validating request: %w", err))
 	}
+
+	key := b.generateCacheKey(req)
+	b.log.Debug("cache key", zap.String("key", key))
+
+	if cached, ok := b.lru.Get(key); ok {
+		b.log.Debug("cache hit", zap.String("key", key))
+		return connect.NewResponse(&responseV1.BuildResponse{
+			Path: cached.(string),
+			Logs: "cached output, logs are available only on the first build",
+		}), nil
+	}
+
+	outputPath := filepath.Join(os.TempDir(), key)
 
 	cfg := velox.DefaultConfig
 	if req.Msg.GetRrVersion() != "" {
@@ -102,23 +121,53 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("get plugins mod data: %w", err))
 		}
 
-		err = builder.NewBuilder(path, pMod,
-			builder.WithOutputDir(os.TempDir()),
+		opts := make([]builder.Option, 0)
+		opts = append(opts,
+			builder.WithOutputDir(outputPath),
 			builder.WithRRVersion(cfg.Roadrunner[velox.DefaultRRRef]),
 			builder.WithDebug(cfg.Debug.Enabled),
 			builder.WithLogs(sb),
 			builder.WithLogger(b.log.Named("Builder")),
-		).Build(cfg.Roadrunner[velox.DefaultRRRef])
+			builder.WithGOOS(req.Msg.BuildPlatform.GetOs()),
+			builder.WithGOARCH(req.Msg.BuildPlatform.GetArch()),
+		)
+
+		err = builder.NewBuilder(path, pMod, opts...).Build(cfg.Roadrunner[velox.DefaultRRRef])
 		if err != nil {
 			b.log.Error("fatal", zap.Error(err))
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("building plugins: %w", err))
 		}
 	}
 
+	binaryPath := fmt.Sprintf("%s/%s", outputPath, "rr")
 	resp := &responseV1.BuildResponse{
-		Path: "foo/bar",
+		// TODO: replace rr with a requested binary name (proto)
+		Path: binaryPath,
 		Logs: sb.String(),
 	}
 
+	b.lru.Add(key, binaryPath)
 	return connect.NewResponse(resp), nil
+}
+
+func (b *BuildServer) generateCacheKey(req *connect.Request[requestV1.BuildRequest]) string {
+	cacheReq := &requestV1.BuildRequest{
+		RrVersion:     req.Msg.GetRrVersion(),
+		BuildPlatform: req.Msg.GetBuildPlatform(),
+		PluginsInfo:   req.Msg.GetPluginsInfo(),
+	}
+
+	data, err := proto.MarshalOptions{
+		Deterministic: true,
+		AllowPartial:  false,
+	}.Marshal(cacheReq)
+	if err != nil {
+		// TODO: might be just fail processing?
+		b.log.Error("marshaling cache key error, cache creation would be skipped", zap.Error(err))
+		return ""
+	}
+
+	h := fnv.New64a()
+	h.Write(data)
+	return strconv.FormatUint(h.Sum64(), 16)
 }

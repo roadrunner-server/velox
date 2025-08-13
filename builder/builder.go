@@ -203,11 +203,22 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 	}
 
 	b.log.Info("creating output directory", zap.String("dir", b.outputDir))
-	err = os.MkdirAll(b.outputDir, os.ModeDir)
+	_, err = os.Stat(b.outputDir)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("stat failed for output directory %s: %w", b.outputDir, err)
+	}
+
+	if os.IsExist(err) {
+		b.log.Info("output path already exists, cleaning up", zap.String("dir", b.outputDir))
+		_ = os.RemoveAll(b.outputDir)
+	}
+
+	err = os.MkdirAll(b.outputDir, os.ModeDir|os.ModePerm)
 	if err != nil {
 		return err
 	}
 
+	// INFO: we can get go envs via go env GOOS for example, but instead we will set them manually
 	err = b.goBuildCmd(filepath.Join(b.rrTempPath, executableName))
 	if err != nil {
 		return err
@@ -254,7 +265,7 @@ func randStringBytes(n int) string {
 	return string(b)
 }
 
-func (b *Builder) goBuildCmd(out string) error {
+func (b *Builder) goBuildCmd(outputPath string) error {
 	var cmd *exec.Cmd
 
 	buildCmdArgs := make([]string, 0, 5)
@@ -282,7 +293,7 @@ func (b *Builder) goBuildCmd(out string) error {
 	// output
 	buildCmdArgs = append(buildCmdArgs, "-o")
 	// path
-	buildCmdArgs = append(buildCmdArgs, out)
+	buildCmdArgs = append(buildCmdArgs, outputPath)
 	// path to main.go
 	buildCmdArgs = append(buildCmdArgs, rrMainGo)
 
@@ -296,11 +307,18 @@ func (b *Builder) goBuildCmd(out string) error {
 	if b.goarch != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("GOARCH=%s", b.goarch))
 	}
+	cmd.Env = append(cmd.Env, "CGO_ENABLED=0") // disable cgo
+	hd, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("get user home dir: %w", err)
+	}
+	cmd.Env = append(cmd.Env, fmt.Sprintf("GOPATH=%s", filepath.Join(hd, "go", b.goos, b.goarch)))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("GOCACHE=%s", filepath.Join(hd, "go", b.goos, b.goarch, "go-build")))
 
 	b.log.Info("building RoadRunner", zap.String("cmd", cmd.String()))
 	cmd.Stderr = b
 	cmd.Stdout = b
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
