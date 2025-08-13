@@ -49,7 +49,7 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 	key := b.generateCacheKey(req)
 	b.log.Debug("cache key", zap.String("key", key))
 
-	if cached, ok := b.lru.Get(key); ok {
+	if cached, ok := b.lru.Get(key); ok && !req.Msg.GetForceRebuild() {
 		b.log.Debug("cache hit", zap.String("key", key))
 		return connect.NewResponse(&responseV1.BuildResponse{
 			Path: cached.(string),
