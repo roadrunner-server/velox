@@ -65,7 +65,6 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 	}
 
 	sb := new(strings.Builder)
-
 	for pi, p := range req.Msg.GetPluginsInfo() {
 		if p == nil {
 			b.log.Warn("plugin info is nil", zap.String("plugin", pi))
@@ -105,7 +104,9 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 				return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("github plugin config: %w", err))
 			}
 		case "gitlab":
+			return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("gitlab plugin is not implemented"))
 		default:
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown code hosting provider %s", pi))
 		}
 
 		rp := github.NewGHRepoInfo(cfg, b.log.Named("GitHub"))
