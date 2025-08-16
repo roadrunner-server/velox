@@ -19,10 +19,11 @@ import (
 
 const (
 	// path to the file which should be generated from the template
-	pluginsPath    string = "/container/plugins.go"
-	goModStr       string = "go.mod"
-	rrMainGo       string = "cmd/rr/main.go"
-	executableName string = "rr"
+	pluginsPath           string = "/container/plugins.go"
+	goModStr              string = "go.mod"
+	rrMainGo              string = "cmd/rr/main.go"
+	executableName        string = "rr"
+	executableNameWindows string = "rr.exe"
 	// cleanup pattern
 	cleanupPattern string = "roadrunner-server*"
 	ldflags        string = "-X github.com/roadrunner-server/roadrunner/v2025/internal/meta.version=%s -X github.com/roadrunner-server/roadrunner/v2025/internal/meta.buildTime=%s"
@@ -96,7 +97,8 @@ func (b *Builder) Build(rrRef string) error { //nolint:gocyclo
 	}
 	defer func() {
 		_ = f.Close()
-		files, errGl := filepath.Glob(filepath.Join(os.TempDir(), cleanupPattern))
+		// clean output directory, remove everything except RR binary
+		files, errGl := filepath.Glob(filepath.Join(b.outputDir, cleanupPattern))
 		if errGl != nil {
 			return
 		}
@@ -184,13 +186,13 @@ func (b *Builder) Build(rrRef string) error { //nolint:gocyclo
 	}
 
 	// INFO: we can get go envs via go env GOOS for example, but instead we will set them manually
-	err = b.goBuildCmd(filepath.Join(b.rrTempPath, executableName))
+	err = b.goBuildCmd(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)))
 	if err != nil {
 		return err
 	}
 
-	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, executableName)), zap.String("to", filepath.Join(b.outputDir, executableName)))
-	err = moveFile(filepath.Join(b.rrTempPath, executableName), filepath.Join(b.outputDir, executableName))
+	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, generateExecutableName(b.goos))), zap.String("to", filepath.Join(b.outputDir, generateExecutableName(b.goos))))
+	err = moveFile(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)), filepath.Join(b.outputDir, generateExecutableName(b.goos)))
 	if err != nil {
 		return err
 	}
@@ -331,4 +333,12 @@ func moveFile(from, to string) error {
 	}
 
 	return toFile.Close()
+}
+
+// for Windows we should use .exe pattern
+func generateExecutableName(goos string) string {
+	if strings.ToLower(goos) == "windows" {
+		return executableNameWindows
+	}
+	return executableName
 }
