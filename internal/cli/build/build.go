@@ -61,7 +61,12 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				pMod = append(pMod, mi...)
 			}
 
-			err = builder.NewBuilder(path, pMod, *out, cfg.Roadrunner[ref], cfg.Debug.Enabled, zlog.Named("Builder")).Build(cfg.Roadrunner[ref])
+			err = builder.NewBuilder(path, pMod,
+				builder.WithOutputDir(*out),
+				builder.WithRRVersion(cfg.Roadrunner[ref]),
+				builder.WithDebug(cfg.Debug.Enabled),
+				builder.WithLogger(zlog.Named("Builder")),
+			).Build(cfg.Roadrunner[ref])
 			if err != nil {
 				zlog.Error("fatal", zap.Error(err))
 				os.Exit(1)

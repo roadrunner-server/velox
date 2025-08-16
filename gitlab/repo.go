@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -49,7 +49,7 @@ func (r *GLRepo) GetPluginsModData() ([]*velox.ModulesInfo, error) {
 			return nil, errors.New("ref can't be empty")
 		}
 
-		file, resp, err := r.client.RepositoryFiles.GetFile(v.Repo, path.Join(v.Folder, "go.mod"), &gitlab.GetFileOptions{
+		file, resp, err := r.client.RepositoryFiles.GetFile(v.Repo, filepath.Join(v.Folder, "go.mod"), &gitlab.GetFileOptions{
 			Ref: toPtr(v.Ref),
 		})
 		if err != nil {

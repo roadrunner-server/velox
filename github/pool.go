@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v71/github"
+	"github.com/google/go-github/v74/github"
 	"github.com/roadrunner-server/velox/v2025"
 	"go.uber.org/zap"
 )
@@ -76,7 +76,7 @@ func (p *processor) run() {
 				rc, resp, err := p.client.Repositories.DownloadContents(context.Background(),
 					v.pluginCfg.Owner,
 					v.pluginCfg.Repo,
-					path.Join(v.pluginCfg.Folder, gomod), &github.RepositoryContentGetOptions{Ref: v.pluginCfg.Ref},
+					filepath.Join(v.pluginCfg.Folder, gomod), &github.RepositoryContentGetOptions{Ref: v.pluginCfg.Ref},
 				)
 				if err != nil {
 					p.appendErr(err)

@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/roadrunner-server/velox/v2025"
 	"github.com/roadrunner-server/velox/v2025/internal/cli/build"
+	"github.com/roadrunner-server/velox/v2025/internal/cli/server"
 	"github.com/roadrunner-server/velox/v2025/internal/version"
 	"github.com/roadrunner-server/velox/v2025/logger"
 	"github.com/spf13/cobra"
@@ -15,14 +16,14 @@ import (
 )
 
 func NewCommand(executableName string) *cobra.Command {
-	var config = &velox.Config{} // velox configuration
 	lg, _ := zap.NewDevelopment()
 	var cfgPath = strPtr("")
 
 	var (
 		pathToConfig string // path to the velox configuration
 		outputFile   string // output file (optionally with directory)
-
+		address      string
+		config       *velox.Config // velox configuration
 	)
 
 	cmd := &cobra.Command{
@@ -31,7 +32,10 @@ func NewCommand(executableName string) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Version:       fmt.Sprintf("%s (build time: %s, %s)", version.Version(), version.BuildTime(), runtime.Version()),
-		PersistentPreRunE: func(*cobra.Command, []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if cmd.Use == "server" {
+				return nil
+			}
 			var cfg *velox.Config
 			// the user doesn't provide a path to the config
 			if pathToConfig == "" {
@@ -75,9 +79,11 @@ func NewCommand(executableName string) *cobra.Command {
 	flag := cmd.PersistentFlags()
 	flag.StringVarP(&pathToConfig, "config", "c", "velox.toml", "Path to the velox configuration file: -c velox.toml")
 	flag.StringVarP(&outputFile, "out", "o", ".", "Output path: -o /usr/local/bin")
+	flag.StringVarP(&address, "address", "a", "127.0.0.1:8080", "Address to bind server: -a 127.0.0.1:8080")
 
 	cmd.AddCommand(
 		build.BindCommand(config, cfgPath, lg),
+		server.BindCommand(&address, lg.Named("server")),
 	)
 	return cmd
 }

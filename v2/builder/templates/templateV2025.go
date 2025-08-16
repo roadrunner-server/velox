@@ -1,18 +1,13 @@
 package templates
 
-import (
-	"io"
-	"text/template"
-)
-
 const GoModTemplateV2025 string = `
-module github.com/roadrunner-server/roadrunner/{{.ModuleVersion}}
+module github.com/roadrunner-server/roadrunner/{{.RRModuleVersion}}
 
-go 1.24
-toolchain go1.24.3
+go 1.25
+toolchain go1.25.0
 
 require (
-	github.com/olekukonko/tablewriter v1.0.7
+	github.com/olekukonko/tablewriter v1.0.8
 	github.com/buger/goterm v1.0.4
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
@@ -23,16 +18,11 @@ require (
 	go.uber.org/automaxprocs v1.6.0
 	github.com/roadrunner-server/informer/v5 latest
 	github.com/roadrunner-server/resetter/v5 latest
-	github.com/roadrunner-server/config/v5 latest
 
 	// Go module pseudo-version
-	{{range $v := .Entries}}{{$v.Module}} {{$v.PseudoVersion}}
+	// format 'abcde github.com/foo/bar/<version> <tag>'
+	{{range $v := .Requires}}{{$v}}
 	{{end}}
-)
-
-replace (
-	{{range $v := .Entries}}{{if (ne $v.Replace "")}}{{$v.Module}} => {{$v.Replace}}
-	{{end}}{{end}}
 )
 
 exclude (
@@ -48,7 +38,7 @@ package container
 import (
 	"github.com/roadrunner-server/informer/v5"
 	"github.com/roadrunner-server/resetter/v5"
-	{{range $v := .Entries}}{{$v.Prefix}} "{{$v.Module}}"
+	{{range $v := .Imports}}{{$v}}
 	{{end}}
 )
 
@@ -61,18 +51,9 @@ func Plugins() []any {
 		&resetter.Plugin{},
 
 		// std and custom plugins
-		{{range $v := .Entries}}&{{$v.Prefix}}.{{$v.StructureName}},
+		// format should use prefix as it used in the .Plugins in the Mod template
+		{{range $v := .Code}}&{{$v}},
 		{{end}}
 	}
 }
 `
-
-// CompileGoModTemplate2025 compiles the go.mod template for v2025
-func CompileGoModTemplate2025(wr io.Writer, t *Template) error {
-	tmpl, err := template.New("goModV2025").Parse(GoModTemplateV2025)
-	if err != nil {
-		return err
-	}
-
-	return tmpl.Execute(wr, t)
-}

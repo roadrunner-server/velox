@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package api.service.v1;
+
+import "api/request/v1/request.proto";
+import "api/response/v1/response.proto";
+
+option go_package = "github.com/roadrunner-server/velox/v2025/gen/go/api/service/v1;serviceV1";
+
+service BuildService {
+  rpc Build(api.request.v1.BuildRequest) returns (api.response.v1.BuildResponse);
+}
