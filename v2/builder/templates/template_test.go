@@ -1,4 +1,4 @@
-package builder
+package templates_test
 
 import (
 	"bytes"

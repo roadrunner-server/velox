@@ -14,7 +14,7 @@ message Platform {
 message BuildRequest {
   // request_id is optional and needed to match requests with their responses on the client side
   string request_id = 1 [
-    (buf.validate.field).string.max_len = 100,
+    (buf.validate.field).string.uuid = true,
     (buf.validate.field).required = false
   ];
   string rr_version = 2 [
@@ -27,11 +27,7 @@ message BuildRequest {
   ];
   bool force_rebuild = 3 [(buf.validate.field).required = false];
   Platform build_platform = 4 [(buf.validate.field).required = false];
-  map<string, PluginInfo> plugins_info = 5 [(buf.validate.field).required = true];
-}
-
-message PluginInfo {
-  repeated Plugin plugins = 2 [(buf.validate.field).required = true]; // list of plugins to be built
+  repeated Plugin plugins = 5 [(buf.validate.field).required = true];
 }
 
 message Plugin {

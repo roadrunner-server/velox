@@ -54,7 +54,7 @@ func NewBuildServer(log *zap.Logger) *BuildServer {
 			if err != nil {
 				log.Error("failed to remove directory", zap.String("path", filepath.Join(os.TempDir(), hash)), zap.Error(err))
 			}
-		}, time.Minute*1),
+		}, time.Minute*30),
 		currentlyProcessing: lru.NewLRU(100, func(key string, _ struct{}) {
 			// key -> hash, value - struct{} (no data to delete)
 			log.Info("evicting currently processing key", zap.String("key", key))
@@ -94,52 +94,38 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 	outputPath := filepath.Join(os.TempDir(), hash)
 	sb := new(strings.Builder)
 	bplugins := make([]*plugin.Plugin, 0, 5)
-	for pi, p := range req.Msg.GetPluginsInfo() {
+	for _, p := range req.Msg.GetPlugins() {
 		if p == nil {
-			b.log.Warn("plugin info is nil", zap.String("plugin", pi))
+			b.log.Warn("plugin info is nil")
 			continue
 		}
 
-		switch strings.ToLower(pi) {
-		case "github":
-			for _, plug := range p.GetPlugins() {
-				if plug == nil {
-					b.log.Warn("plugin is nil", zap.String("plugin", pi))
-					continue
-				}
+		bplugins = append(bplugins, plugin.NewPlugin(p.GetModuleName(), p.GetTag()))
+	}
 
-				bplugins = append(bplugins, plugin.NewPlugin(plug.GetModuleName(), plug.GetTag()))
-			}
-		case "gitlab":
-			return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("gitlab plugin is not implemented"))
-		default:
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown code hosting provider %s", pi))
-		}
+	rp := github.NewHTTPClient(os.Getenv("GITHUB_TOKEN"), b.rrcache, b.log.Named("GitHub"))
+	// TODO: do not use key here, just TempDir. Instead, use key to copy the already downloaded repo to the os.TempDir + key
+	path, err := rp.DownloadTemplate(os.TempDir(), hash, req.Msg.GetRrVersion())
+	if err != nil {
+		b.log.Error("downloading template", zap.Error(err))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("downloading template: %w", err))
+	}
 
-		rp := github.NewHTTPClient(os.Getenv("GITHUB_TOKEN"), b.rrcache, b.log.Named("GitHub"))
-		// TODO: do not use key here, just TempDir. Instead, use key to copy the already downloaded repo to the os.TempDir + key
-		path, err := rp.DownloadTemplate(os.TempDir(), hash, req.Msg.GetRrVersion())
-		if err != nil {
-			b.log.Error("downloading template", zap.Error(err))
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("downloading template: %w", err))
-		}
+	opts := make([]builder.Option, 0)
+	opts = append(opts,
+		builder.WithPlugins(bplugins...),
+		builder.WithOutputDir(outputPath),
+		builder.WithRRVersion(req.Msg.GetRrVersion()),
+		builder.WithLogs(sb),
+		builder.WithLogger(b.log.Named("Builder")),
+		builder.WithGOOS(req.Msg.BuildPlatform.GetOs()),
+		builder.WithGOARCH(req.Msg.BuildPlatform.GetArch()),
+	)
 
-		opts := make([]builder.Option, 0)
-		opts = append(opts,
-			builder.WithPlugins(bplugins...),
-			builder.WithOutputDir(outputPath),
-			builder.WithRRVersion(req.Msg.GetRrVersion()),
-			builder.WithLogs(sb),
-			builder.WithLogger(b.log.Named("Builder")),
-			builder.WithGOOS(req.Msg.BuildPlatform.GetOs()),
-			builder.WithGOARCH(req.Msg.BuildPlatform.GetArch()),
-		)
-
-		err = builder.NewBuilder(path, opts...).Build(req.Msg.GetRrVersion())
-		if err != nil {
-			b.log.Error("fatal", zap.Error(err))
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("building plugins: %w", err))
-		}
+	err = builder.NewBuilder(path, opts...).Build(req.Msg.GetRrVersion())
+	if err != nil {
+		b.log.Error("fatal", zap.Error(err))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("building plugins: %w", err))
 	}
 
 	binaryPath := fmt.Sprintf("%s/%s", outputPath, "rr")
@@ -158,7 +144,7 @@ func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequ
 		RequestId:     req.Msg.GetRequestId(),
 		RrVersion:     req.Msg.GetRrVersion(),
 		BuildPlatform: req.Msg.GetBuildPlatform(),
-		PluginsInfo:   req.Msg.GetPluginsInfo(),
+		Plugins:       req.Msg.GetPlugins(),
 	}
 
 	data, err := proto.MarshalOptions{

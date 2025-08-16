@@ -77,11 +77,11 @@ func (x *Platform) GetArch() string {
 type BuildRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// request_id is optional and needed to match requests with their responses on the client side
-	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	RrVersion     string                 `protobuf:"bytes,2,opt,name=rr_version,json=rrVersion,proto3" json:"rr_version,omitempty"`
-	ForceRebuild  bool                   `protobuf:"varint,3,opt,name=force_rebuild,json=forceRebuild,proto3" json:"force_rebuild,omitempty"`
-	BuildPlatform *Platform              `protobuf:"bytes,4,opt,name=build_platform,json=buildPlatform,proto3" json:"build_platform,omitempty"`
-	PluginsInfo   map[string]*PluginInfo `protobuf:"bytes,5,rep,name=plugins_info,json=pluginsInfo,proto3" json:"plugins_info,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	RequestId     string    `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	RrVersion     string    `protobuf:"bytes,2,opt,name=rr_version,json=rrVersion,proto3" json:"rr_version,omitempty"`
+	ForceRebuild  bool      `protobuf:"varint,3,opt,name=force_rebuild,json=forceRebuild,proto3" json:"force_rebuild,omitempty"`
+	BuildPlatform *Platform `protobuf:"bytes,4,opt,name=build_platform,json=buildPlatform,proto3" json:"build_platform,omitempty"`
+	Plugins       []*Plugin `protobuf:"bytes,5,rep,name=plugins,proto3" json:"plugins,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -144,51 +144,7 @@ func (x *BuildRequest) GetBuildPlatform() *Platform {
 	return nil
 }
 
-func (x *BuildRequest) GetPluginsInfo() map[string]*PluginInfo {
-	if x != nil {
-		return x.PluginsInfo
-	}
-	return nil
-}
-
-type PluginInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Plugins       []*Plugin              `protobuf:"bytes,2,rep,name=plugins,proto3" json:"plugins,omitempty"` // list of plugins to be built
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PluginInfo) Reset() {
-	*x = PluginInfo{}
-	mi := &file_api_request_v1_request_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PluginInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PluginInfo) ProtoMessage() {}
-
-func (x *PluginInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_request_v1_request_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PluginInfo.ProtoReflect.Descriptor instead.
-func (*PluginInfo) Descriptor() ([]byte, []int) {
-	return file_api_request_v1_request_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *PluginInfo) GetPlugins() []*Plugin {
+func (x *BuildRequest) GetPlugins() []*Plugin {
 	if x != nil {
 		return x.Plugins
 	}
@@ -205,7 +161,7 @@ type Plugin struct {
 
 func (x *Plugin) Reset() {
 	*x = Plugin{}
-	mi := &file_api_request_v1_request_proto_msgTypes[3]
+	mi := &file_api_request_v1_request_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -217,7 +173,7 @@ func (x *Plugin) String() string {
 func (*Plugin) ProtoMessage() {}
 
 func (x *Plugin) ProtoReflect() protoreflect.Message {
-	mi := &file_api_request_v1_request_proto_msgTypes[3]
+	mi := &file_api_request_v1_request_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -230,7 +186,7 @@ func (x *Plugin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Plugin.ProtoReflect.Descriptor instead.
 func (*Plugin) Descriptor() ([]byte, []int) {
-	return file_api_request_v1_request_proto_rawDescGZIP(), []int{3}
+	return file_api_request_v1_request_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Plugin) GetModuleName() string {
@@ -254,23 +210,16 @@ const file_api_request_v1_request_proto_rawDesc = "" +
 	"\x1capi/request/v1/request.proto\x12\x0eapi.request.v1\x1a\x1bbuf/validate/validate.proto\".\n" +
 	"\bPlatform\x12\x0e\n" +
 	"\x02os\x18\x01 \x01(\tR\x02os\x12\x12\n" +
-	"\x04arch\x18\x02 \x01(\tR\x04arch\"\xe7\x04\n" +
-	"\fBuildRequest\x12)\n" +
+	"\x04arch\x18\x02 \x01(\tR\x04arch\"\xec\x03\n" +
+	"\fBuildRequest\x12*\n" +
 	"\n" +
-	"request_id\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x00r\x02\x18dR\trequestId\x12\xff\x01\n" +
+	"request_id\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x00r\x03\xb0\x01\x01R\trequestId\x12\xff\x01\n" +
 	"\n" +
 	"rr_version\x18\x02 \x01(\tB\xdf\x01\xbaH\xdb\x01\xba\x01\xd4\x01\n" +
 	"\x11rr_version.format\x12~rr_version must be a semantic version starting with 'v' (e.g., v2025.1.0), 'master', or a git commit SHA (7-40 hex characters)\x1a?this.matches('^(v\\\\d+\\\\.\\\\d+\\\\.\\\\d+.*|master|[a-f0-9]{7,40})$')\xc8\x01\x01R\trrVersion\x12+\n" +
 	"\rforce_rebuild\x18\x03 \x01(\bB\x06\xbaH\x03\xc8\x01\x00R\fforceRebuild\x12G\n" +
-	"\x0ebuild_platform\x18\x04 \x01(\v2\x18.api.request.v1.PlatformB\x06\xbaH\x03\xc8\x01\x00R\rbuildPlatform\x12X\n" +
-	"\fplugins_info\x18\x05 \x03(\v2-.api.request.v1.BuildRequest.PluginsInfoEntryB\x06\xbaH\x03\xc8\x01\x01R\vpluginsInfo\x1aZ\n" +
-	"\x10PluginsInfoEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
-	"\x05value\x18\x02 \x01(\v2\x1a.api.request.v1.PluginInfoR\x05value:\x028\x01\"F\n" +
-	"\n" +
-	"PluginInfo\x128\n" +
-	"\aplugins\x18\x02 \x03(\v2\x16.api.request.v1.PluginB\x06\xbaH\x03\xc8\x01\x01R\aplugins\"K\n" +
+	"\x0ebuild_platform\x18\x04 \x01(\v2\x18.api.request.v1.PlatformB\x06\xbaH\x03\xc8\x01\x00R\rbuildPlatform\x128\n" +
+	"\aplugins\x18\x05 \x03(\v2\x16.api.request.v1.PluginB\x06\xbaH\x03\xc8\x01\x01R\aplugins\"K\n" +
 	"\x06Plugin\x12'\n" +
 	"\vmodule_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"moduleName\x12\x18\n" +
@@ -288,24 +237,20 @@ func file_api_request_v1_request_proto_rawDescGZIP() []byte {
 	return file_api_request_v1_request_proto_rawDescData
 }
 
-var file_api_request_v1_request_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_api_request_v1_request_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_api_request_v1_request_proto_goTypes = []any{
 	(*Platform)(nil),     // 0: api.request.v1.Platform
 	(*BuildRequest)(nil), // 1: api.request.v1.BuildRequest
-	(*PluginInfo)(nil),   // 2: api.request.v1.PluginInfo
-	(*Plugin)(nil),       // 3: api.request.v1.Plugin
-	nil,                  // 4: api.request.v1.BuildRequest.PluginsInfoEntry
+	(*Plugin)(nil),       // 2: api.request.v1.Plugin
 }
 var file_api_request_v1_request_proto_depIdxs = []int32{
 	0, // 0: api.request.v1.BuildRequest.build_platform:type_name -> api.request.v1.Platform
-	4, // 1: api.request.v1.BuildRequest.plugins_info:type_name -> api.request.v1.BuildRequest.PluginsInfoEntry
-	3, // 2: api.request.v1.PluginInfo.plugins:type_name -> api.request.v1.Plugin
-	2, // 3: api.request.v1.BuildRequest.PluginsInfoEntry.value:type_name -> api.request.v1.PluginInfo
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2, // 1: api.request.v1.BuildRequest.plugins:type_name -> api.request.v1.Plugin
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_api_request_v1_request_proto_init() }
@@ -319,7 +264,7 @@ func file_api_request_v1_request_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_request_v1_request_proto_rawDesc), len(file_api_request_v1_request_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
