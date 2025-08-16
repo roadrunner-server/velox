@@ -35,8 +35,6 @@ message PluginInfo {
 }
 
 message Plugin {
-  string name = 1 [(buf.validate.field).required = false]; // optional, if not set, ref+owner+repository will be used
-  string ref = 2 [(buf.validate.field).required = true]; // git ref, branch, tag, commit
-  string owner = 3 [(buf.validate.field).required = true]; // roadrunner-server
-  string repository = 4 [(buf.validate.field).required = true]; // static
+  string module_name = 1 [(buf.validate.field).required = true];
+  string tag = 2 [(buf.validate.field).required = true];
 }

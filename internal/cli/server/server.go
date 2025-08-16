@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"hash/fnv"
@@ -12,20 +13,29 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	lru "github.com/hashicorp/golang-lru/v2/expirable"
-	"github.com/roadrunner-server/velox/v2025"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 
 	"buf.build/go/protovalidate"
-	"github.com/roadrunner-server/velox/v2025/builder"
 	requestV1 "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1"
 	responseV1 "github.com/roadrunner-server/velox/v2025/gen/go/api/response/v1"
-	"github.com/roadrunner-server/velox/v2025/github"
+	"github.com/roadrunner-server/velox/v2025/v2/builder"
+	cacheimpl "github.com/roadrunner-server/velox/v2025/v2/cache"
+	"github.com/roadrunner-server/velox/v2025/v2/github"
+	"github.com/roadrunner-server/velox/v2025/v2/plugin"
 )
+
+type cache interface {
+	Get(key string) *bytes.Buffer
+	Set(key string, value *bytes.Buffer)
+}
 
 type BuildServer struct {
 	log *zap.Logger
-	lru *lru.LRU[string, any]
+	// lru cache with the RR builds
+	lru                 *lru.LRU[string, any]
+	currentlyProcessing *lru.LRU[string, struct{}]
+	rrcache             cache
 }
 
 func NewBuildServer(log *zap.Logger) *BuildServer {
@@ -36,6 +46,11 @@ func NewBuildServer(log *zap.Logger) *BuildServer {
 			log.Info("evicting cache key", zap.String("key", key))
 			_ = os.RemoveAll(value.(string))
 		}, time.Minute*30),
+		currentlyProcessing: lru.NewLRU(100, func(key string, _ struct{}) {
+			// key -> hash, value - struct{} (no data to delete)
+			log.Info("evicting currently processing key", zap.String("key", key))
+		}, time.Minute*5),
+		rrcache: cacheimpl.NewRRCache(),
 	}
 }
 
@@ -46,25 +61,30 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("validating request: %w", err))
 	}
 
-	key := b.generateCacheKey(req)
-	b.log.Debug("cache key", zap.String("key", key))
+	hash := b.generateCacheHash(req)
+	b.log.Debug("cache key", zap.String("key", hash))
 
-	if cached, ok := b.lru.Get(key); ok && !req.Msg.GetForceRebuild() {
-		b.log.Debug("cache hit", zap.String("key", key))
+	// we can't process the same request concurrently, since we use a filesystem and we don't want to corrupt the state
+	// b.currentlyProcessing is safe for concurrent use
+	if b.currentlyProcessing.Contains(hash) {
+		b.log.Debug("currently processing", zap.String("key", hash))
+		return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("build is already in progress"))
+	}
+
+	b.currentlyProcessing.Add(hash, struct{}{})
+	defer b.currentlyProcessing.Remove(hash)
+
+	if cached, ok := b.lru.Get(hash); ok && !req.Msg.GetForceRebuild() {
+		b.log.Debug("cache hit", zap.String("key", hash))
 		return connect.NewResponse(&responseV1.BuildResponse{
 			Path: cached.(string),
 			Logs: "cached output, logs are available only on the first build",
 		}), nil
 	}
 
-	outputPath := filepath.Join(os.TempDir(), key)
-
-	cfg := velox.DefaultConfig
-	if req.Msg.GetRrVersion() != "" {
-		cfg.Roadrunner[velox.DefaultRRRef] = req.Msg.GetRrVersion()
-	}
-
+	outputPath := filepath.Join(os.TempDir(), hash)
 	sb := new(strings.Builder)
+	bplugins := make([]*plugin.Plugin, 0, 5)
 	for pi, p := range req.Msg.GetPluginsInfo() {
 		if p == nil {
 			b.log.Warn("plugin info is nil", zap.String("plugin", pi))
@@ -73,35 +93,13 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 
 		switch strings.ToLower(pi) {
 		case "github":
-			if cfg.GitHub == nil {
-				cfg.GitHub = &velox.CodeHosting{
-					Token: &velox.Token{
-						Token: os.Getenv("GITHUB_TOKEN"),
-					},
-				}
-			}
-
-			if cfg.GitHub.Plugins == nil {
-				cfg.GitHub.Plugins = make(map[string]*velox.PluginConfig)
-			}
-
-			for _, m := range p.GetPlugins() {
-				b.log.Debug("adding plugin", zap.String("plugin", m.GetName()))
-				name := m.GetName()
-				if m.GetName() == "" {
-					name = fmt.Sprintf("%s/%s/%s", m.GetOwner(), m.GetRepository(), m.GetRef())
+			for _, plug := range p.GetPlugins() {
+				if plug == nil {
+					b.log.Warn("plugin is nil", zap.String("plugin", pi))
+					continue
 				}
 
-				cfg.GitHub.Plugins[name] = &velox.PluginConfig{
-					Ref:   m.GetRef(),
-					Owner: m.GetOwner(),
-					Repo:  m.GetRepository(),
-				}
-			}
-
-			err := cfg.Validate()
-			if err != nil {
-				return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("github plugin config: %w", err))
+				bplugins = append(bplugins, plugin.NewPlugin(plug.GetModuleName(), plug.GetTag()))
 			}
 		case "gitlab":
 			return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("gitlab plugin is not implemented"))
@@ -109,31 +107,26 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown code hosting provider %s", pi))
 		}
 
-		rp := github.NewGHRepoInfo(cfg, b.log.Named("GitHub"))
-		path, err := rp.DownloadTemplate(os.TempDir(), cfg.Roadrunner[velox.DefaultRRRef])
+		rp := github.NewHTTPClient(os.Getenv("GITHUB_TOKEN"), b.rrcache, b.log.Named("GitHub"))
+		// TODO: do not use key here, just TempDir. Instead, use key to copy the already downloaded repo to the os.TempDir + key
+		path, err := rp.DownloadTemplate(os.TempDir(), hash, req.Msg.GetRrVersion())
 		if err != nil {
 			b.log.Error("downloading template", zap.Error(err))
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("downloading template: %w", err))
 		}
 
-		pMod, err := rp.GetPluginsModData()
-		if err != nil {
-			b.log.Error("get plugins mod data", zap.Error(err))
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("get plugins mod data: %w", err))
-		}
-
 		opts := make([]builder.Option, 0)
 		opts = append(opts,
+			builder.WithPlugins(bplugins...),
 			builder.WithOutputDir(outputPath),
-			builder.WithRRVersion(cfg.Roadrunner[velox.DefaultRRRef]),
-			builder.WithDebug(cfg.Debug.Enabled),
+			builder.WithRRVersion(req.Msg.GetRrVersion()),
 			builder.WithLogs(sb),
 			builder.WithLogger(b.log.Named("Builder")),
 			builder.WithGOOS(req.Msg.BuildPlatform.GetOs()),
 			builder.WithGOARCH(req.Msg.BuildPlatform.GetArch()),
 		)
 
-		err = builder.NewBuilder(path, pMod, opts...).Build(cfg.Roadrunner[velox.DefaultRRRef])
+		err = builder.NewBuilder(path, opts...).Build(req.Msg.GetRrVersion())
 		if err != nil {
 			b.log.Error("fatal", zap.Error(err))
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("building plugins: %w", err))
@@ -147,12 +140,13 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		Logs: sb.String(),
 	}
 
-	b.lru.Add(key, binaryPath)
+	b.lru.Add(hash, binaryPath)
 	return connect.NewResponse(resp), nil
 }
 
-func (b *BuildServer) generateCacheKey(req *connect.Request[requestV1.BuildRequest]) string {
+func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequest]) string {
 	cacheReq := &requestV1.BuildRequest{
+		RequestId:     req.Msg.GetRequestId(),
 		RrVersion:     req.Msg.GetRrVersion(),
 		BuildPlatform: req.Msg.GetBuildPlatform(),
 		PluginsInfo:   req.Msg.GetPluginsInfo(),

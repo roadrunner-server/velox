@@ -2,7 +2,7 @@ package builder
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/roadrunner-server/velox/v2025"
@@ -119,7 +119,7 @@ func setup(version string) *Builder {
 
 	for _, v := range b.modules {
 		_ = os.Mkdir(v.Replace, rights)
-		_ = os.WriteFile(path.Join(v.Replace, goModStr), associated[v.ModuleName], rights)
+		_ = os.WriteFile(filepath.Join(v.Replace, goModStr), associated[v.ModuleName], rights)
 	}
 
 	return b

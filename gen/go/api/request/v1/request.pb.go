@@ -197,10 +197,8 @@ func (x *PluginInfo) GetPlugins() []*Plugin {
 
 type Plugin struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`             // optional, if not set, ref+owner+repository will be used
-	Ref           string                 `protobuf:"bytes,2,opt,name=ref,proto3" json:"ref,omitempty"`               // git ref, branch, tag, commit
-	Owner         string                 `protobuf:"bytes,3,opt,name=owner,proto3" json:"owner,omitempty"`           // roadrunner-server
-	Repository    string                 `protobuf:"bytes,4,opt,name=repository,proto3" json:"repository,omitempty"` // static
+	ModuleName    string                 `protobuf:"bytes,1,opt,name=module_name,json=moduleName,proto3" json:"module_name,omitempty"`
+	Tag           string                 `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -235,30 +233,16 @@ func (*Plugin) Descriptor() ([]byte, []int) {
 	return file_api_request_v1_request_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *Plugin) GetName() string {
+func (x *Plugin) GetModuleName() string {
 	if x != nil {
-		return x.Name
+		return x.ModuleName
 	}
 	return ""
 }
 
-func (x *Plugin) GetRef() string {
+func (x *Plugin) GetTag() string {
 	if x != nil {
-		return x.Ref
-	}
-	return ""
-}
-
-func (x *Plugin) GetOwner() string {
-	if x != nil {
-		return x.Owner
-	}
-	return ""
-}
-
-func (x *Plugin) GetRepository() string {
-	if x != nil {
-		return x.Repository
+		return x.Tag
 	}
 	return ""
 }
@@ -286,14 +270,11 @@ const file_api_request_v1_request_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v2\x1a.api.request.v1.PluginInfoR\x05value:\x028\x01\"F\n" +
 	"\n" +
 	"PluginInfo\x128\n" +
-	"\aplugins\x18\x02 \x03(\v2\x16.api.request.v1.PluginB\x06\xbaH\x03\xc8\x01\x01R\aplugins\"\x84\x01\n" +
-	"\x06Plugin\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x00R\x04name\x12\x18\n" +
-	"\x03ref\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03ref\x12\x1c\n" +
-	"\x05owner\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05owner\x12&\n" +
-	"\n" +
-	"repository\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"repositoryBJZHgithub.com/roadrunner-server/velox/v2025/gen/go/api/request/v1;requestV1b\x06proto3"
+	"\aplugins\x18\x02 \x03(\v2\x16.api.request.v1.PluginB\x06\xbaH\x03\xc8\x01\x01R\aplugins\"K\n" +
+	"\x06Plugin\x12'\n" +
+	"\vmodule_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"moduleName\x12\x18\n" +
+	"\x03tag\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03tagBJZHgithub.com/roadrunner-server/velox/v2025/gen/go/api/request/v1;requestV1b\x06proto3"
 
 var (
 	file_api_request_v1_request_proto_rawDescOnce sync.Once

@@ -4,43 +4,38 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-version"
 	"github.com/roadrunner-server/velox/v2025"
-	"github.com/roadrunner-server/velox/v2025/builder/templates"
+	"github.com/roadrunner-server/velox/v2025/v2/builder/templates"
+	"github.com/roadrunner-server/velox/v2025/v2/plugin"
 	"go.uber.org/zap"
 )
 
 const (
 	// path to the file which should be generated from the template
-	pluginsPath        string = "/container/plugins.go"
-	letterBytes               = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	goModStr           string = "go.mod"
-	pluginStructureStr string = "Plugin{}"
-	rrMainGo           string = "cmd/rr/main.go"
-	executableName     string = "rr"
+	pluginsPath    string = "/container/plugins.go"
+	goModStr       string = "go.mod"
+	rrMainGo       string = "cmd/rr/main.go"
+	executableName string = "rr"
 	// cleanup pattern
 	cleanupPattern string = "roadrunner-server*"
 	ldflags        string = "-X github.com/roadrunner-server/roadrunner/v2025/internal/meta.version=%s -X github.com/roadrunner-server/roadrunner/v2025/internal/meta.buildTime=%s"
 )
-
-var replaceRegexp = regexp.MustCompile("(\t| )(.+) => (.+)")
 
 type Builder struct {
 	// rrTempPath - path, where RR was saved
 	rrTempPath string
 	// outputDir - output directory
 	outputDir string
-	modules   []*velox.ModulesInfo
 	log       *zap.Logger
 	sb        *strings.Builder
+	plugins   []*plugin.Plugin
 	debug     bool
 	rrVersion string
 	goos      string
@@ -48,10 +43,9 @@ type Builder struct {
 }
 
 // NewBuilder creates a new Builder with the given required parameters and optional configuration
-func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, opts ...Option) *Builder {
+func NewBuilder(rrTmpPath string, opts ...Option) *Builder {
 	b := &Builder{
 		rrTempPath: rrTmpPath,
-		modules:    modules,
 	}
 
 	// Apply all options
@@ -63,31 +57,23 @@ func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, opts ...Option) 
 }
 
 // Build builds a RR based on the provided modules info
-func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
-	t := new(templates.Template)
+func (b *Builder) Build(rrRef string) error { //nolint:gocyclo
+	if len(b.plugins) == 0 {
+		return fmt.Errorf("please, use WithPlugins to add plugins to the RR build")
+	}
 
-	module, err := validateModule(rrModule)
+	t := templates.NewTemplate(b.plugins)
+
+	module, err := validateModule(rrRef)
 	if err != nil {
 		return err
 	}
 
-	t.ModuleVersion = module
-	t.Entries = make([]*templates.Entry, len(b.modules))
-	for i := range b.modules {
-		t.Entries[i] = &templates.Entry{
-			Module: b.modules[i].ModuleName,
-			// we need to set prefix to avoid collisions
-			Prefix:        randStringBytes(5),
-			StructureName: pluginStructureStr,
-			PseudoVersion: b.modules[i].PseudoVersion,
-			Replace:       b.modules[i].Replace,
-		}
-	}
-
+	t.RRModuleVersion = module
 	buf := new(bytes.Buffer)
 
 	// compatibility with version 2
-	switch t.ModuleVersion {
+	switch t.RRModuleVersion {
 	case velox.V2025:
 		err = templates.CompileTemplateV2025(buf, t)
 		if err != nil {
@@ -98,18 +84,8 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		if err != nil {
 			return err
 		}
-	case velox.V2023:
-		err = templates.CompileTemplateV2023(buf, t)
-		if err != nil {
-			return err
-		}
-	case velox.V2:
-		err = templates.CompileTemplateV2(buf, t)
-		if err != nil {
-			return err
-		}
 	default:
-		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
+		return fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
 	}
 
 	b.log.Debug("template", zap.String("template", buf.String()))
@@ -156,7 +132,7 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 	buf.Reset()
 
 	// compatibility with version 2
-	switch t.ModuleVersion {
+	switch t.RRModuleVersion {
 	case velox.V2025:
 		err = templates.CompileGoModTemplate2025(buf, t)
 		if err != nil {
@@ -167,18 +143,8 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 		if err != nil {
 			return err
 		}
-	case velox.V2023:
-		err = templates.CompileGoModTemplate2023(buf, t)
-		if err != nil {
-			return err
-		}
-	case velox.V2:
-		err = templates.CompileGoModTemplateV2(buf, t)
-		if err != nil {
-			return err
-		}
 	default:
-		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
+		return fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
 	}
 
 	b.log.Debug("template", zap.String("template", buf.String()))
@@ -254,14 +220,6 @@ func validateModule(module string) (string, error) {
 
 	// return major version (v2, v2023, etc)
 	return fmt.Sprintf("v%d", v.Segments()[0]), nil
-}
-
-func randStringBytes(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))] //nolint:gosec
-	}
-	return string(b)
 }
 
 func (b *Builder) goBuildCmd(outputPath string) error {
@@ -344,38 +302,6 @@ func (b *Builder) exec(cmd []string) error {
 		return err
 	}
 	return nil
-}
-
-func (b *Builder) getDepsReplace(repl string) []*templates.Entry {
-	b.log.Info("found replace, processing", zap.String("dependency", repl))
-	modFile, err := os.ReadFile(filepath.Join(repl, goModStr))
-	if err != nil {
-		return nil
-	}
-
-	var result []*templates.Entry //nolint:prealloc
-	replaces := replaceRegexp.FindAllStringSubmatch(string(modFile), -1)
-	for i := range replaces {
-		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
-		if len(split) != 2 {
-			b.log.Error("not enough split args", zap.String("replace", replaces[i][0]))
-			continue
-		}
-
-		moduleName := split[0]
-		moduleReplace := split[1]
-
-		if strings.HasPrefix(moduleReplace, ".") {
-			moduleReplace = filepath.Join(repl, moduleReplace)
-		}
-
-		result = append(result, &templates.Entry{
-			Module:  moduleName,
-			Replace: moduleReplace,
-		})
-	}
-
-	return result
 }
 
 func moveFile(from, to string) error {

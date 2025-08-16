@@ -9,11 +9,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/google/go-github/v71/github"
+	"github.com/google/go-github/v74/github"
 	"github.com/roadrunner-server/velox/v2025"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -82,7 +81,7 @@ func (r *GHRepo) DownloadTemplate(tmp, version string) (string, error) { //nolin
 	// replace '/' in the branch name or tag with the '_' to prevent using '/' as a path separator
 	version = strings.ReplaceAll(version, "/", "_")
 
-	name := path.Join(tmp, "roadrunner-server-"+version)
+	name := filepath.Join(tmp, "roadrunner-server-"+version)
 	_ = os.RemoveAll(name)
 
 	r.log.Debug("saving repository in temporary folder", zap.String("path", name+zipExt))

@@ -1,323 +1,219 @@
-# Velox Project Documentation
+# Velox - RoadRunner Build System
 
-## Overview
-Velox is a RoadRunner plugin builder that supports downloading and building plugins from GitHub and GitLab repositories. It provides both CLI and gRPC server interfaces for building custom RoadRunner distributions.
+## Project Overview
+
+Velox is an automated build system for RoadRunner server and its plugins. It's part of the Spiral/RoadRunner ecosystem and provides tools for building, testing, and managing RoadRunner plugin builds.
+
+**Key Technologies:**
+
+- Go 1.24+
+- Protocol Buffers (protobuf) with buf
+- GitHub/GitLab API integration
+- gRPC and Connect
+- Cobra CLI framework
 
 ## Repository Structure
 
 ```
-velox/
-├── .claude/                    # Claude documentation
-├── .git/                       # Git repository data
-├── .github/                    # GitHub workflows and templates
-├── .gitignore                  # Git ignore patterns
-├── .golangci.yml              # Go linter configuration
-├── .idea/                      # JetBrains IDE configuration
-├── .mypy_cache/               # Python MyPy cache
-├── .venv/                     # Python virtual environment
-├── .vscode/                   # VS Code configuration
-├── Dockerfile                 # Docker container definition
-├── Dockerfile_sample          # Sample Docker configuration
-├── LICENSE                    # Project license
-├── Makefile                   # Build automation
-├── README.md                  # Project documentation
-├── SECURITY.md               # Security policy
-├── api/                      # Protocol Buffer definitions
-│   ├── request/v1/           # Request message definitions
-│   │   └── request.proto
-│   ├── response/v1/          # Response message definitions
-│   │   └── response.proto
-│   └── service/v1/           # Service definitions
-│       └── service.proto
-├── buf.gen.yaml              # Buf code generation configuration
-├── buf.yaml                  # Buf build configuration
-├── builder/                  # Build engine implementation
-│   ├── builder.go            # Main builder logic
-│   ├── builder_test.go       # Builder tests
-│   ├── template_test.go      # Template tests
-│   └── templates/            # Go template files for different RR versions
-│       ├── entry.go          # Template entry point
-│       ├── templateV2.go     # RoadRunner v2 template
-│       ├── templateV2023.go  # RoadRunner v2023 template
-│       ├── templateV2024.go  # RoadRunner v2024 template
-│       └── templateV2025.go  # RoadRunner v2025 template
-├── cmd/                      # Command line applications
-│   └── vx/                   # Velox CLI application
-│       └── main.go
-├── config.go                 # Configuration types and validation
-├── config_test.go           # Configuration tests
-├── docker-compose.yml       # Docker Compose configuration
-├── gen/                     # Generated code from Protocol Buffers
-│   └── go/                  # Go generated code
-│       └── api/
-│           ├── request/v1/
-│           │   └── request.pb.go
-│           ├── response/v1/
-│           │   └── response.pb.go
-│           └── service/v1/
-│               ├── service.pb.go
-│               ├── service_grpc.pb.go
-│               └── serviceV1connect/
-│                   └── service.connect.go
-├── github/                   # GitHub repository integration
-│   ├── parse_test.go        # GitHub parsing tests
-│   ├── pool.go              # GitHub connection pool
-│   └── repo.go              # GitHub repository operations
-├── gitlab/                   # GitLab repository integration
-│   └── repo.go              # GitLab repository operations
-├── go.mod                   # Go module definition
-├── go.sum                   # Go module checksums
-├── internal/                # Internal packages
-│   ├── cli/                 # CLI command implementations
-│   │   ├── root.go          # Root command
-│   │   ├── build/           # Build command
-│   │   │   └── build.go
-│   │   └── server/          # Server command
-│   │       ├── command.go   # Server CLI command
-│   │       └── server.go    # gRPC server implementation
-│   └── version/             # Version information
-│       └── version.go
-├── logger/                  # Logging utilities
-│   └── logger.go
-├── modulesInfo.go          # Module information handling
-├── update_plugins.py       # Python script for plugin updates
-└── velox.toml             # Project configuration file
+├── api/                    # Protocol buffer definitions
+├── builder/               # Core build logic
+├── cmd/vx/               # Main CLI entry point
+├── gen/                  # Generated protobuf code
+├── github/               # GitHub API integration
+├── gitlab/               # GitLab API integration
+├── internal/cli/         # CLI command implementations
+├── v2/                   # Version 2 refactored components
+└── velox.toml           # Configuration file
 ```
 
-## Core Types and Structures
+## Common Commands
 
-### Configuration Types
+### Building and Testing
 
-#### `Config`
-Main configuration structure for the velox application:
-```go
-type Config struct {
-    Roadrunner map[string]string `mapstructure:"roadrunner"` // RoadRunner version configuration
-    Debug      *Debug            `mapstructure:"debug"`      // Debug settings
-    GitHub     *CodeHosting      `mapstructure:"github"`     // GitHub configuration
-    GitLab     *CodeHosting      `mapstructure:"gitlab"`     // GitLab configuration
-    Log        map[string]string `mapstructure:"log"`        // Logging configuration
-}
+```bash
+# Run tests
+go test -v -race ./...
+make test
+
+# Regenerate protobuf code
+make regenerate
+# Or manually:
+rm -rf ./gen && buf generate && buf format -w
+
+# Build the velox binary
+go build -o vx ./cmd/vx
+
+# Run velox (requires config)
+./vx -c velox.toml build
+./vx -c velox.toml server -a 127.0.0.1:8080
 ```
 
-#### `Debug`
-Debug configuration:
-```go
-type Debug struct {
-    Enabled bool `mapstructure:"enabled"`
-}
+### Development Tools
+
+```bash
+# Format Go code
+go fmt ./...
+
+# Run linter (if available)
+golangci-lint run
+
+# Check dependencies
+go mod tidy
+go mod verify
 ```
 
-#### `Token`
-Authentication token configuration:
-```go
-type Token struct {
-    Token string `mapstructure:"token"`
-}
+## Core Files and Components
+
+### Main Entry Points
+
+- `cmd/vx/main.go` - CLI application entry point
+- `internal/cli/root.go:18` - Root command setup with configuration
+
+### Build System
+
+- `builder/builder.go` - Core build logic
+- `builder/templates/` - Build templates for different versions
+- `v2/builder/` - Refactored v2 build system
+
+### Configuration
+
+- `config.go` - Configuration structure and validation
+- `velox.toml` - Default configuration file format
+
+### API Integration
+
+- `github/repo.go` - GitHub repository management
+- `gitlab/repo.go` - GitLab repository management
+- `api/` - Protocol buffer service definitions
+
+## Code Style Guidelines
+
+### Go Conventions
+
+- Follow standard Go formatting (`gofmt`)
+- Use meaningful variable names
+- Prefer explicit error handling
+- Use context.Context for cancellation
+- Follow Go module structure with `github.com/roadrunner-server/velox/v2025`
+
+### Protocol Buffers
+
+- Use buf for generation and formatting
+- Service definitions in `api/service/v1/`
+- Generate code with `buf generate`
+
+### Error Handling
+
+- Use `github.com/pkg/errors` for error wrapping
+- Always handle errors explicitly
+- Use structured logging with zap
+
+## Testing Instructions
+
+```bash
+# Run all tests with race detection
+make test
+# or
+go test -v -race ./...
+
+# Run specific package tests
+go test -v ./builder/
+go test -v ./github/
+
+# Run with coverage
+go test -cover ./...
 ```
 
-#### `Endpoint`
-API endpoint configuration:
-```go
-type Endpoint struct {
-    BaseURL string `mapstructure:"endpoint"`
-}
+## Repository Etiquette
+
+### Branching
+
+- Main branch: `master`
+- Feature branches: `feature/description`
+- Use conventional commit messages
+
+### Plugin Compatibility
+
+⚠️ **Important Plugin Guidelines:**
+
+- Do not use plugin's `master` branch
+- Use tags with the **same major version**
+- Currently supported plugins version: `v5.x.x`
+- Currently supported RR version: `>=v2024.x.x`
+
+### Commit Guidelines
+
+- Use descriptive commit messages
+- Reference issues when applicable
+- Keep commits focused and atomic
+
+## Developer Environment Setup
+
+### Prerequisites
+
+- Go 1.24+ (toolchain: go1.24.0)
+- buf CLI for protocol buffer generation
+- Git for version control
+
+### Setup Steps
+
+1. Clone repository
+2. Install dependencies: `go mod download`
+3. Generate protobuf code: `make regenerate`
+4. Run tests: `make test`
+5. Build: `go build ./cmd/vx`
+
+### Configuration
+
+Create `velox.toml` based on project requirements. The CLI expects:
+
+```bash
+./vx -c velox.toml build    # Build mode
+./vx -c velox.toml server   # Server mode
 ```
 
-#### `CodeHosting`
-Generic code hosting platform configuration (GitHub/GitLab):
-```go
-type CodeHosting struct {
-    BaseURL *Endpoint                `mapstructure:"endpoint"` // API base URL
-    Token   *Token                   `mapstructure:"token"`    // Authentication token
-    Plugins map[string]*PluginConfig `mapstructure:"plugins"`  // Plugin configurations
-}
-```
+## Unexpected Project Behaviors
 
-#### `PluginConfig`
-Individual plugin configuration:
-```go
-type PluginConfig struct {
-    Ref     string `mapstructure:"ref"`        // Git reference (branch/tag/commit)
-    Owner   string `mapstructure:"owner"`      // Repository owner
-    Repo    string `mapstructure:"repository"` // Repository name
-    Folder  string `mapstructure:"folder"`     // Specific folder in repository
-    Replace string `mapstructure:"replace"`    // Local replacement path
-}
-```
+### Version Management
 
-### Module Information Types
+- Project uses `v2025` module path
+- Replace directive: `github.com/roadrunner-server/velox/v2025/gen => ./gen`
+- Multiple template versions in `builder/templates/`
 
-#### `ModulesInfo`
-Represents Go module information:
-```go
-type ModulesInfo struct {
-    Version       string // Commit SHA or tag
-    PseudoVersion string // Go pseudo version
-    ModuleName    string // Module name (e.g., github.com/roadrunner-server/logger/v2)
-    Replace       string // Local development replacement path
-}
-```
+### Build System
 
-### Protocol Buffer Types (API)
+- Templates are versioned (V2, V2023, V2024, V2025)
+- Build process involves GitHub/GitLab API calls
+- Server mode provides build-as-a-service functionality
 
-#### Request Types (`api/request/v1`)
+### Protobuf Generation
 
-##### `HostingPlatformType` (Enum)
-```go
-const (
-    HostingPlatformType_HOSTING_PLATFORM_TYPE_UNSPECIFIED HostingPlatformType = 0
-    HostingPlatformType_HOSTING_PLATFORM_TYPE_TYPE_GITHUB HostingPlatformType = 1
-    HostingPlatformType_HOSTING_PLATFORM_TYPE_TYPE_GITLAB HostingPlatformType = 2
-)
-```
+- Uses buf instead of protoc directly
+- Generated code goes into `gen/` directory
+- Must regenerate after proto changes
 
-##### `HostingPlatform`
-```go
-type HostingPlatform struct {
-    HostingPlatform HostingPlatformType `json:"hosting_platform,omitempty"`
-}
-```
+## Useful Development Patterns
 
-##### `BuildRequest`
-Main build request message:
-```go
-type BuildRequest struct {
-    RrVersion   string                 `json:"rr_version,omitempty"`   // RoadRunner version
-    PluginsInfo map[string]*PluginInfo `json:"plugins_info,omitempty"` // Plugin information by platform
-}
-```
+### Adding New Build Templates
 
-##### `PluginInfo`
-Plugin information for a specific hosting platform:
-```go
-type PluginInfo struct {
-    HostingPlatform *HostingPlatform `json:"hosting_platform,omitempty"` // Platform type
-    Plugins         []*Plugin        `json:"plugins,omitempty"`          // List of plugins
-}
-```
+1. Create new template in `builder/templates/`
+2. Update `builder.go` to reference new template
+3. Add corresponding tests in `builder_test.go`
 
-##### `Plugin`
-Individual plugin specification:
-```go
-type Plugin struct {
-    Name       string `json:"name,omitempty"`       // Optional plugin name
-    Ref        string `json:"ref,omitempty"`        // Git reference
-    Owner      string `json:"owner,omitempty"`      // Repository owner
-    Repository string `json:"repository,omitempty"` // Repository name
-}
-```
+### GitHub/GitLab Integration
 
-#### Response Types (`api/response/v1`)
+- Use existing pool patterns in `github/pool.go`
+- Implement repository interface consistently
+- Handle rate limiting and authentication
 
-##### `BuildResponse`
-Build operation response:
-```go
-type BuildResponse struct {
-    Path string `json:"path,omitempty"` // Path to built binary
-}
-```
+### CLI Commands
 
-### Builder Types
+- Follow cobra patterns in `internal/cli/`
+- Use persistent flags for common options
+- Implement proper validation in `PersistentPreRunE`
 
-#### `Builder`
-Main builder structure:
-```go
-type Builder struct {
-    rrTempPath string            // Temporary path for RoadRunner
-    out        string            // Output path
-    modules    []*velox.ModulesInfo // Module information
-    log        *zap.Logger       // Logger instance
-    debug      bool              // Debug mode flag
-    rrVersion  string            // RoadRunner version
-}
-```
+## Links and Documentation
 
-### Repository Integration Types
-
-#### GitHub Integration (`github/`)
-
-##### `GHRepo`
-GitHub repository handler:
-```go
-type GHRepo struct {
-    client *github.Client // GitHub API client
-    config *velox.Config  // Velox configuration
-    log    *zap.Logger    // Logger instance
-}
-```
-
-#### GitLab Integration (`gitlab/`)
-
-##### `GLRepo`
-GitLab repository handler:
-```go
-type GLRepo struct {
-    client *gitlab.Client // GitLab API client
-    config *velox.Config  // Velox configuration
-    log    *zap.Logger    // Logger instance
-}
-```
-
-## Constants and Default Values
-
-### Version Constants
-```go
-const (
-    V2025 string = "v2025"
-    V2024 string = "v2024"
-    V2023 string = "v2023"
-    V2    string = "v2"
-)
-```
-
-### Default Configuration
-```go
-var DefaultConfig = &Config{
-    Roadrunner: map[string]string{
-        "ref": "master",
-    },
-    Debug: &Debug{
-        Enabled: false,
-    },
-    Log: map[string]string{
-        "level": "debug", 
-        "mode": "development",
-    },
-}
-```
-
-### Builder Constants
-```go
-const (
-    pluginsPath        = "/container/plugins.go"
-    goModStr          = "go.mod"
-    pluginStructureStr = "Plugin{}"
-    rrMainGo          = "cmd/rr/main.go"
-    executableName    = "rr"
-    cleanupPattern    = "roadrunner-server*"
-)
-```
-
-## Key Features
-
-1. **Multi-Platform Support**: Supports both GitHub and GitLab as plugin sources
-2. **Version Management**: Handles multiple RoadRunner versions (v2, v2023, v2024, v2025)
-3. **Template System**: Uses Go templates to generate build configurations
-4. **gRPC API**: Provides Connect-compatible gRPC API for remote building
-5. **CLI Interface**: Command-line interface for local building
-6. **Plugin Management**: Automatic plugin discovery and integration
-7. **Docker Support**: Containerized building environment
-8. **Configuration Validation**: Comprehensive configuration validation
-9. **Logging**: Structured logging with zap
-10. **Module Handling**: Advanced Go module version management
-
-## API Endpoints
-
-### gRPC Service (`api/service/v1`)
-- `Build(BuildRequest) returns (BuildResponse)` - Build RoadRunner with specified plugins
-
-### Connect HTTP API
-- `POST /api.service.v1.BuildService/Build` - HTTP/JSON equivalent of gRPC Build method
-
-This documentation provides a comprehensive overview of the velox project structure, types, and functionality for easy navigation and understanding.
+- [RoadRunner Docs](https://docs.roadrunner.dev/customization/build)
+- [Project Repository](https://github.com/roadrunner-server/velox)
+- [Discord Community](https://discord.gg/TFeEmCs)

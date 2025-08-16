@@ -9,7 +9,7 @@ require (
 	buf.build/go/protovalidate v0.14.0
 	github.com/bufbuild/connect-go v1.10.0
 	github.com/fatih/color v1.18.0
-	github.com/google/go-github/v71 v71.0.0
+	github.com/google/go-github/v74 v74.0.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/pkg/errors v0.9.1
