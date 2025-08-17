@@ -17,6 +17,19 @@ const (
 	gitlabBaseURL string = "https://gitlab.com"
 )
 
+var DefaultRRRef = ref       //nolint:gochecknoglobals
+var DefaultConfig = &Config{ //nolint:gochecknoglobals
+	Roadrunner: map[string]string{
+		ref: defaultBranch,
+	},
+	Debug: &Debug{
+		Enabled: false,
+	},
+	Log: map[string]string{
+		"level": "debug", "mode": "development",
+	},
+}
+
 type Config struct {
 	// Version
 	Roadrunner map[string]string `mapstructure:"roadrunner"`
