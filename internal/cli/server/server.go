@@ -80,6 +80,8 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("build is already in progress"))
 	}
 
+	// save currently processing key
+	// needed for concurrent requests for the same request_id
 	b.currentlyProcessing.Add(hash, struct{}{})
 	defer b.currentlyProcessing.Remove(hash)
 
@@ -104,7 +106,6 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 	}
 
 	rp := github.NewHTTPClient(os.Getenv("GITHUB_TOKEN"), b.rrcache, b.log.Named("GitHub"))
-	// TODO: do not use key here, just TempDir. Instead, use key to copy the already downloaded repo to the os.TempDir + key
 	path, err := rp.DownloadTemplate(os.TempDir(), hash, req.Msg.GetRrVersion())
 	if err != nil {
 		b.log.Error("downloading template", zap.Error(err))

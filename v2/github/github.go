@@ -67,6 +67,7 @@ func NewHTTPClient(accessToken string, cache cache, log *zap.Logger) *GitHubClie
 }
 
 // DownloadTemplate downloads template repository (roadrunner), unpacks it and returns a result path
+// If the repository is already cached, it will use the cached version instead of downloading it again.
 func (r *GitHubClient) DownloadTemplate(downloadDir, hash, rrVersion string) (string, error) { //nolint:gocyclo
 	if rrbuf := r.cache.Get(rrVersion); rrbuf != nil {
 		// here we know that we have a cached buffer
