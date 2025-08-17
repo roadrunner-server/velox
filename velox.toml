@@ -5,184 +5,146 @@ ref = "v2025.1.2"
 enabled = false
 
 [log]
-level = "info"
+level = "debug"
 mode = "production"
 
+[target_platform]
+os = "darwin"
+arch = "arm64"
+
+# optional, needed only to download RR once (per version)
 [github.token]
-token = "${RT_TOKEN}"
+token = "${GITHUB_TOKEN}"
 
-[gitlab.token]
-token = "${GL_TOKEN}"
+[plugins.appLogger]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/app-logger/v5"
 
-[gitlab.endpoint]
-endpoint = "https://gitlab.com"
+[plugins.logger]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/logger/v5"
 
-[github.plugins.appLogger]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "app-logger"
+[plugins.lock]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/lock/v5"
 
-[github.plugins.logger]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "logger"
+[plugins.rpc]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/rpc/v5"
 
-[github.plugins.lock]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "lock"
+[plugins.centrifuge]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/centrifuge/v5"
 
-[github.plugins.rpc]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "rpc"
+[plugins.temporal]
+tag = "v5.7.0"
+module_name = "github.com/temporalio/roadrunner-temporal/v5"
 
-[github.plugins.centrifuge]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "centrifuge"
+[plugins.metrics]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/metrics/v5"
 
-[github.plugins.temporal]
-ref = "v5.7.0"
-owner = "temporalio"
-repository = "roadrunner-temporal"
+[plugins.otel]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/otel/v5"
 
-[github.plugins.metrics]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "metrics"
+[plugins.http]
+tag = "v5.2.7"
+module_name = "github.com/roadrunner-server/http/v5"
 
-[github.plugins.otel]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "otel"
+[plugins.gzip]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/gzip/v5"
 
-[github.plugins.http]
-ref = "v5.2.7"
-owner = "roadrunner-server"
-repository = "http"
+[plugins.prometheus]
+tag = "v5.1.7"
+module_name = "github.com/roadrunner-server/prometheus/v5"
 
-[github.plugins.gzip]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "gzip"
+[plugins.headers]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/headers/v5"
 
-[github.plugins.prometheus]
-ref = "v5.1.7"
-owner = "roadrunner-server"
-repository = "prometheus"
+[plugins.static]
+tag = "v5.1.6"
+module_name = "github.com/roadrunner-server/static/v5"
 
-[github.plugins.headers]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "headers"
+[plugins.proxy]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/proxy_ip_parser/v5"
 
-[github.plugins.static]
-ref = "v5.1.6"
-owner = "roadrunner-server"
-repository = "static"
+[plugins.send]
+tag = "v5.1.5"
+module_name = "github.com/roadrunner-server/send/v5"
 
-[github.plugins.proxy]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "proxy_ip_parser"
+[plugins.server]
+tag = "v5.2.9"
+module_name = "github.com/roadrunner-server/server/v5"
 
-[github.plugins.send]
-ref = "v5.1.5"
-owner = "roadrunner-server"
-repository = "send"
+[plugins.service]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/service/v5"
 
-[github.plugins.server]
-ref = "v5.2.9"
-owner = "roadrunner-server"
-repository = "server"
+[plugins.jobs]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/jobs/v5"
 
-[github.plugins.service]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "service"
+[plugins.amqp]
+tag = "v5.2.2"
+module_name = "github.com/roadrunner-server/amqp/v5"
 
-[github.plugins.jobs]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "jobs"
+[plugins.sqs]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/sqs/v5"
 
-[github.plugins.amqp]
-ref = "v5.2.2"
-owner = "roadrunner-server"
-repository = "amqp"
+[plugins.beanstalk]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/beanstalk/v5"
 
-[github.plugins.sqs]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "sqs"
+[plugins.nats]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/nats/v5"
 
-[github.plugins.beanstalk]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "beanstalk"
+[plugins.kafka]
+tag = "v5.2.4"
+module_name = "github.com/roadrunner-server/kafka/v5"
 
-[github.plugins.nats]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "nats"
+[plugins.googlepubsub]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/google-pub-sub/v5"
 
-[github.plugins.kafka]
-ref = "v5.2.4"
-owner = "roadrunner-server"
-repository = "kafka"
+[plugins.kv]
+tag = "v5.2.8"
+module_name = "github.com/roadrunner-server/kv/v5"
 
-[github.plugins.googlepubsub]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "google-pub-sub"
+[plugins.boltdb]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/boltdb/v5"
 
-[github.plugins.kv]
-ref = "v5.2.8"
-owner = "roadrunner-server"
-repository = "kv"
+[plugins.memory]
+tag = "v5.2.8"
+module_name = "github.com/roadrunner-server/memory/v5"
 
-[github.plugins.boltdb]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "boltdb"
+[plugins.redis]
+tag = "v5.1.9"
+module_name = "github.com/roadrunner-server/redis/v5"
 
-[github.plugins.memory]
-ref = "v5.2.8"
-owner = "roadrunner-server"
-repository = "memory"
+[plugins.memcached]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/memcached/v5"
 
-[github.plugins.redis]
-ref = "v5.1.9"
-owner = "roadrunner-server"
-repository = "redis"
+[plugins.fileserver]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/fileserver/v5"
 
-[github.plugins.memcached]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "memcached"
+[plugins.grpc]
+tag = "v5.2.2"
+module_name = "github.com/roadrunner-server/grpc/v5"
 
-[github.plugins.fileserver]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "fileserver"
+[plugins.status]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/status/v5"
 
-[github.plugins.grpc]
-ref = "v5.2.2"
-owner = "roadrunner-server"
-repository = "grpc"
+[plugins.tcp]
+tag = "v5.1.8"
+module_name = "github.com/roadrunner-server/tcp/v5"
 
-[github.plugins.status]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "status"
-
-[github.plugins.tcp]
-ref = "v5.1.8"
-owner = "roadrunner-server"
-repository = "tcp"
-
-[gitlab.plugins.test_plugin_1]
-ref = "main"
-owner = "rustatian"
-repository = "36405203"

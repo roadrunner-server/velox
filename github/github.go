@@ -1,3 +1,4 @@
+// Package github provides a client for downloading the RoadRunner template repository from GitHub.
 package github
 
 import (

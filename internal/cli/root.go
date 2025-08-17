@@ -23,7 +23,7 @@ func NewCommand(executableName string) *cobra.Command {
 		pathToConfig string // path to the velox configuration
 		outputFile   string // output file (optionally with directory)
 		address      string
-		config       *velox.Config // velox configuration
+		config       = &velox.Config{} // velox configuration
 	)
 
 	cmd := &cobra.Command{

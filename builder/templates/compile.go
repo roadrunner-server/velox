@@ -5,7 +5,7 @@ import (
 	"io"
 	"text/template"
 
-	"github.com/roadrunner-server/velox/v2025/v2/plugin"
+	"github.com/roadrunner-server/velox/v2025/plugin"
 )
 
 type Template struct {

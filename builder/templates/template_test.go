@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/roadrunner-server/velox/v2025/v2/builder/templates"
-	"github.com/roadrunner-server/velox/v2025/v2/plugin"
+	"github.com/roadrunner-server/velox/v2025/builder/templates"
+	"github.com/roadrunner-server/velox/v2025/plugin"
 	"github.com/stretchr/testify/require"
 )
 

@@ -1,13 +1,17 @@
+// Package build provides a command to build the RoadRunner binary
 package build
 
 import (
 	"os"
+	"runtime"
 	"syscall"
 
+	"github.com/google/uuid"
 	"github.com/roadrunner-server/velox/v2025"
 	"github.com/roadrunner-server/velox/v2025/builder"
+	cacheimpl "github.com/roadrunner-server/velox/v2025/cache"
 	"github.com/roadrunner-server/velox/v2025/github"
-	"github.com/roadrunner-server/velox/v2025/gitlab"
+	"github.com/roadrunner-server/velox/v2025/plugin"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -29,50 +33,52 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				*out = wd
 			}
 
-			var mi []*velox.ModulesInfo
-			if cfg.GitLab != nil {
-				rp, err := gitlab.NewGLRepoInfo(cfg, zlog.Named("GITLAB"))
-				if err != nil {
-					return err
+			bplugins := make([]*plugin.Plugin, 0, len(cfg.Plugins))
+			for _, p := range cfg.Plugins {
+				if p == nil {
+					zlog.Warn("plugin info is nil")
+					continue
 				}
-
-				mi, err = rp.GetPluginsModData()
-				if err != nil {
-					return err
-				}
+				bplugins = append(bplugins, plugin.NewPlugin(p.ModuleName, p.Tag))
 			}
 
-			// roadrunner located on the github
-			rp := github.NewGHRepoInfo(cfg, zlog.Named("GITHUB"))
-			path, err := rp.DownloadTemplate(os.TempDir(), cfg.Roadrunner[ref])
+			rrcache := cacheimpl.NewRRCache()
+			rp := github.NewHTTPClient(os.Getenv("GITHUB_TOKEN"), rrcache, zlog.Named("GitHub"))
+			path, err := rp.DownloadTemplate(os.TempDir(), uuid.NewString(), cfg.Roadrunner[ref])
 			if err != nil {
 				zlog.Error("downloading template", zap.Error(err))
 				os.Exit(1)
 			}
 
-			pMod, err := rp.GetPluginsModData()
-			if err != nil {
-				zlog.Error("get plugins mod data", zap.Error(err))
-				os.Exit(1)
+			// Use target platform or host platform as default
+			targetOS := runtime.GOOS
+			targetArch := runtime.GOARCH
+			if cfg.TargetPlatform != nil {
+				if cfg.TargetPlatform.OS != "native" {
+					targetOS = cfg.TargetPlatform.OS
+				}
+				if cfg.TargetPlatform.Arch != "native" {
+					targetArch = cfg.TargetPlatform.Arch
+				}
 			}
 
-			// append data from gitlab
-			if mi != nil {
-				pMod = append(pMod, mi...)
-			}
-
-			err = builder.NewBuilder(path, pMod,
+			opts := make([]builder.Option, 0)
+			opts = append(opts,
+				builder.WithPlugins(bplugins...),
 				builder.WithOutputDir(*out),
 				builder.WithRRVersion(cfg.Roadrunner[ref]),
-				builder.WithDebug(cfg.Debug.Enabled),
 				builder.WithLogger(zlog.Named("Builder")),
-			).Build(cfg.Roadrunner[ref])
+				builder.WithGOOS(targetOS),
+				builder.WithGOARCH(targetArch),
+			)
+
+			binaryPath, err := builder.NewBuilder(path, opts...).Build(cfg.Roadrunner[ref])
 			if err != nil {
 				zlog.Error("fatal", zap.Error(err))
 				os.Exit(1)
 			}
 
-			zlog.Info("========= build finished successfully =========", zap.String("RoadRunner binary can be found at", *out))
+			zlog.Info("build finished successfully", zap.String("path", binaryPath))
 			return nil
 		},
 	}

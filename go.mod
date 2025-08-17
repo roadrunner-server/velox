@@ -9,16 +9,14 @@ require (
 	buf.build/go/protovalidate v0.14.0
 	github.com/bufbuild/connect-go v1.10.0
 	github.com/fatih/color v1.18.0
-	github.com/google/go-github/v74 v74.0.0
+	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	gitlab.com/gitlab-org/api/client-go v0.139.2
 	go.uber.org/zap v1.27.0
-	golang.org/x/mod v0.27.0
 	golang.org/x/net v0.43.0
 	golang.org/x/oauth2 v0.30.0
 	google.golang.org/grpc v1.74.2
@@ -34,9 +32,6 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/google/cel-go v0.26.0 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -53,7 +48,6 @@ require (
 	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250811230008-5f3141c8851a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250811230008-5f3141c8851a // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

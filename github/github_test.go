@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	cacheimpl "github.com/roadrunner-server/velox/v2025/v2/cache"
+	cacheimpl "github.com/roadrunner-server/velox/v2025/cache"
 	"go.uber.org/zap"
 )
 
