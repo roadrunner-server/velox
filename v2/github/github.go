@@ -148,15 +148,10 @@ func (r *GitHubClient) saveRR(buf *bytes.Buffer, rrVersion, downloadDir string) 
 	rrVersion = strings.ReplaceAll(rrVersion, "/", "_")
 	// rrSaveDest is a path to the directory where the repository will be saved
 	rrSaveDest := filepath.Join(downloadDir, "roadrunner-server-"+rrVersion)
+	// remove the save path, just to be sure
+	_ = os.RemoveAll(rrSaveDest)
 
-	_, err := os.Stat(rrSaveDest)
-	if err != nil && !os.IsNotExist(err) {
-		return "", fmt.Errorf("stat failed for output directory %s: %w", rrSaveDest, err)
-	}
-	if os.IsExist(err) {
-		_ = os.RemoveAll(rrSaveDest)
-	}
-	err = os.MkdirAll(rrSaveDest, os.ModeDir|os.ModePerm)
+	err := os.MkdirAll(rrSaveDest, os.ModeDir|os.ModePerm)
 	if err != nil {
 		return "", fmt.Errorf("failed to create directory %s: %w", rrSaveDest, err)
 	}
