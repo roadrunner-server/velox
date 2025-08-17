@@ -68,7 +68,7 @@ with open(file_path, "r") as file:
 # Update the plugin versions in the config
 for plugin, version in latest_versions.items():
     if version:
-        config["github"]["plugins"][plugin]["ref"] = version
+        config["plugins"][plugin]["tag"] = version
 
 # Save the updated config back to the velox.toml file
 with open(file_path, "w") as file:
