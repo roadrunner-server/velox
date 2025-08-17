@@ -1,7 +1,7 @@
 package templates
 
 const GoModTemplateV2024 string = `
-module github.com/roadrunner-server/roadrunner/{{.ModuleVersion}}
+module github.com/roadrunner-server/roadrunner/{{.RRModuleVersion}}
 
 go 1.24
 
@@ -19,16 +19,14 @@ require (
 	github.com/roadrunner-server/resetter/v4 latest
 	github.com/roadrunner-server/config/v4 latest
 
-	// Go module pseudo-version
-	{{range $v := .Plugins}}{{$v}}
+	// format 'abcde github.com/foo/bar/<version> <tag>'
+	{{range $v := .Requires}}{{$v}}
 	{{end}}
 )
 
 exclude (
 	github.com/spf13/viper v1.18.0
 	github.com/spf13/viper v1.18.1
-	github.com/uber-go/tally/v4 v4.1.11
-	github.com/uber-go/tally/v4 v4.1.12
 	go.temporal.io/api v1.26.1
 )
 `
@@ -39,7 +37,8 @@ package container
 import (
 	"github.com/roadrunner-server/informer/v4"
 	"github.com/roadrunner-server/resetter/v4"
-	// Plugin imports are now handled by NewPlugin function
+	{{range $v := .Imports}}{{$v}}
+	{{end}}
 )
 
 func Plugins() []any {
@@ -51,7 +50,8 @@ func Plugins() []any {
 		&resetter.Plugin{},
 
 		// std and custom plugins
-		{{range $v := .Entries}}&{{$v.Prefix}}.{{$v.StructureName}},
+		// format should use prefix as it used in the .Plugins in the Mod template
+		{{range $v := .Code}}&{{$v}},
 		{{end}}
 	}
 }

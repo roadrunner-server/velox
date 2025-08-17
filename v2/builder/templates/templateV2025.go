@@ -19,7 +19,6 @@ require (
 	github.com/roadrunner-server/informer/v5 latest
 	github.com/roadrunner-server/resetter/v5 latest
 
-	// Go module pseudo-version
 	// format 'abcde github.com/foo/bar/<version> <tag>'
 	{{range $v := .Requires}}{{$v}}
 	{{end}}
