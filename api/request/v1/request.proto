@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package api.request.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1;requestV1";
+
+message Platform {
+  // GOOS
+  string os = 1;
+  // GOARCH
+  string arch = 2;
+}
+
+message BuildRequest {
+  // request_id is optional and needed to match requests with their responses on the client side
+  // must be a valid uuid
+  string request_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = false
+  ];
+  // rr version is required and must be a valid semantic version
+  string rr_version = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "rr_version.format"
+      message: "rr_version must be a semantic version starting with 'v' (e.g., v2025.1.0), 'master', or a git commit SHA (7-40 hex characters)"
+      expression: "this.matches('^(v\\\\d+\\\\.\\\\d+\\\\.\\\\d+.*|master|[a-f0-9]{7,40})$')"
+    }
+  ];
+  bool force_rebuild = 3 [(buf.validate.field).required = false];
+  // target platform is required and must be a valid platform. Used to specify the platform for the build (host platform used by default)
+  Platform target_platform = 4 [(buf.validate.field).required = false];
+  // plugins are required and represent the list of plugins to be used for the build
+  repeated Plugin plugins = 5 [(buf.validate.field).required = true];
+}
+
+message Plugin {
+  // module name in a Go module format, for example: "github.com/roadrunner-server/velox" or "github.com/roadrunner-server/velox/v2"
+  string module_name = 1 [(buf.validate.field).required = true];
+  // plugin github tag
+  string tag = 2 [(buf.validate.field).required = true];
+}
