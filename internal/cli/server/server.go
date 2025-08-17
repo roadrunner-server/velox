@@ -141,7 +141,6 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 	}
 
 	resp := &responseV1.BuildResponse{
-		// TODO: replace rr with a requested binary name (proto)
 		Path: binaryPath,
 		Logs: sb.String(),
 	}
