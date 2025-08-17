@@ -7,6 +7,7 @@ import (
 	"hash/fnv"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -112,6 +113,16 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("downloading template: %w", err))
 	}
 
+	// if target platform is not specified
+	// use host platform
+	if req.Msg.GetTargetPlatform() == nil {
+		b.log.Info("target platform is not specified, using host platform")
+		req.Msg.TargetPlatform = &requestV1.Platform{
+			Os:   runtime.GOOS,
+			Arch: runtime.GOARCH,
+		}
+	}
+
 	opts := make([]builder.Option, 0)
 	opts = append(opts,
 		builder.WithPlugins(bplugins...),
@@ -123,13 +134,12 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		builder.WithGOARCH(req.Msg.GetTargetPlatform().GetArch()),
 	)
 
-	err = builder.NewBuilder(path, opts...).Build(req.Msg.GetRrVersion())
+	binaryPath, err := builder.NewBuilder(path, opts...).Build(req.Msg.GetRrVersion())
 	if err != nil {
 		b.log.Error("fatal", zap.Error(err))
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("building plugins: %w", err))
 	}
 
-	binaryPath := fmt.Sprintf("%s/%s", outputPath, "rr")
 	resp := &responseV1.BuildResponse{
 		// TODO: replace rr with a requested binary name (proto)
 		Path: binaryPath,

@@ -58,16 +58,16 @@ func NewBuilder(rrTmpPath string, opts ...Option) *Builder {
 }
 
 // Build builds a RR based on the provided modules info
-func (b *Builder) Build(rrRef string) error { //nolint:gocyclo
+func (b *Builder) Build(rrRef string) (string, error) { //nolint:gocyclo
 	if len(b.plugins) == 0 {
-		return fmt.Errorf("please, use WithPlugins to add plugins to the RR build")
+		return "", fmt.Errorf("please, use WithPlugins to add plugins to the RR build")
 	}
 
 	t := templates.NewTemplate(b.plugins)
 
 	module, err := validateModule(rrRef)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	t.RRModuleVersion = module
@@ -78,22 +78,22 @@ func (b *Builder) Build(rrRef string) error { //nolint:gocyclo
 	case velox.V2025:
 		err = templates.CompileTemplateV2025(buf, t)
 		if err != nil {
-			return err
+			return "", err
 		}
 	case velox.V2024:
 		err = templates.CompileTemplateV2024(buf, t)
 		if err != nil {
-			return err
+			return "", err
 		}
 	default:
-		return fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
+		return "", fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
 	}
 
 	b.log.Debug("template", zap.String("template", buf.String()))
 
 	f, err := os.Open(b.rrTempPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		_ = f.Close()
@@ -112,22 +112,22 @@ func (b *Builder) Build(rrRef string) error { //nolint:gocyclo
 	// remove old plugins.go
 	err = os.Remove(filepath.Join(b.rrTempPath, pluginsPath))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = os.WriteFile(filepath.Join(b.rrTempPath, pluginsPath), buf.Bytes(), 0600)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = os.Remove(filepath.Join(b.rrTempPath, goModStr))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	goModFile, err := os.Create(filepath.Join(b.rrTempPath, goModStr))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// reuse buffer
@@ -138,22 +138,22 @@ func (b *Builder) Build(rrRef string) error { //nolint:gocyclo
 	case velox.V2025:
 		err = templates.CompileGoModTemplate2025(buf, t)
 		if err != nil {
-			return err
+			return "", err
 		}
 	case velox.V2024:
 		err = templates.CompileGoModTemplate2024(buf, t)
 		if err != nil {
-			return err
+			return "", err
 		}
 	default:
-		return fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
+		return "", fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
 	}
 
 	b.log.Debug("template", zap.String("template", buf.String()))
 
 	_, err = goModFile.Write(buf.Bytes())
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// reuse buffer
@@ -161,18 +161,18 @@ func (b *Builder) Build(rrRef string) error { //nolint:gocyclo
 
 	err = b.exec([]string{"go", "mod", "download"})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = b.exec([]string{"go", "mod", "tidy"})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	b.log.Info("creating output directory", zap.String("dir", b.outputDir))
 	_, err = os.Stat(b.outputDir)
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("stat failed for output directory %s: %w", b.outputDir, err)
+		return "", fmt.Errorf("stat failed for output directory %s: %w", b.outputDir, err)
 	}
 
 	if os.IsExist(err) {
@@ -182,22 +182,24 @@ func (b *Builder) Build(rrRef string) error { //nolint:gocyclo
 
 	err = os.MkdirAll(b.outputDir, os.ModeDir|os.ModePerm)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// INFO: we can get go envs via go env GOOS for example, but instead we will set them manually
 	err = b.goBuildCmd(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)))
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, generateExecutableName(b.goos))), zap.String("to", filepath.Join(b.outputDir, generateExecutableName(b.goos))))
-	err = moveFile(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)), filepath.Join(b.outputDir, generateExecutableName(b.goos)))
+	// move the binary to the output directory
+	binaryPath := filepath.Join(b.outputDir, generateExecutableName(b.goos))
+	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, generateExecutableName(b.goos))), zap.String("to", binaryPath))
+	err = moveFile(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)), binaryPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return binaryPath, nil
 }
 
 func (b *Builder) Write(d []byte) (int, error) {
