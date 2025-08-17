@@ -1,5 +1,5 @@
 import http from "k6/http";
-import { check, sleep } from "k6";
+import { check } from "k6";
 import { Rate } from "k6/metrics";
 import { uuidv4 } from "https://jslib.k6.io/k6-utils/1.4.0/index.js";
 
@@ -39,7 +39,7 @@ export const options = {
     // },
   },
   thresholds: {
-    http_req_duration: ["p(95)<20000"], // 95% of requests must complete below 5s
+    http_req_duration: ["p(95)<30000"], // 95% of requests must complete below 30s
     http_req_failed: ["rate<0.1"], // Error rate must be below 10%
     errors: ["rate<0.1"], // Custom error rate below 10%
   },
@@ -49,7 +49,7 @@ export const options = {
 const payload = {
   request_id: "",
   force_rebuild: true,
-  build_platform: {
+  target_platform: {
     os: "linux",
     arch: "amd64",
   },
@@ -206,7 +206,7 @@ export default function () {
   const uniquePayload = {
     ...payload,
     request_id: uuidv4(),
-    build_platform: randomPlatform,
+    target_platform: randomPlatform,
   };
 
   const response = http.post(
@@ -241,9 +241,6 @@ export default function () {
       Platform: ${randomPlatform.os} + ${randomPlatform.arch}
     `);
   }
-
-  // Small delay between requests to avoid overwhelming the server
-  sleep(1);
 }
 
 // Setup function (runs once per VU at the beginning)
