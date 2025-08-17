@@ -118,8 +118,8 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		builder.WithRRVersion(req.Msg.GetRrVersion()),
 		builder.WithLogs(sb),
 		builder.WithLogger(b.log.Named("Builder")),
-		builder.WithGOOS(req.Msg.BuildPlatform.GetOs()),
-		builder.WithGOARCH(req.Msg.BuildPlatform.GetArch()),
+		builder.WithGOOS(req.Msg.GetTargetPlatform().GetOs()),
+		builder.WithGOARCH(req.Msg.GetTargetPlatform().GetArch()),
 	)
 
 	err = builder.NewBuilder(path, opts...).Build(req.Msg.GetRrVersion())
@@ -141,10 +141,10 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 
 func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequest]) string {
 	cacheReq := &requestV1.BuildRequest{
-		RequestId:     req.Msg.GetRequestId(),
-		RrVersion:     req.Msg.GetRrVersion(),
-		BuildPlatform: req.Msg.GetBuildPlatform(),
-		Plugins:       req.Msg.GetPlugins(),
+		RequestId:      req.Msg.GetRequestId(),
+		RrVersion:      req.Msg.GetRrVersion(),
+		TargetPlatform: req.Msg.GetTargetPlatform(),
+		Plugins:        req.Msg.GetPlugins(),
 	}
 
 	data, err := proto.MarshalOptions{
