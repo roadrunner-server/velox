@@ -79,6 +79,9 @@ func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 	}
 
 	for _, plugin := range c.Plugins {
+		if plugin == nil {
+			return fmt.Errorf("plugin is required")
+		}
 		if plugin.Tag == "" {
 			return fmt.Errorf("plugin %s tag is required", plugin.ModuleName)
 		}
