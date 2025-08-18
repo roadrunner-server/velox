@@ -1,3 +1,4 @@
+// Package cli provides the CLI for the Velox build system
 package cli
 
 import (
@@ -17,13 +18,13 @@ import (
 
 func NewCommand(executableName string) *cobra.Command {
 	lg, _ := zap.NewDevelopment()
-	var cfgPath = strPtr("")
 
 	var (
 		pathToConfig string // path to the velox configuration
+		cfgPath      = p("")
 		outputFile   string // output file (optionally with directory)
 		address      string
-		config       *velox.Config // velox configuration
+		config       = &velox.Config{} // velox configuration
 	)
 
 	cmd := &cobra.Command{
@@ -82,12 +83,12 @@ func NewCommand(executableName string) *cobra.Command {
 	flag.StringVarP(&address, "address", "a", "127.0.0.1:8080", "Address to bind server: -a 127.0.0.1:8080")
 
 	cmd.AddCommand(
-		build.BindCommand(config, cfgPath, lg),
+		build.BindCommand(config, cfgPath, lg.Named("builder")),
 		server.BindCommand(&address, lg.Named("server")),
 	)
 	return cmd
 }
 
-func strPtr(s string) *string {
-	return &s
+func p[T any](val T) *T {
+	return &val
 }

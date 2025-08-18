@@ -4,43 +4,39 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-version"
 	"github.com/roadrunner-server/velox/v2025"
 	"github.com/roadrunner-server/velox/v2025/builder/templates"
+	"github.com/roadrunner-server/velox/v2025/plugin"
 	"go.uber.org/zap"
 )
 
 const (
 	// path to the file which should be generated from the template
-	pluginsPath        string = "/container/plugins.go"
-	letterBytes               = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	goModStr           string = "go.mod"
-	pluginStructureStr string = "Plugin{}"
-	rrMainGo           string = "cmd/rr/main.go"
-	executableName     string = "rr"
+	pluginsPath           string = "/container/plugins.go"
+	goModStr              string = "go.mod"
+	rrMainGo              string = "cmd/rr/main.go"
+	executableName        string = "rr"
+	executableNameWindows string = "rr.exe"
 	// cleanup pattern
 	cleanupPattern string = "roadrunner-server*"
 	ldflags        string = "-X github.com/roadrunner-server/roadrunner/v2025/internal/meta.version=%s -X github.com/roadrunner-server/roadrunner/v2025/internal/meta.buildTime=%s"
 )
-
-var replaceRegexp = regexp.MustCompile("(\t| )(.+) => (.+)")
 
 type Builder struct {
 	// rrTempPath - path, where RR was saved
 	rrTempPath string
 	// outputDir - output directory
 	outputDir string
-	modules   []*velox.ModulesInfo
 	log       *zap.Logger
 	sb        *strings.Builder
+	plugins   []*plugin.Plugin
 	debug     bool
 	rrVersion string
 	goos      string
@@ -48,10 +44,9 @@ type Builder struct {
 }
 
 // NewBuilder creates a new Builder with the given required parameters and optional configuration
-func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, opts ...Option) *Builder {
+func NewBuilder(rrTmpPath string, opts ...Option) *Builder {
 	b := &Builder{
 		rrTempPath: rrTmpPath,
-		modules:    modules,
 	}
 
 	// Apply all options
@@ -63,64 +58,47 @@ func NewBuilder(rrTmpPath string, modules []*velox.ModulesInfo, opts ...Option) 
 }
 
 // Build builds a RR based on the provided modules info
-func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
-	t := new(templates.Template)
+func (b *Builder) Build(rrRef string) (string, error) { //nolint:gocyclo
+	if len(b.plugins) == 0 {
+		return "", fmt.Errorf("please, use WithPlugins to add plugins to the RR build")
+	}
 
-	module, err := validateModule(rrModule)
+	t := templates.NewTemplate(b.plugins)
+
+	module, err := validateModule(rrRef)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	t.ModuleVersion = module
-	t.Entries = make([]*templates.Entry, len(b.modules))
-	for i := range b.modules {
-		t.Entries[i] = &templates.Entry{
-			Module: b.modules[i].ModuleName,
-			// we need to set prefix to avoid collisions
-			Prefix:        randStringBytes(5),
-			StructureName: pluginStructureStr,
-			PseudoVersion: b.modules[i].PseudoVersion,
-			Replace:       b.modules[i].Replace,
-		}
-	}
-
+	t.RRModuleVersion = module
 	buf := new(bytes.Buffer)
 
 	// compatibility with version 2
-	switch t.ModuleVersion {
+	switch t.RRModuleVersion {
 	case velox.V2025:
 		err = templates.CompileTemplateV2025(buf, t)
 		if err != nil {
-			return err
+			return "", err
 		}
 	case velox.V2024:
 		err = templates.CompileTemplateV2024(buf, t)
 		if err != nil {
-			return err
-		}
-	case velox.V2023:
-		err = templates.CompileTemplateV2023(buf, t)
-		if err != nil {
-			return err
-		}
-	case velox.V2:
-		err = templates.CompileTemplateV2(buf, t)
-		if err != nil {
-			return err
+			return "", err
 		}
 	default:
-		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
+		return "", fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
 	}
 
 	b.log.Debug("template", zap.String("template", buf.String()))
 
 	f, err := os.Open(b.rrTempPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		_ = f.Close()
-		files, errGl := filepath.Glob(filepath.Join(os.TempDir(), cleanupPattern))
+		// clean output directory, remove everything except RR binary
+		files, errGl := filepath.Glob(filepath.Join(b.outputDir, cleanupPattern))
 		if errGl != nil {
 			return
 		}
@@ -134,58 +112,48 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 	// remove old plugins.go
 	err = os.Remove(filepath.Join(b.rrTempPath, pluginsPath))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = os.WriteFile(filepath.Join(b.rrTempPath, pluginsPath), buf.Bytes(), 0600)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = os.Remove(filepath.Join(b.rrTempPath, goModStr))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	goModFile, err := os.Create(filepath.Join(b.rrTempPath, goModStr))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// reuse buffer
 	buf.Reset()
 
 	// compatibility with version 2
-	switch t.ModuleVersion {
+	switch t.RRModuleVersion {
 	case velox.V2025:
 		err = templates.CompileGoModTemplate2025(buf, t)
 		if err != nil {
-			return err
+			return "", err
 		}
 	case velox.V2024:
 		err = templates.CompileGoModTemplate2024(buf, t)
 		if err != nil {
-			return err
-		}
-	case velox.V2023:
-		err = templates.CompileGoModTemplate2023(buf, t)
-		if err != nil {
-			return err
-		}
-	case velox.V2:
-		err = templates.CompileGoModTemplateV2(buf, t)
-		if err != nil {
-			return err
+			return "", err
 		}
 	default:
-		return fmt.Errorf("unknown module version: %s", t.ModuleVersion)
+		return "", fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
 	}
 
 	b.log.Debug("template", zap.String("template", buf.String()))
 
 	_, err = goModFile.Write(buf.Bytes())
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// reuse buffer
@@ -193,18 +161,18 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	err = b.exec([]string{"go", "mod", "download"})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = b.exec([]string{"go", "mod", "tidy"})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	b.log.Info("creating output directory", zap.String("dir", b.outputDir))
 	_, err = os.Stat(b.outputDir)
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("stat failed for output directory %s: %w", b.outputDir, err)
+		return "", fmt.Errorf("stat failed for output directory %s: %w", b.outputDir, err)
 	}
 
 	if os.IsExist(err) {
@@ -214,22 +182,24 @@ func (b *Builder) Build(rrModule string) error { //nolint:gocyclo
 
 	err = os.MkdirAll(b.outputDir, os.ModeDir|os.ModePerm)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// INFO: we can get go envs via go env GOOS for example, but instead we will set them manually
-	err = b.goBuildCmd(filepath.Join(b.rrTempPath, executableName))
+	err = b.goBuildCmd(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)))
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, executableName)), zap.String("to", filepath.Join(b.outputDir, executableName)))
-	err = moveFile(filepath.Join(b.rrTempPath, executableName), filepath.Join(b.outputDir, executableName))
+	// move the binary to the output directory
+	binaryPath := filepath.Join(b.outputDir, generateExecutableName(b.goos))
+	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, generateExecutableName(b.goos))), zap.String("to", binaryPath))
+	err = moveFile(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)), binaryPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return binaryPath, nil
 }
 
 func (b *Builder) Write(d []byte) (int, error) {
@@ -254,14 +224,6 @@ func validateModule(module string) (string, error) {
 
 	// return major version (v2, v2023, etc)
 	return fmt.Sprintf("v%d", v.Segments()[0]), nil
-}
-
-func randStringBytes(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))] //nolint:gosec
-	}
-	return string(b)
 }
 
 func (b *Builder) goBuildCmd(outputPath string) error {
@@ -346,38 +308,6 @@ func (b *Builder) exec(cmd []string) error {
 	return nil
 }
 
-func (b *Builder) getDepsReplace(repl string) []*templates.Entry {
-	b.log.Info("found replace, processing", zap.String("dependency", repl))
-	modFile, err := os.ReadFile(filepath.Join(repl, goModStr))
-	if err != nil {
-		return nil
-	}
-
-	var result []*templates.Entry //nolint:prealloc
-	replaces := replaceRegexp.FindAllStringSubmatch(string(modFile), -1)
-	for i := range replaces {
-		split := strings.Split(strings.TrimSpace(replaces[i][0]), " => ")
-		if len(split) != 2 {
-			b.log.Error("not enough split args", zap.String("replace", replaces[i][0]))
-			continue
-		}
-
-		moduleName := split[0]
-		moduleReplace := split[1]
-
-		if strings.HasPrefix(moduleReplace, ".") {
-			moduleReplace = filepath.Join(repl, moduleReplace)
-		}
-
-		result = append(result, &templates.Entry{
-			Module:  moduleName,
-			Replace: moduleReplace,
-		})
-	}
-
-	return result
-}
-
 func moveFile(from, to string) error {
 	ffInfo, err := os.Stat(from)
 	if err != nil {
@@ -405,4 +335,12 @@ func moveFile(from, to string) error {
 	}
 
 	return toFile.Close()
+}
+
+// for Windows we should use .exe pattern
+func generateExecutableName(goos string) string {
+	if strings.ToLower(goos) == "windows" {
+		return executableNameWindows
+	}
+	return executableName
 }

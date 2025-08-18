@@ -18,12 +18,12 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"buf.build/go/protovalidate"
+	"github.com/roadrunner-server/velox/v2025/builder"
+	cacheimpl "github.com/roadrunner-server/velox/v2025/cache"
 	requestV1 "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1"
 	responseV1 "github.com/roadrunner-server/velox/v2025/gen/go/api/response/v1"
-	"github.com/roadrunner-server/velox/v2025/v2/builder"
-	cacheimpl "github.com/roadrunner-server/velox/v2025/v2/cache"
-	"github.com/roadrunner-server/velox/v2025/v2/github"
-	"github.com/roadrunner-server/velox/v2025/v2/plugin"
+	"github.com/roadrunner-server/velox/v2025/github"
+	"github.com/roadrunner-server/velox/v2025/plugin"
 )
 
 type cache interface {

@@ -3,6 +3,7 @@ package builder
 import (
 	"strings"
 
+	"github.com/roadrunner-server/velox/v2025/plugin"
 	"go.uber.org/zap"
 )
 
@@ -13,6 +14,12 @@ type Option func(*Builder)
 func WithDebug(debug bool) Option {
 	return func(b *Builder) {
 		b.debug = debug
+	}
+}
+
+func WithPlugins(plugins ...*plugin.Plugin) Option {
+	return func(b *Builder) {
+		b.plugins = plugins
 	}
 }
 

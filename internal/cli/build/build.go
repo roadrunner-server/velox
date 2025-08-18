@@ -1,13 +1,16 @@
+// Package build provides a command to build the RoadRunner binary
 package build
 
 import (
 	"os"
 	"syscall"
 
+	"github.com/google/uuid"
 	"github.com/roadrunner-server/velox/v2025"
 	"github.com/roadrunner-server/velox/v2025/builder"
+	cacheimpl "github.com/roadrunner-server/velox/v2025/cache"
 	"github.com/roadrunner-server/velox/v2025/github"
-	"github.com/roadrunner-server/velox/v2025/gitlab"
+	"github.com/roadrunner-server/velox/v2025/plugin"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -29,50 +32,44 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				*out = wd
 			}
 
-			var mi []*velox.ModulesInfo
-			if cfg.GitLab != nil {
-				rp, err := gitlab.NewGLRepoInfo(cfg, zlog.Named("GITLAB"))
-				if err != nil {
-					return err
+			bplugins := make([]*plugin.Plugin, 0, len(cfg.Plugins))
+			for name, p := range cfg.Plugins {
+				if p == nil {
+					zlog.Warn("plugin info is nil", zap.String("name", name))
+					continue
 				}
 
-				mi, err = rp.GetPluginsModData()
-				if err != nil {
-					return err
-				}
+				bplugins = append(bplugins, plugin.NewPlugin(p.ModuleName, p.Tag))
 			}
 
-			// roadrunner located on the github
-			rp := github.NewGHRepoInfo(cfg, zlog.Named("GITHUB"))
-			path, err := rp.DownloadTemplate(os.TempDir(), cfg.Roadrunner[ref])
+			// init out simple cache
+			rrcache := cacheimpl.NewRRCache()
+			// we can use a GITHUB token to download templates, but it's not required
+			rp := github.NewHTTPClient(os.Getenv("GITHUB_TOKEN"), rrcache, zlog.Named("GitHub"))
+			// Download the template for the specified RoadRunner version
+			path, err := rp.DownloadTemplate(os.TempDir(), uuid.NewString(), cfg.Roadrunner[ref])
 			if err != nil {
 				zlog.Error("downloading template", zap.Error(err))
-				os.Exit(1)
+				return err
 			}
 
-			pMod, err := rp.GetPluginsModData()
-			if err != nil {
-				zlog.Error("get plugins mod data", zap.Error(err))
-				os.Exit(1)
-			}
-
-			// append data from gitlab
-			if mi != nil {
-				pMod = append(pMod, mi...)
-			}
-
-			err = builder.NewBuilder(path, pMod,
+			opts := make([]builder.Option, 0)
+			opts = append(opts,
+				builder.WithPlugins(bplugins...),
 				builder.WithOutputDir(*out),
 				builder.WithRRVersion(cfg.Roadrunner[ref]),
-				builder.WithDebug(cfg.Debug.Enabled),
 				builder.WithLogger(zlog.Named("Builder")),
-			).Build(cfg.Roadrunner[ref])
+				builder.WithGOOS(cfg.TargetPlatform.OS),
+				builder.WithGOARCH(cfg.TargetPlatform.Arch),
+			)
+
+			binaryPath, err := builder.NewBuilder(path, opts...).Build(cfg.Roadrunner[ref])
 			if err != nil {
 				zlog.Error("fatal", zap.Error(err))
-				os.Exit(1)
+				return err
 			}
 
-			zlog.Info("========= build finished successfully =========", zap.String("RoadRunner binary can be found at", *out))
+			zlog.Info("build finished successfully", zap.String("path", binaryPath))
 			return nil
 		},
 	}
