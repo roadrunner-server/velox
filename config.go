@@ -3,6 +3,7 @@ package velox
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/pkg/errors"
@@ -66,6 +67,11 @@ func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 			OS:   runtime.GOOS,
 			Arch: runtime.GOARCH,
 		}
+	}
+
+	// Expand environment variables in GitHub token if present
+	if c.GitHub != nil && c.GitHub.Token != nil {
+		c.GitHub.Token.Token = os.ExpandEnv(c.GitHub.Token.Token)
 	}
 
 	if c.Plugins == nil {
