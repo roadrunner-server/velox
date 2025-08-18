@@ -73,7 +73,7 @@ jobs:
 
       - name: Build RoadRunner
         env:
-          RT_TOKEN: ${{ secrets.RT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RT_TOKEN }}
           GL_TOKEN: ${{ secrets.GL_TOKEN }}
           VERSION: ${{ secrets.VERSION }}
           TIME: ${{ secrets.TIME }}
