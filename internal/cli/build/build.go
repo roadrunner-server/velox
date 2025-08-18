@@ -3,7 +3,6 @@ package build
 
 import (
 	"os"
-	"runtime"
 	"syscall"
 
 	"github.com/google/uuid"
@@ -34,32 +33,24 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 			}
 
 			bplugins := make([]*plugin.Plugin, 0, len(cfg.Plugins))
-			for _, p := range cfg.Plugins {
+			for name, p := range cfg.Plugins {
 				if p == nil {
-					zlog.Warn("plugin info is nil")
+					zlog.Warn("plugin info is nil", zap.String("name", name))
 					continue
 				}
+
 				bplugins = append(bplugins, plugin.NewPlugin(p.ModuleName, p.Tag))
 			}
 
+			// init out simple cache
 			rrcache := cacheimpl.NewRRCache()
+			// we can use a GITHUB token to download templates, but it's not required
 			rp := github.NewHTTPClient(os.Getenv("GITHUB_TOKEN"), rrcache, zlog.Named("GitHub"))
+			// Download the template for the specified RoadRunner version
 			path, err := rp.DownloadTemplate(os.TempDir(), uuid.NewString(), cfg.Roadrunner[ref])
 			if err != nil {
 				zlog.Error("downloading template", zap.Error(err))
-				os.Exit(1)
-			}
-
-			// Use target platform or host platform as default
-			targetOS := runtime.GOOS
-			targetArch := runtime.GOARCH
-			if cfg.TargetPlatform != nil {
-				if cfg.TargetPlatform.OS != "native" {
-					targetOS = cfg.TargetPlatform.OS
-				}
-				if cfg.TargetPlatform.Arch != "native" {
-					targetArch = cfg.TargetPlatform.Arch
-				}
+				return err
 			}
 
 			opts := make([]builder.Option, 0)
@@ -68,14 +59,14 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				builder.WithOutputDir(*out),
 				builder.WithRRVersion(cfg.Roadrunner[ref]),
 				builder.WithLogger(zlog.Named("Builder")),
-				builder.WithGOOS(targetOS),
-				builder.WithGOARCH(targetArch),
+				builder.WithGOOS(cfg.TargetPlatform.OS),
+				builder.WithGOARCH(cfg.TargetPlatform.Arch),
 			)
 
 			binaryPath, err := builder.NewBuilder(path, opts...).Build(cfg.Roadrunner[ref])
 			if err != nil {
 				zlog.Error("fatal", zap.Error(err))
-				os.Exit(1)
+				return err
 			}
 
 			zlog.Info("build finished successfully", zap.String("path", binaryPath))
