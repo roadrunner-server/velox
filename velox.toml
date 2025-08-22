@@ -17,134 +17,133 @@ arch = "arm64"
 token = "${GITHUB_TOKEN}"
 
 [plugins.appLogger]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/app-logger/v5"
 
 [plugins.logger]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/logger/v5"
 
 [plugins.lock]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/lock/v5"
 
 [plugins.rpc]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/rpc/v5"
 
 [plugins.centrifuge]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/centrifuge/v5"
 
 [plugins.temporal]
-tag = "v5.7.0"
+tag = "latest"
 module_name = "github.com/temporalio/roadrunner-temporal/v5"
 
 [plugins.metrics]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/metrics/v5"
 
 [plugins.otel]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/otel/v5"
 
 [plugins.http]
-tag = "v5.2.7"
+tag = "latest"
 module_name = "github.com/roadrunner-server/http/v5"
 
 [plugins.gzip]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/gzip/v5"
 
 [plugins.prometheus]
-tag = "v5.1.7"
+tag = "latest"
 module_name = "github.com/roadrunner-server/prometheus/v5"
 
 [plugins.headers]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/headers/v5"
 
 [plugins.static]
-tag = "v5.1.6"
+tag = "latest"
 module_name = "github.com/roadrunner-server/static/v5"
 
 [plugins.proxy]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/proxy_ip_parser/v5"
 
 [plugins.send]
-tag = "v5.1.5"
+tag = "latest"
 module_name = "github.com/roadrunner-server/send/v5"
 
 [plugins.server]
-tag = "v5.2.9"
+tag = "latest"
 module_name = "github.com/roadrunner-server/server/v5"
 
 [plugins.service]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/service/v5"
 
 [plugins.jobs]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/jobs/v5"
 
 [plugins.amqp]
-tag = "v5.2.2"
+tag = "latest"
 module_name = "github.com/roadrunner-server/amqp/v5"
 
 [plugins.sqs]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/sqs/v5"
 
 [plugins.beanstalk]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/beanstalk/v5"
 
 [plugins.nats]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/nats/v5"
 
 [plugins.kafka]
-tag = "v5.2.4"
+tag = "latest"
 module_name = "github.com/roadrunner-server/kafka/v5"
 
 [plugins.googlepubsub]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/google-pub-sub/v5"
 
 [plugins.kv]
-tag = "v5.2.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/kv/v5"
 
 [plugins.boltdb]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/boltdb/v5"
 
 [plugins.memory]
-tag = "v5.2.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/memory/v5"
 
 [plugins.redis]
-tag = "v5.1.9"
+tag = "latest"
 module_name = "github.com/roadrunner-server/redis/v5"
 
 [plugins.memcached]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/memcached/v5"
 
 [plugins.fileserver]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/fileserver/v5"
 
 [plugins.grpc]
-tag = "v5.2.2"
+tag = "latest"
 module_name = "github.com/roadrunner-server/grpc/v5"
 
 [plugins.status]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/status/v5"
 
 [plugins.tcp]
-tag = "v5.1.8"
+tag = "latest"
 module_name = "github.com/roadrunner-server/tcp/v5"
-
