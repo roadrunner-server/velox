@@ -5,7 +5,7 @@ go 1.25
 toolchain go1.25.1
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.9-20250717185734-6c6e0d3c608e.1
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.9-20250912141014-52f32327d4b0.1
 	buf.build/go/protovalidate v0.14.0
 	github.com/bufbuild/connect-go v1.10.0
 	github.com/fatih/color v1.18.0
