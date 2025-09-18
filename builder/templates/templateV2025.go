@@ -8,8 +8,7 @@ import (
 const GoModTemplateV2025 string = `
 module github.com/roadrunner-server/roadrunner/{{.ModuleVersion}}
 
-go 1.24
-toolchain go1.24.3
+go 1.25
 
 require (
 	github.com/olekukonko/tablewriter v1.0.7
@@ -17,8 +16,8 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
 	github.com/joho/godotenv v1.5.1
-	github.com/spf13/cobra v1.9.1
-	github.com/spf13/viper v1.20.1
+	github.com/spf13/cobra v1.10.1
+	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/automaxprocs v1.6.0
 	github.com/roadrunner-server/informer/v5 latest
