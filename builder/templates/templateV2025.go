@@ -11,7 +11,7 @@ module github.com/roadrunner-server/roadrunner/{{.ModuleVersion}}
 go 1.25
 
 require (
-	github.com/olekukonko/tablewriter v1.0.7
+	github.com/olekukonko/tablewriter v1.1.0
 	github.com/buger/goterm v1.0.4
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
@@ -19,7 +19,6 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.10.0
-	go.uber.org/automaxprocs v1.6.0
 	github.com/roadrunner-server/informer/v5 latest
 	github.com/roadrunner-server/resetter/v5 latest
 	github.com/roadrunner-server/config/v5 latest
@@ -30,12 +29,13 @@ require (
 )
 
 replace (
-	github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.10
 	{{range $v := .Entries}}{{if (ne $v.Replace "")}}{{$v.Module}} => {{$v.Replace}}
 	{{end}}{{end}}
 )
 
 exclude (
+	github.com/redis/go-redis/v9 v9.15.0
+	github.com/redis/go-redis/v9 v9.15.1
 	github.com/spf13/viper v1.18.0
 	github.com/spf13/viper v1.18.1
 	go.temporal.io/api v1.26.1
