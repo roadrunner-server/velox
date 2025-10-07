@@ -2,7 +2,7 @@ module github.com/roadrunner-server/velox/v2025
 
 go 1.25
 
-toolchain go1.25.1
+toolchain go1.25.2
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1
@@ -17,9 +17,9 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.27.0
-	golang.org/x/net v0.44.0
+	golang.org/x/net v0.45.0
 	golang.org/x/oauth2 v0.31.0
-	google.golang.org/grpc v1.75.1
+	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 )
 
@@ -48,7 +48,7 @@ require (
 	golang.org/x/exp v0.0.0-20251002181428-27f1f14c8bb9 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20251002232023-7c0ddcbb5797 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251002232023-7c0ddcbb5797 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20251006185510-65f7160b3a87 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251006185510-65f7160b3a87 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
