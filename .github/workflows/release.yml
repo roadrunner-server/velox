@@ -162,12 +162,5 @@ jobs:
             APP_VERSION=${{ steps.values.outputs.version }}
             BUILD_TIME=${{ steps.values.outputs.timestamp }}
           tags: |
-            spiralscout/velox:latest
-            spiralscout/velox:${{ steps.values.outputs.version }}
-            spiralscout/velox:2025
-            spiralscout/velox:2025.1
-
-            ghcr.io/roadrunner-server/velox:latest
-            ghcr.io/roadrunner-server/velox:${{ steps.values.outputs.version }}
-            ghcr.io/roadrunner-server/velox:2025
-            ghcr.io/roadrunner-server/velox:2025.1
+            spiralscout/velox:2025.2-beta.1
+            ghcr.io/roadrunner-server/velox:2025.2-beta.1
