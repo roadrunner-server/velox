@@ -4,7 +4,7 @@ const GoModTemplateV2025 string = `
 module github.com/roadrunner-server/roadrunner/{{.RRModuleVersion}}
 
 go 1.25.2
-toolchain go1.25.0
+toolchain go1.25.2
 
 require (
 	github.com/olekukonko/tablewriter v1.0.8
