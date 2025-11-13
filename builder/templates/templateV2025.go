@@ -8,7 +8,7 @@ import (
 const GoModTemplateV2025 string = `
 module github.com/roadrunner-server/roadrunner/{{.ModuleVersion}}
 
-go 1.25
+go 1.25.4
 
 require (
 	github.com/olekukonko/tablewriter v1.1.0
