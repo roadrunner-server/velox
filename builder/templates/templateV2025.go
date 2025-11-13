@@ -3,8 +3,8 @@ package templates
 const GoModTemplateV2025 string = `
 module github.com/roadrunner-server/roadrunner/{{.RRModuleVersion}}
 
-go 1.25
-toolchain go1.25.0
+go 1.25.2
+toolchain go1.25.2
 
 require (
 	github.com/olekukonko/tablewriter v1.0.8
@@ -25,6 +25,9 @@ require (
 )
 
 exclude (
+	github.com/olekukonko/tablewriter v1.1.1
+	github.com/redis/go-redis/v9 v9.15.0
+	github.com/redis/go-redis/v9 v9.15.1
 	github.com/spf13/viper v1.18.0
 	github.com/spf13/viper v1.18.1
 	go.temporal.io/api v1.26.1
