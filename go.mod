@@ -2,7 +2,7 @@ module github.com/roadrunner-server/velox/v2025
 
 go 1.25
 
-toolchain go1.25.4
+toolchain go1.25.5
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1
@@ -10,7 +10,7 @@ require (
 	github.com/bufbuild/connect-go v1.10.0
 	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.6.0
-	github.com/hashicorp/go-version v1.7.0
+	github.com/hashicorp/go-version v1.8.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.1
@@ -45,10 +45,10 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6 // indirect
+	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20251111163417-95abcf5c77ba // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251111163417-95abcf5c77ba // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20251124214823-79d6a2a48846 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251124214823-79d6a2a48846 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
