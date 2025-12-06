@@ -17,7 +17,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 
-	"buf.build/go/protovalidate"
 	"github.com/roadrunner-server/velox/v2025/builder"
 	cacheimpl "github.com/roadrunner-server/velox/v2025/cache"
 	requestV1 "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1"
@@ -65,12 +64,6 @@ func NewBuildServer(log *zap.Logger) *BuildServer {
 }
 
 func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.BuildRequest]) (*connect.Response[responseV1.BuildResponse], error) {
-	// validate the request
-	err := protovalidate.Validate(req.Msg)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("validating request: %w", err))
-	}
-
 	hash, err := b.generateCacheHash(req)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("generating cache hash: %w", err))
