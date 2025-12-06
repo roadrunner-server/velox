@@ -53,6 +53,9 @@ type Plugin struct {
 	ModuleName string `mapstructure:"module_name"`
 }
 
+// Validate validates the configuration, sets defaults for missing fields, and expands environment variables.
+// It ensures the RoadRunner ref is set, target platform defaults to runtime OS/Arch, GitHub token is expanded,
+// and all required plugin fields are present.
 func (c *Config) Validate() error { //nolint:gocognit,gocyclo
 	if _, ok := c.Roadrunner[ref]; !ok {
 		if c.Roadrunner == nil {

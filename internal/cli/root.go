@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// NewCommand creates the root cobra command with build and server subcommands, config loading, and logger setup.
 func NewCommand(executableName string) *cobra.Command {
 	lg, _ := zap.NewDevelopment()
 
@@ -89,6 +90,7 @@ func NewCommand(executableName string) *cobra.Command {
 	return cmd
 }
 
+// p is a generic helper function that returns a pointer to the given value.
 func p[T any](val T) *T {
 	return &val
 }

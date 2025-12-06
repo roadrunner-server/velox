@@ -19,6 +19,7 @@ type Template struct {
 	Code []string
 }
 
+// NewTemplate creates a template structure from plugins, populating imports, code, and requires arrays.
 func NewTemplate(plugins []*plugin.Plugin) *Template {
 	// Initialize the template with the provided plugins
 	t := &Template{
@@ -36,6 +37,7 @@ func NewTemplate(plugins []*plugin.Plugin) *Template {
 	return t
 }
 
+// CompileGoModTemplate2025 generates a go.mod file for RoadRunner v2025 using the provided template data.
 func CompileGoModTemplate2025(wr io.Writer, t *Template) error {
 	tmpl, err := template.New("go.mod").Parse(GoModTemplateV2025)
 	if err != nil {
@@ -45,6 +47,7 @@ func CompileGoModTemplate2025(wr io.Writer, t *Template) error {
 	return tmpl.Execute(wr, t)
 }
 
+// CompileTemplateV2025 generates a plugins.go file for RoadRunner v2025 using the provided template data.
 func CompileTemplateV2025(buf *bytes.Buffer, data *Template) error {
 	tmplt, err := template.New("plugins.go").Parse(PluginsTemplateV2025)
 	if err != nil {
@@ -59,6 +62,7 @@ func CompileTemplateV2025(buf *bytes.Buffer, data *Template) error {
 	return nil
 }
 
+// CompileGoModTemplate2024 generates a go.mod file for RoadRunner v2024 using the provided template data.
 func CompileGoModTemplate2024(buf *bytes.Buffer, data *Template) error {
 	tmplt, err := template.New("go.mod").Parse(GoModTemplateV2024)
 	if err != nil {
@@ -73,6 +77,7 @@ func CompileGoModTemplate2024(buf *bytes.Buffer, data *Template) error {
 	return nil
 }
 
+// CompileTemplateV2024 generates a plugins.go file for RoadRunner v2024 using the provided template data.
 func CompileTemplateV2024(buf *bytes.Buffer, data *Template) error {
 	tmplt, err := template.New("plugins.go").Parse(PluginsTemplateV2024)
 	if err != nil {

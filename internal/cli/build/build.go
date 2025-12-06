@@ -19,6 +19,7 @@ const (
 	ref string = "ref"
 )
 
+// BindCommand creates the cobra command for building RoadRunner binary with configured plugins.
 func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "build",

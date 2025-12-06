@@ -20,6 +20,9 @@ const (
 	raw         Mode = "raw"
 )
 
+// BuildLogger constructs a zap logger with the specified level and mode.
+// Supported modes: production (JSON), development (console with colors), raw (message only), none/off (no-op).
+// If level is specified, it overrides the default level for the mode.
 func BuildLogger(level, mode string) (*zap.Logger, error) {
 	var zCfg zap.Config
 	switch Mode(strings.ToLower(mode)) {
@@ -136,10 +139,12 @@ func ColoredNameEncoder(s string, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(color.HiGreenString(s))
 }
 
+// utcEpochTimeEncoder encodes timestamps as UTC Unix epoch time in nanoseconds for structured logging.
 func utcEpochTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendInt64(t.UTC().UnixNano())
 }
 
+// utcISO8601TimeEncoder encodes timestamps in UTC ISO8601 format for human-readable logs.
 func utcISO8601TimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(t.UTC().Format("2006-01-02T15:04:05-0700"))
 }

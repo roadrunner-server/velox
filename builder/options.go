@@ -17,6 +17,7 @@ func WithDebug(debug bool) Option {
 	}
 }
 
+// WithPlugins sets the plugins to include in the RoadRunner build.
 func WithPlugins(plugins ...*plugin.Plugin) Option {
 	return func(b *Builder) {
 		b.plugins = plugins

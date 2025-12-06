@@ -40,6 +40,8 @@ type GitHubClient struct {
 	cache cache
 }
 
+// NewHTTPClient creates a GitHub client with optional OAuth token, caching, and custom redirect handling.
+// If an access token is provided, it configures OAuth2 authentication to increase GitHub API rate limits.
 func NewHTTPClient(accessToken string, cache cache, log *zap.Logger) *GitHubClient {
 	client := &http.Client{
 		Timeout: time.Minute,
@@ -144,6 +146,8 @@ func (r *GitHubClient) downloadRR(buf *bytes.Buffer, rrurl *url.URL) error {
 	return nil
 }
 
+// saveRR saves the zipped RoadRunner buffer to disk, extracts the archive, and returns the path to the extracted directory.
+// It performs path traversal protection (CWE-22) by rejecting paths containing "..".
 func (r *GitHubClient) saveRR(buf *bytes.Buffer, rrVersion, downloadDir string) (string, error) {
 	// replace '/' in the branch name or tag with the '_' to prevent using '/' as a path separator
 	rrVersion = strings.ReplaceAll(rrVersion, "/", "_")
@@ -230,6 +234,8 @@ func (r *GitHubClient) saveRR(buf *bytes.Buffer, rrVersion, downloadDir string) 
 	return filepath.Join(dest, outDir), nil //nolint:gosec
 }
 
+// parseRRref parses the RoadRunner version string into a GitHub archive URL.
+// It supports tags (v-prefix), branches (all other cases), and commit SHAs (40-character strings).
 func (r *GitHubClient) parseRRref(rrVersion string) (*url.URL, error) {
 	// 1. Tag -> link to use: https://github.com/roadrunner-server/roadrunner/archive/refs/tags/v2025.1.2.zip
 	// 2. BranchName -> link to use: https://github.com/roadrunner-server/roadrunner/archive/refs/heads/master.zip
@@ -249,6 +255,7 @@ func (r *GitHubClient) parseRRref(rrVersion string) (*url.URL, error) {
 	return url.Parse(fmt.Sprintf("https://github.com/roadrunner-server/roadrunner/archive/refs/heads/%s.zip", rrVersion))
 }
 
+// extract extracts a single zip file entry with path traversal protection.
 func extract(dest string, zf *zip.File) error {
 	pt := filepath.Join(dest, zf.Name) //nolint:gosec
 

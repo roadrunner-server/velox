@@ -9,6 +9,8 @@ var (
 	buildTime = "development" //nolint:gochecknoglobals
 )
 
+// Version returns the version string with leading 'v' or 'V' prefix stripped if followed by a digit.
+// The version is set via ldflags during build.
 func Version() string {
 	v := strings.TrimSpace(version)
 
@@ -19,6 +21,7 @@ func Version() string {
 	return v
 }
 
+// BuildTime returns the build timestamp string set via ldflags during build.
 func BuildTime() string {
 	return buildTime
 }

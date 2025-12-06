@@ -31,6 +31,7 @@ func NewPlugin(moduleName, tag string) *Plugin {
 	}
 }
 
+// Prefix returns the random 5-letter prefix assigned to this plugin for avoiding import name collisions.
 func (p *Plugin) Prefix() string {
 	return p.prefix
 }
@@ -50,6 +51,7 @@ func (p *Plugin) Code() string {
 	return fmt.Sprintf("%s.%s", p.prefix, pluginStructureStr)
 }
 
+// randStringBytes generates a random alphanumeric string of length n for use as plugin import prefixes.
 func randStringBytes(n int) string {
 	b := make([]byte, n)
 	for i := range b {

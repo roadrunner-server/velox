@@ -202,6 +202,8 @@ func (b *Builder) Build(rrRef string) (string, error) { //nolint:gocyclo
 	return binaryPath, nil
 }
 
+// Write implements io.Writer to capture build command output for logging and debugging.
+// It logs all output to the debug logger and optionally writes to a string builder.
 func (b *Builder) Write(d []byte) (int, error) {
 	b.log.Debug("[STDERR OUTPUT]", zap.ByteString("log", d))
 	if b.sb != nil {
@@ -211,6 +213,8 @@ func (b *Builder) Write(d []byte) (int, error) {
 	return len(d), nil
 }
 
+// validateModule parses the RoadRunner version string and returns the major version identifier.
+// It converts "master" to v2025 and extracts the major version from semantic versions (e.g., "v2024.1.0" → "v2024").
 func validateModule(module string) (string, error) {
 	if module == "master" {
 		// default branch
@@ -226,6 +230,8 @@ func validateModule(module string) (string, error) {
 	return fmt.Sprintf("v%d", v.Segments()[0]), nil
 }
 
+// goBuildCmd executes the Go build command with appropriate flags for cross-compilation and version injection.
+// It sets GOOS, GOARCH, CGO_ENABLED, and custom GOPATH/GOCACHE for platform-specific builds.
 func (b *Builder) goBuildCmd(outputPath string) error {
 	var cmd *exec.Cmd
 
@@ -290,6 +296,7 @@ func (b *Builder) goBuildCmd(outputPath string) error {
 	return nil
 }
 
+// exec executes an arbitrary command in the RoadRunner temporary directory with output logging.
 func (b *Builder) exec(cmd []string) error {
 	b.log.Info("executing command", zap.String("cmd", strings.Join(cmd, " ")))
 	// gosec: this is not user-controlled input

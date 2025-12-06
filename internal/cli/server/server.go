@@ -71,6 +71,8 @@ func NewBuildServer(log *zap.Logger) *BuildServer {
 	}
 }
 
+// Build handles gRPC build requests, caches results, and prevents duplicate concurrent builds.
+// It generates a hash from the request, checks caches, and builds RoadRunner with the specified plugins.
 func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.BuildRequest]) (*connect.Response[responseV1.BuildResponse], error) {
 	hash, err := b.generateCacheHash(req)
 	if err != nil {
@@ -153,6 +155,7 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 	return connect.NewResponse(resp), nil
 }
 
+// generateCacheHash generates a deterministic FNV-64a hash from the build request for caching.
 func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequest]) (string, error) {
 	cacheReq := &requestV1.BuildRequest{
 		RequestId:      req.Msg.GetRequestId(),
