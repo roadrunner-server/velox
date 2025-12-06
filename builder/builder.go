@@ -194,7 +194,7 @@ func (b *Builder) Build(rrRef string) (string, error) { //nolint:gocyclo
 	// move the binary to the output directory
 	binaryPath := filepath.Join(b.outputDir, generateExecutableName(b.goos))
 	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, generateExecutableName(b.goos))), zap.String("to", binaryPath))
-	err = moveFile(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)), binaryPath)
+	err = os.Rename(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)), binaryPath)
 	if err != nil {
 		return "", err
 	}
@@ -306,35 +306,6 @@ func (b *Builder) exec(cmd []string) error {
 		return err
 	}
 	return nil
-}
-
-func moveFile(from, to string) error {
-	ffInfo, err := os.Stat(from)
-	if err != nil {
-		return err
-	}
-
-	fFile, err := os.ReadFile(from)
-	if err != nil {
-		return err
-	}
-
-	toFile, err := os.Create(to)
-	if err != nil {
-		return err
-	}
-
-	err = toFile.Chmod(ffInfo.Mode())
-	if err != nil {
-		return err
-	}
-
-	_, err = toFile.Write(fFile)
-	if err != nil {
-		return err
-	}
-
-	return toFile.Close()
 }
 
 // for Windows we should use .exe pattern

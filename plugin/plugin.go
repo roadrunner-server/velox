@@ -16,10 +16,10 @@ type Plugin struct {
 	tag        string
 }
 
-// Go module name looks like <hosting>/<owner>/<repo>/v<version> (or without version) + tag
+// NewPlugin Go module name looks like <hosting>/<owner>/<repo>/v<version> (or without version) + tag
 // version example: github.com/hashicorp/golang-lru/v2 v2.0.7
 // no version example: github.com/spf13/cobra v1.9.1
-// we also adding a small prefix for the module to avoid collision, like: <prefix> <module> <tag>
+// we're also adding a small prefix for the module to avoid collision, like: <prefix> <module> <tag>
 func NewPlugin(moduleName, tag string) *Plugin {
 	return &Plugin{
 		prefix:     randStringBytes(5),
@@ -32,7 +32,7 @@ func (p *Plugin) Prefix() string {
 	return p.prefix
 }
 
-// returns module name + tag
+// Require returns module name + tag
 func (p *Plugin) Require() string {
 	return fmt.Sprintf("%s %s", p.moduleName, p.tag)
 }

@@ -5,12 +5,12 @@
 package serviceV1connect
 
 import (
+	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	connect_go "github.com/bufbuild/connect-go"
 	v1 "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1"
 	v11 "github.com/roadrunner-server/velox/v2025/gen/go/api/response/v1"
-	_ "github.com/roadrunner-server/velox/v2025/gen/go/api/service/v1"
+	v12 "github.com/roadrunner-server/velox/v2025/gen/go/api/service/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -20,7 +20,7 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// BuildServiceName is the fully-qualified name of the BuildService service.
@@ -41,7 +41,7 @@ const (
 
 // BuildServiceClient is a client for the api.service.v1.BuildService service.
 type BuildServiceClient interface {
-	Build(context.Context, *connect_go.Request[v1.BuildRequest]) (*connect_go.Response[v11.BuildResponse], error)
+	Build(context.Context, *connect.Request[v1.BuildRequest]) (*connect.Response[v11.BuildResponse], error)
 }
 
 // NewBuildServiceClient constructs a client for the api.service.v1.BuildService service. By
@@ -51,30 +51,32 @@ type BuildServiceClient interface {
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
-func NewBuildServiceClient(httpClient connect_go.HTTPClient, baseURL string, opts ...connect_go.ClientOption) BuildServiceClient {
+func NewBuildServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) BuildServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	buildServiceMethods := v12.File_api_service_v1_service_proto.Services().ByName("BuildService").Methods()
 	return &buildServiceClient{
-		build: connect_go.NewClient[v1.BuildRequest, v11.BuildResponse](
+		build: connect.NewClient[v1.BuildRequest, v11.BuildResponse](
 			httpClient,
 			baseURL+BuildServiceBuildProcedure,
-			opts...,
+			connect.WithSchema(buildServiceMethods.ByName("Build")),
+			connect.WithClientOptions(opts...),
 		),
 	}
 }
 
 // buildServiceClient implements BuildServiceClient.
 type buildServiceClient struct {
-	build *connect_go.Client[v1.BuildRequest, v11.BuildResponse]
+	build *connect.Client[v1.BuildRequest, v11.BuildResponse]
 }
 
 // Build calls api.service.v1.BuildService.Build.
-func (c *buildServiceClient) Build(ctx context.Context, req *connect_go.Request[v1.BuildRequest]) (*connect_go.Response[v11.BuildResponse], error) {
+func (c *buildServiceClient) Build(ctx context.Context, req *connect.Request[v1.BuildRequest]) (*connect.Response[v11.BuildResponse], error) {
 	return c.build.CallUnary(ctx, req)
 }
 
 // BuildServiceHandler is an implementation of the api.service.v1.BuildService service.
 type BuildServiceHandler interface {
-	Build(context.Context, *connect_go.Request[v1.BuildRequest]) (*connect_go.Response[v11.BuildResponse], error)
+	Build(context.Context, *connect.Request[v1.BuildRequest]) (*connect.Response[v11.BuildResponse], error)
 }
 
 // NewBuildServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -82,11 +84,13 @@ type BuildServiceHandler interface {
 //
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
-func NewBuildServiceHandler(svc BuildServiceHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	buildServiceBuildHandler := connect_go.NewUnaryHandler(
+func NewBuildServiceHandler(svc BuildServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	buildServiceMethods := v12.File_api_service_v1_service_proto.Services().ByName("BuildService").Methods()
+	buildServiceBuildHandler := connect.NewUnaryHandler(
 		BuildServiceBuildProcedure,
 		svc.Build,
-		opts...,
+		connect.WithSchema(buildServiceMethods.ByName("Build")),
+		connect.WithHandlerOptions(opts...),
 	)
 	return "/api.service.v1.BuildService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -101,6 +105,6 @@ func NewBuildServiceHandler(svc BuildServiceHandler, opts ...connect_go.HandlerO
 // UnimplementedBuildServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedBuildServiceHandler struct{}
 
-func (UnimplementedBuildServiceHandler) Build(context.Context, *connect_go.Request[v1.BuildRequest]) (*connect_go.Response[v11.BuildResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("api.service.v1.BuildService.Build is not implemented"))
+func (UnimplementedBuildServiceHandler) Build(context.Context, *connect.Request[v1.BuildRequest]) (*connect.Response[v11.BuildResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.service.v1.BuildService.Build is not implemented"))
 }

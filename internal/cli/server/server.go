@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	lru "github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -71,17 +71,20 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("validating request: %w", err))
 	}
 
-	hash := b.generateCacheHash(req)
+	hash, err := b.generateCacheHash(req)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("generating cache hash: %w", err))
+	}
 	b.log.Debug("cache key", zap.String("key", hash))
 
-	// we can't process the same request concurrently, since we use a filesystem and we don't want to corrupt the state
+	// we can't process the same request concurrently, since we use a filesystem, and we don't want to corrupt the state
 	// b.currentlyProcessing is safe for concurrent use
 	if b.currentlyProcessing.Contains(hash) {
 		b.log.Debug("currently processing", zap.String("key", hash))
 		return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("build is already in progress"))
 	}
 
-	// save currently processing key
+	// save the currently processing key
 	// needed for concurrent requests for the same request_id
 	b.currentlyProcessing.Add(hash, struct{}{})
 	defer b.currentlyProcessing.Remove(hash)
@@ -113,8 +116,8 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("downloading template: %w", err))
 	}
 
-	// if target platform is not specified
-	// use host platform
+	// if a target platform is not specified,
+	// use a host platform
 	if req.Msg.GetTargetPlatform() == nil {
 		b.log.Info("target platform is not specified, using host platform")
 		req.Msg.TargetPlatform = &requestV1.Platform{
@@ -149,7 +152,7 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 	return connect.NewResponse(resp), nil
 }
 
-func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequest]) string {
+func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequest]) (string, error) {
 	cacheReq := &requestV1.BuildRequest{
 		RequestId:      req.Msg.GetRequestId(),
 		RrVersion:      req.Msg.GetRrVersion(),
@@ -162,12 +165,11 @@ func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequ
 		AllowPartial:  false,
 	}.Marshal(cacheReq)
 	if err != nil {
-		// TODO: might be just fail processing?
 		b.log.Error("marshaling cache key error, cache creation would be skipped", zap.Error(err))
-		return ""
+		return "", err
 	}
 
 	h := fnv.New64a()
 	h.Write(data)
-	return strconv.FormatUint(h.Sum64(), 16)
+	return strconv.FormatUint(h.Sum64(), 16), nil
 }
