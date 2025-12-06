@@ -19,7 +19,10 @@ type Plugin struct {
 // NewPlugin Go module name looks like <hosting>/<owner>/<repo>/v<version> (or without version) + tag
 // version example: github.com/hashicorp/golang-lru/v2 v2.0.7
 // no version example: github.com/spf13/cobra v1.9.1
-// we're also adding a small prefix for the module to avoid collision, like: <prefix> <module> <tag>
+// NewPlugin creates a Plugin configured for the given module import path and tag and assigns a random
+// 5-letter prefix to avoid import name collisions.
+// The moduleName is the module import path (for example "host/owner/repo/vX"); tag is the module tag or version
+// string that will be combined with the module name when requiring the module.
 func NewPlugin(moduleName, tag string) *Plugin {
 	return &Plugin{
 		prefix:     randStringBytes(5),

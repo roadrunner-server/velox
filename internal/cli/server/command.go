@@ -16,6 +16,11 @@ import (
 	servicev1 "github.com/roadrunner-server/velox/v2025/gen/go/api/service/v1/serviceV1connect"
 )
 
+// BindCommand returns a cobra.Command that starts the Velox server.
+// The command listens on the provided address and uses zlog for logging.
+// It registers the BuildService handler (with a request validation interceptor) and gRPC reflection,
+// serves HTTP/2 over cleartext (h2c) with a one-minute header timeout, and runs until the server is closed.
+// If the server stops due to an orderly shutdown, the command exits with nil; other listen errors are returned.
 func BindCommand(address *string, zlog *zap.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "server",

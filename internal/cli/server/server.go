@@ -38,6 +38,14 @@ type BuildServer struct {
 	rrcache             cache
 }
 
+// NewBuildServer creates and returns a BuildServer configured to orchestrate plugin builds,
+// cache built binaries, and prevent concurrent builds for the same request.
+//
+// The returned BuildServer uses an LRU cache (capacity 100, 30-minute TTL) that maps request
+// hashes to built binary paths and removes both the binary and its temporary directory on eviction.
+// It also maintains a "currently processing" LRU (capacity 100, 5-minute TTL) to track in-flight
+// builds and avoid duplicate concurrent work. An RR cache instance is created for template retrieval.
+// The provided logger is used for operational logging.
 func NewBuildServer(log *zap.Logger) *BuildServer {
 	return &BuildServer{
 		log: log,

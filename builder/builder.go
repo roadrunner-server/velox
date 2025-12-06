@@ -308,7 +308,8 @@ func (b *Builder) exec(cmd []string) error {
 	return nil
 }
 
-// for Windows we should use .exe pattern
+// generateExecutableName returns the executable filename for the given target OS.
+// If goos (case-insensitive) is "windows", it returns the Windows executable name; otherwise it returns the default (Unix-style) executable name.
 func generateExecutableName(goos string) string {
 	if strings.ToLower(goos) == "windows" {
 		return executableNameWindows
