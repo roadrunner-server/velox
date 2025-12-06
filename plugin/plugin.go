@@ -16,10 +16,13 @@ type Plugin struct {
 	tag        string
 }
 
-// Go module name looks like <hosting>/<owner>/<repo>/v<version> (or without version) + tag
+// NewPlugin Go module name looks like <hosting>/<owner>/<repo>/v<version> (or without version) + tag
 // version example: github.com/hashicorp/golang-lru/v2 v2.0.7
 // no version example: github.com/spf13/cobra v1.9.1
-// we also adding a small prefix for the module to avoid collision, like: <prefix> <module> <tag>
+// NewPlugin creates a Plugin configured for the given module import path and tag and assigns a random
+// 5-letter prefix to avoid import name collisions.
+// The moduleName is the module import path (for example "host/owner/repo/vX"); tag is the module tag or version
+// string that will be combined with the module name when requiring the module.
 func NewPlugin(moduleName, tag string) *Plugin {
 	return &Plugin{
 		prefix:     randStringBytes(5),
@@ -28,11 +31,12 @@ func NewPlugin(moduleName, tag string) *Plugin {
 	}
 }
 
+// Prefix returns the random 5-letter prefix assigned to this plugin for avoiding import name collisions.
 func (p *Plugin) Prefix() string {
 	return p.prefix
 }
 
-// returns module name + tag
+// Require returns module name + tag
 func (p *Plugin) Require() string {
 	return fmt.Sprintf("%s %s", p.moduleName, p.tag)
 }
@@ -47,6 +51,7 @@ func (p *Plugin) Code() string {
 	return fmt.Sprintf("%s.%s", p.prefix, pluginStructureStr)
 }
 
+// randStringBytes generates a random alphanumeric string of length n for use as plugin import prefixes.
 func randStringBytes(n int) string {
 	b := make([]byte, n)
 	for i := range b {

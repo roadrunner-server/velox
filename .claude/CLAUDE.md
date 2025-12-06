@@ -1,216 +1,215 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Velox - RoadRunner Build System
 
 ## Project Overview
 
-Velox is an automated build system for RoadRunner server and its plugins. It's part of the Spiral/RoadRunner ecosystem and provides tools for building, testing, and managing RoadRunner plugin builds.
+Velox is an automated build system for RoadRunner server and its plugins. It dynamically compiles custom RoadRunner binaries by:
+1. Downloading RoadRunner template from GitHub
+2. Generating `container/plugins.go` with plugin imports and registration
+3. Generating `go.mod` with plugin dependencies
+4. Running `go build` with cross-compilation support
+
+**Two modes:**
+- **CLI (`vx`)**: Local builds with custom plugin selection
+- **Build Server**: gRPC/Connect API for remote builds with LRU caching
 
 **Key Technologies:**
 
-- Go 1.24+
-- Protocol Buffers (protobuf) with buf
-- GitHub/GitLab API integration
-- gRPC and Connect
+- Go 1.25+ (module: `github.com/roadrunner-server/velox/v2025`)
+- Protocol Buffers with buf (not protoc)
+- Connect RPC (connectrpc.com/connect) and gRPC
+- GitHub API with OAuth2 token support
 - Cobra CLI framework
 
 ## Repository Structure
 
 ```
-├── api/                    # Protocol buffer definitions
+├── api/                    # Protocol buffer definitions (BuildService RPC)
 ├── builder/               # Core build logic
+│   └── templates/        # Versioned templates (V2025, V2024, V2023, V2)
 ├── cmd/vx/               # Main CLI entry point
-├── gen/                  # Generated protobuf code
-├── github/               # GitHub API integration
-├── gitlab/               # GitLab API integration
+├── gen/                  # Generated protobuf code (buf generate output)
+├── github/               # GitHub API integration (template downloads)
 ├── internal/cli/         # CLI command implementations
-├── v2/                   # Version 2 refactored components
+│   ├── build/           # Build command
+│   └── server/          # gRPC server with LRU cache
+├── plugin/               # Plugin metadata with import collision avoidance
+├── cache/                # Thread-safe RRCache for downloaded templates
+├── logger/               # Zap logger builder
 └── velox.toml           # Configuration file
 ```
+
+**Note:** `gen/` directory has replace directive in `go.mod:28`: `github.com/roadrunner-server/velox/v2025/gen => ./gen`
 
 ## Common Commands
 
 ### Building and Testing
 
 ```bash
-# Run tests
-go test -v -race ./...
-make test
+# Run tests with race detection
+make test                # Runs: go test -v -race ./...
 
-# Regenerate protobuf code
-make regenerate
-# Or manually:
-rm -rf ./gen && buf generate && buf format -w
+# Regenerate protobuf code (after .proto changes)
+make regenerate          # Runs: rm -rf ./gen && buf generate && buf format -w
 
-# Build the velox binary
+# Build the velox CLI
 go build -o vx ./cmd/vx
 
-# Run velox (requires config)
-./vx -c velox.toml build
+# Use velox to build custom RoadRunner
+./vx -c velox.toml build -o ./output/rr
+
+# Run velox as build server
 ./vx -c velox.toml server -a 127.0.0.1:8080
-```
 
-### Development Tools
-
-```bash
-# Format Go code
-go fmt ./...
-
-# Run linter (if available)
-golangci-lint run
-
-# Check dependencies
-go mod tidy
-go mod verify
-```
-
-## Core Files and Components
-
-### Main Entry Points
-
-- `cmd/vx/main.go` - CLI application entry point
-- `internal/cli/root.go:18` - Root command setup with configuration
-
-### Build System
-
-- `builder/builder.go` - Core build logic
-- `builder/templates/` - Build templates for different versions
-- `v2/builder/` - Refactored v2 build system
-
-### Configuration
-
-- `config.go` - Configuration structure and validation
-- `velox.toml` - Default configuration file format
-
-### API Integration
-
-- `github/repo.go` - GitHub repository management
-- `gitlab/repo.go` - GitLab repository management
-- `api/` - Protocol buffer service definitions
-
-## Code Style Guidelines
-
-### Go Conventions
-
-- Follow standard Go formatting (`gofmt`)
-- Use meaningful variable names
-- Prefer explicit error handling
-- Use context.Context for cancellation
-- Follow Go module structure with `github.com/roadrunner-server/velox/v2025`
-
-### Protocol Buffers
-
-- Use buf for generation and formatting
-- Service definitions in `api/service/v1/`
-- Generate code with `buf generate`
-
-### Error Handling
-
-- Use `github.com/pkg/errors` for error wrapping
-- Always handle errors explicitly
-- Use structured logging with zap
-
-## Testing Instructions
-
-```bash
-# Run all tests with race detection
-make test
-# or
-go test -v -race ./...
-
-# Run specific package tests
+# Test specific packages
 go test -v ./builder/
 go test -v ./github/
-
-# Run with coverage
 go test -cover ./...
+
+# Linting (35+ linters configured in .golangci.yml)
+golangci-lint run
 ```
 
-## Repository Etiquette
+## Core Architecture
 
-### Branching
+### Build Process Flow (builder/builder.go:61-203)
 
-- Main branch: `master`
-- Feature branches: `feature/description`
-- Use conventional commit messages
+1. **Download Template**: GitHub API downloads RoadRunner template (cached by version in `cache/cache.go`)
+   - Supports: tags (`v2025.1.2`), branches (`master`), commit SHAs (40-char)
+   - URL patterns: `/archive/refs/tags/*.zip`, `/archive/refs/heads/*.zip`, `/archive/{sha}.zip`
+   - CWE-22 protection: Rejects paths with `..` in zip extraction
 
-### Plugin Compatibility
+2. **Generate Plugin Registration**: `builder/templates/compile.go` compiles `container/plugins.go`
+   - Random 5-letter prefix per plugin to avoid import collisions (`plugin/plugin.go:13-59`)
+   - Injects imports, requires, and plugin initialization code
 
-⚠️ **Important Plugin Guidelines:**
+3. **Generate go.mod**: Template compilation creates module file with plugin dependencies
+   - Version detection: "master" → v2025, semantic version → extract major version
 
-- Do not use plugin's `master` branch
-- Use tags with the **same major version**
-- Currently supported plugins version: `v5.x.x`
-- Currently supported RR version: `>=v2024.x.x`
+4. **Build Binary**: Executes `go mod download && go mod tidy && go build`
+   - Cross-compilation: Sets GOOS/GOARCH/CGO_ENABLED=0 from config
+   - Custom GOPATH per platform: `~/go/{goos}/{goarch}`
+   - Ldflags inject version info from `internal/version/version.go`
 
-### Commit Guidelines
+### Template Versioning (builder/builder.go:77-90, :137-150)
 
-- Use descriptive commit messages
-- Reference issues when applicable
-- Keep commits focused and atomic
+- **V2025**: Current production template (`builder/templates/templateV2025.go`)
+- **V2024**: Backward compatibility (`builder/templates/templateV2024.go`)
+- **V2023**, **V2**: Legacy templates
 
-## Developer Environment Setup
+**Adding new templates:**
+1. Create `builder/templates/templateVXXXX.go` with `goModTemplate` and `pluginTemplate`
+2. Update switch cases in `builder.go` (lines 77-90 for module, 137-150 for plugins)
+3. Add constant to `config.go:15-16` (e.g., `V2026 = "v2026"`)
 
-### Prerequisites
+### Server Mode Caching (internal/cli/server/server.go:33-177)
 
-- Go 1.24+ (toolchain: go1.24.0)
-- buf CLI for protocol buffer generation
-- Git for version control
+- **Binary Cache**: LRU (100 entries, 30min TTL) stores built binaries
+- **Processing Lock**: LRU (100 entries, 5min TTL) prevents duplicate concurrent builds
+- **Cache Key**: FNV hash of protobuf-marshaled BuildRequest
+- **Eviction**: Removes binary file + temp directory on eviction
 
-### Setup Steps
+### Key Files
 
-1. Clone repository
-2. Install dependencies: `go mod download`
-3. Generate protobuf code: `make regenerate`
-4. Run tests: `make test`
-5. Build: `go build ./cmd/vx`
+- `builder/builder.go:32-319` - Main Builder with template compilation and go build
+- `builder/options.go:10-66` - Functional options (WithPlugins, WithGOOS, WithGOARCH, etc.)
+- `internal/cli/server/server.go` - Build-as-a-service with gRPC/Connect
+- `github/github.go:36-290` - GitHub template downloads with OAuth2 support
+- `config.go:19-98` - Config validation with environment variable expansion
+- `api/service/v1/service.proto:10-12` - BuildService RPC definition
 
-### Configuration
+## Configuration (velox.toml)
 
-Create `velox.toml` based on project requirements. The CLI expects:
+```toml
+[roadrunner]
+ref = "v2025.1.2"  # Tag, branch, or 40-char commit SHA
+
+[github.token]
+token = "${GITHUB_TOKEN}"  # Environment variable expansion
+
+[target_platform]
+os = "linux"       # Defaults to runtime.GOOS
+arch = "amd64"     # Defaults to runtime.GOARCH
+
+[log]
+level = "debug"
+mode = "production"  # Options: production, development, raw, none
+
+[plugins.http]
+module_name = "github.com/roadrunner-server/http/v5"
+tag = "v5.1.0"  # Must match major version with other plugins (v5.x.x)
+```
+
+**Config validation** (`config.go:56-98`): Expands env vars, validates required fields, checks plugin version compatibility.
+
+## Protocol Buffers
+
+- **buf.yaml**: Dependencies include `buf.build/bufbuild/protovalidate`
+- **buf.gen.yaml**: Generates Go (protobuf + Connect + gRPC stubs)
+- **Regeneration**: `make regenerate` or `rm -rf ./gen && buf generate && buf format -w`
+- **Files always modified**: `api/service/v1/`, `api/request/v1/`, `api/response/v1/`
+
+## Testing
+
+**Unit tests:**
+```bash
+make test                    # Race detection enabled
+go test -v ./builder/        # Specific package
+go test -cover ./...         # With coverage
+```
+
+**CI/CD** (`.github/workflows/linux.yml`):
+- Runs on push, PR, daily at 5:30 AM UTC
+- Job 1 (`golang`): `make test`
+- Job 2 (`build-sample-rr`): Integration test - builds velox, uses it to build RoadRunner, runs `./rr --version`
+
+## Plugin Compatibility (CRITICAL)
+
+⚠️ **Plugin version rules:**
+- **Never use `master` branch** for plugins
+- **All plugins must use same major version** (e.g., `logger` v5.0.3 + `amqp` v5.0.5 ✓, but `logger` v6.0.0 + `amqp` v5.0.5 ✗)
+- **Currently supported:** Plugins v5.x.x, RoadRunner >=v2024.x.x
+- Mixing major versions will cause build failures
+
+**Version detection logic** (`builder/builder.go:214-227`): "master" → v2025, semantic version → extract major version
+
+## Setup
 
 ```bash
-./vx -c velox.toml build    # Build mode
-./vx -c velox.toml server   # Server mode
+# Prerequisites: Go 1.25+, buf CLI
+go mod download
+make regenerate     # Generate protobuf code
+make test           # Verify setup
+go build -o vx ./cmd/vx
 ```
 
-## Unexpected Project Behaviors
+## Important Implementation Details
 
-### Version Management
+### Module Versioning (Non-semantic)
+- Module path uses **year-based versioning**: `github.com/roadrunner-server/velox/v2025`
+- This is NOT semantic versioning (v2.x.x) - it's a calendar year indicator
+- Replace directive required: `github.com/roadrunner-server/velox/v2025/gen => ./gen`
 
-- Project uses `v2025` module path
-- Replace directive: `github.com/roadrunner-server/velox/v2025/gen => ./gen`
-- Multiple template versions in `builder/templates/`
+### GitHub Template Downloads
+- **Caching**: Downloaded templates cached in `cache/cache.go` (thread-safe RRCache)
+- **URL formats**:
+  - Tags: `https://github.com/{owner}/{repo}/archive/refs/tags/{tag}.zip`
+  - Branches: `https://github.com/{owner}/{repo}/archive/refs/heads/{branch}.zip`
+  - Commits: `https://github.com/{owner}/{repo}/archive/{sha}.zip` (40-char SHA)
+- **Security**: Path traversal check rejects `..` in zip entry names (`github/github.go:211-218`)
 
-### Build System
+### Import Collision Avoidance
+- Each plugin gets random 5-letter prefix (`plugin/plugin.go:13-59`)
+- Generated code: `import prefix "github.com/roadrunner-server/http/v5"`
+- Plugin registration: `prefix.Plugin{}`
 
-- Templates are versioned (V2, V2023, V2024, V2025)
-- Build process involves GitHub/GitLab API calls
-- Server mode provides build-as-a-service functionality
-
-### Protobuf Generation
-
-- Uses buf instead of protoc directly
-- Generated code goes into `gen/` directory
-- Must regenerate after proto changes
-
-## Useful Development Patterns
-
-### Adding New Build Templates
-
-1. Create new template in `builder/templates/`
-2. Update `builder.go` to reference new template
-3. Add corresponding tests in `builder_test.go`
-
-### GitHub/GitLab Integration
-
-- Use existing pool patterns in `github/pool.go`
-- Implement repository interface consistently
-- Handle rate limiting and authentication
-
-### CLI Commands
-
-- Follow cobra patterns in `internal/cli/`
-- Use persistent flags for common options
-- Implement proper validation in `PersistentPreRunE`
+### Cross-Platform Builds
+- Custom GOPATH per platform: `~/go/{goos}/{goarch}` prevents module cache conflicts
+- Environment: `GOOS={os} GOARCH={arch} CGO_ENABLED=0`
+- Build command: `go build -trimpath -ldflags="-s -w -X version=..."`
 
 ## Links and Documentation
 

@@ -12,12 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	lru "github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 
-	"buf.build/go/protovalidate"
 	"github.com/roadrunner-server/velox/v2025/builder"
 	cacheimpl "github.com/roadrunner-server/velox/v2025/cache"
 	requestV1 "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1"
@@ -39,6 +38,14 @@ type BuildServer struct {
 	rrcache             cache
 }
 
+// NewBuildServer creates and returns a BuildServer configured to orchestrate plugin builds,
+// cache built binaries, and prevent concurrent builds for the same request.
+//
+// The returned BuildServer uses an LRU cache (capacity 100, 30-minute TTL) that maps request
+// hashes to built binary paths and removes both the binary and its temporary directory on eviction.
+// It also maintains a "currently processing" LRU (capacity 100, 5-minute TTL) to track in-flight
+// builds and avoid duplicate concurrent work. An RR cache instance is created for template retrieval.
+// The provided logger is used for operational logging.
 func NewBuildServer(log *zap.Logger) *BuildServer {
 	return &BuildServer{
 		log: log,
@@ -64,24 +71,23 @@ func NewBuildServer(log *zap.Logger) *BuildServer {
 	}
 }
 
+// Build handles gRPC build requests, caches results, and prevents duplicate concurrent builds.
+// It generates a hash from the request, checks caches, and builds RoadRunner with the specified plugins.
 func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.BuildRequest]) (*connect.Response[responseV1.BuildResponse], error) {
-	// validate the request
-	err := protovalidate.Validate(req.Msg)
+	hash, err := b.generateCacheHash(req)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("validating request: %w", err))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("generating cache hash: %w", err))
 	}
-
-	hash := b.generateCacheHash(req)
 	b.log.Debug("cache key", zap.String("key", hash))
 
-	// we can't process the same request concurrently, since we use a filesystem and we don't want to corrupt the state
+	// we can't process the same request concurrently, since we use a filesystem, and we don't want to corrupt the state
 	// b.currentlyProcessing is safe for concurrent use
 	if b.currentlyProcessing.Contains(hash) {
 		b.log.Debug("currently processing", zap.String("key", hash))
 		return nil, connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("build is already in progress"))
 	}
 
-	// save currently processing key
+	// save the currently processing key
 	// needed for concurrent requests for the same request_id
 	b.currentlyProcessing.Add(hash, struct{}{})
 	defer b.currentlyProcessing.Remove(hash)
@@ -113,8 +119,8 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("downloading template: %w", err))
 	}
 
-	// if target platform is not specified
-	// use host platform
+	// if a target platform is not specified,
+	// use a host platform
 	if req.Msg.GetTargetPlatform() == nil {
 		b.log.Info("target platform is not specified, using host platform")
 		req.Msg.TargetPlatform = &requestV1.Platform{
@@ -149,7 +155,8 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 	return connect.NewResponse(resp), nil
 }
 
-func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequest]) string {
+// generateCacheHash generates a deterministic FNV-64a hash from the build request for caching.
+func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequest]) (string, error) {
 	cacheReq := &requestV1.BuildRequest{
 		RequestId:      req.Msg.GetRequestId(),
 		RrVersion:      req.Msg.GetRrVersion(),
@@ -162,12 +169,11 @@ func (b *BuildServer) generateCacheHash(req *connect.Request[requestV1.BuildRequ
 		AllowPartial:  false,
 	}.Marshal(cacheReq)
 	if err != nil {
-		// TODO: might be just fail processing?
 		b.log.Error("marshaling cache key error, cache creation would be skipped", zap.Error(err))
-		return ""
+		return "", err
 	}
 
 	h := fnv.New64a()
 	h.Write(data)
-	return strconv.FormatUint(h.Sum64(), 16)
+	return strconv.FormatUint(h.Sum64(), 16), nil
 }

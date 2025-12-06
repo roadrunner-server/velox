@@ -11,6 +11,7 @@ type RRCache struct {
 	data map[string]*bytes.Buffer
 }
 
+// NewRRCache creates a new thread-safe cache for storing RoadRunner template buffers.
 func NewRRCache() *RRCache {
 	return &RRCache{
 		mu:   &sync.RWMutex{},
@@ -18,6 +19,8 @@ func NewRRCache() *RRCache {
 	}
 }
 
+// Get retrieves a cached buffer by key, returning a copy to prevent external mutations.
+// Returns nil if the key is not found.
 func (c *RRCache) Get(key string) *bytes.Buffer {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -34,6 +37,9 @@ func (c *RRCache) Get(key string) *bytes.Buffer {
 	return nil
 }
 
+// Set stores a buffer in the cache, creating a copy to prevent external mutations.
+// If the key already exists, this method returns immediately to preserve in-use buffers.
+// Panics if buf is nil.
 func (c *RRCache) Set(key string, buf *bytes.Buffer) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
