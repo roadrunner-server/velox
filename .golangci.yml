@@ -51,6 +51,11 @@ linters:
       simple: true
       range-loops: true
       for-loops: true
+    revive:
+      enable-default-rules: true
+      rules:
+        - name: var-naming
+          disabled: true
     wsl:
       allow-assign-and-anything: true
   exclusions:
