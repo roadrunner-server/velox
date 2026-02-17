@@ -20,4 +20,4 @@
 **/plugins_dev.toml
 .vscode
 rr
-vx
+/vx
