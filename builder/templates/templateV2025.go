@@ -3,19 +3,17 @@ package templates
 const GoModTemplateV2025 string = `
 module github.com/roadrunner-server/roadrunner/{{.RRModuleVersion}}
 
-go 1.25.2
-toolchain go1.25.2
+go 1.26
 
 require (
-	github.com/olekukonko/tablewriter v1.0.8
+	github.com/olekukonko/tablewriter v1.1.3
 	github.com/buger/goterm v1.0.4
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
 	github.com/joho/godotenv v1.5.1
-	github.com/spf13/cobra v1.9.1
-	github.com/spf13/viper v1.20.1
-	github.com/stretchr/testify v1.10.0
-	go.uber.org/automaxprocs v1.6.0
+	github.com/spf13/cobra v1.10.2
+	github.com/spf13/viper v1.21.0
+	github.com/stretchr/testify v1.11.1
 	github.com/roadrunner-server/informer/v5 latest
 	github.com/roadrunner-server/resetter/v5 latest
 

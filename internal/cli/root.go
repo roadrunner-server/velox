@@ -1,4 +1,3 @@
-// Package cli provides the CLI for the Velox build system
 package cli
 
 import (

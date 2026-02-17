@@ -1,4 +1,3 @@
-// Package velox ...
 package velox
 
 import (
