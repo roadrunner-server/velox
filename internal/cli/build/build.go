@@ -1,4 +1,3 @@
-// Package build provides a command to build the RoadRunner binary
 package build
 
 import (
@@ -54,7 +53,7 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				return err
 			}
 
-			opts := make([]builder.Option, 0)
+			opts := make([]builder.Option, 0, 6)
 			opts = append(opts,
 				builder.WithPlugins(bplugins...),
 				builder.WithOutputDir(*out),

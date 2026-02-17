@@ -129,7 +129,7 @@ func (b *BuildServer) Build(_ context.Context, req *connect.Request[requestV1.Bu
 		}
 	}
 
-	opts := make([]builder.Option, 0)
+	opts := make([]builder.Option, 0, 7)
 	opts = append(opts,
 		builder.WithPlugins(bplugins...),
 		builder.WithOutputDir(outputPath),
