@@ -2,7 +2,7 @@ module github.com/roadrunner-server/velox/v2025
 
 go 1.26
 
-toolchain go1.26.0
+toolchain go1.26.3
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1

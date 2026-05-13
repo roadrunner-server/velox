@@ -21,7 +21,7 @@ func NewCommand(executableName string) *cobra.Command {
 
 	var (
 		pathToConfig string // path to the velox configuration
-		cfgPath      = p("")
+		cfgPath      = new("")
 		outputFile   string // output file (optionally with directory)
 		address      string
 		config       = &velox.Config{} // velox configuration
@@ -90,6 +90,8 @@ func NewCommand(executableName string) *cobra.Command {
 }
 
 // p is a generic helper function that returns a pointer to the given value.
+//
+//go:fix inline
 func p[T any](val T) *T {
-	return &val
+	return new(val)
 }
