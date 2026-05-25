@@ -1,7 +1,7 @@
 package builder
 
 import (
-	"go.uber.org/zap"
+	"log/slog"
 
 	"github.com/roadrunner-server/velox/v3"
 	"github.com/roadrunner-server/velox/v3/plugin"
@@ -10,9 +10,15 @@ import (
 // Option configures a Builder. Pass these to NewBuilder.
 type Option func(*Builder)
 
-// WithLogger sets the zap logger used for builder diagnostics.
-func WithLogger(log *zap.Logger) Option {
-	return func(b *Builder) { b.log = log }
+// WithLogger sets the slog logger used for builder diagnostics. A nil logger
+// is ignored so the Builder's discard default is preserved (rather than
+// nil-panicking on the first log call).
+func WithLogger(log *slog.Logger) Option {
+	return func(b *Builder) {
+		if log != nil {
+			b.log = log
+		}
+	}
 }
 
 // WithPlugins sets the plugins to include in the binary.

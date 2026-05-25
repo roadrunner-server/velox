@@ -1,15 +1,17 @@
 package github
 
 import (
+	"log/slog"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
+func discardLogger() *slog.Logger { return slog.New(slog.DiscardHandler) }
+
 func TestArchiveURL(t *testing.T) {
-	c := NewClient("https://github.com", "", NewLRUCache(0), zap.NewNop())
+	c := NewClient("https://github.com", "", NewLRUCache(0), discardLogger())
 
 	cases := []struct {
 		ref  string
@@ -19,6 +21,7 @@ func TestArchiveURL(t *testing.T) {
 		{"v3.0.0", "https://github.com/roadrunner-server/roadrunner/archive/refs/tags/v3.0.0.zip"},
 		{"master", "https://github.com/roadrunner-server/roadrunner/archive/refs/heads/master.zip"},
 		{"feature/x", "https://github.com/roadrunner-server/roadrunner/archive/refs/heads/feature/x.zip"},
+		{"version-fix", "https://github.com/roadrunner-server/roadrunner/archive/refs/heads/version-fix.zip"},
 		{"569ffe0d833580af456150546eec35c44b7ca1fa", "https://github.com/roadrunner-server/roadrunner/archive/569ffe0d833580af456150546eec35c44b7ca1fa.zip"},
 	}
 	for _, tc := range cases {
@@ -32,7 +35,7 @@ func TestArchiveURL(t *testing.T) {
 
 func TestArchiveURL_CustomBaseURL(t *testing.T) {
 	// GitHub Enterprise hostname.
-	c := NewClient("https://ghe.example.com/", "tok", NewLRUCache(0), zap.NewNop())
+	c := NewClient("https://ghe.example.com/", "tok", NewLRUCache(0), discardLogger())
 	u, err := c.archiveURL("v3.0.0")
 	require.NoError(t, err)
 	require.True(t, strings.HasPrefix(u.String(), "https://ghe.example.com/"), "got %s", u.String())
@@ -40,7 +43,7 @@ func TestArchiveURL_CustomBaseURL(t *testing.T) {
 }
 
 func TestNewClient_DefaultBaseURL(t *testing.T) {
-	c := NewClient("", "", NewLRUCache(0), zap.NewNop())
+	c := NewClient("", "", NewLRUCache(0), discardLogger())
 	u, err := c.archiveURL("master")
 	require.NoError(t, err)
 	require.True(t, strings.HasPrefix(u.String(), "https://github.com/"))

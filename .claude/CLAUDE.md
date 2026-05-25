@@ -35,7 +35,7 @@ Velox is an automated build system for RoadRunner server and its plugins. The v3
 
 ## Repository structure
 
-```
+```text
 ├── api/                         # Protocol Buffers (BuildService RPC)
 ├── builder/
 │   ├── builder.go              # Build pipeline (decomposed into named steps)
@@ -79,7 +79,7 @@ golangci-lint run
 
 ### Build pipeline (`builder/builder.go:Build`)
 
-```
+```text
 prepareWorkspace → writePluginsGo → applyRequires → applyReplaces
   → applyExcludes → goModTidy → verifyResolvedVersions
   → compile → relocate → smokeTest

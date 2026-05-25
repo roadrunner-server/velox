@@ -5,6 +5,7 @@ package plugin
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -53,14 +54,29 @@ func (p *Plugin) Imports() string { return fmt.Sprintf("%s %q", p.prefix, p.modu
 //	prefix.Plugin{}
 func (p *Plugin) Code() string { return p.prefix + ".Plugin{}" }
 
-// ResolvePrefixCollisions walks plugins in order and re-salts any plugin whose
-// prefix would collide with an earlier one. The base salt is 0; on collision,
-// the salt is bumped until a unique prefix is found.
+// ResolvePrefixCollisions assigns unique prefixes to every plugin. Assignment
+// order is independent of the input slice order: prefixes are computed by
+// walking a copy sorted lexicographically by module name, so the same plugin
+// set always yields the same prefix mapping regardless of how the caller
+// happened to construct the slice. The original slice order is preserved for
+// downstream rendering (the function mutates Plugin objects in place).
+//
+// On collision, the salt is bumped (up to maxSalt) until a unique prefix is
+// found. Two plugins sharing a module name (rare) get distinct salts.
 func ResolvePrefixCollisions(plugins []*Plugin) {
 	const maxSalt = 1 << 16
 
-	seen := make(map[string]struct{}, len(plugins))
-	for _, p := range plugins {
+	ordered := make([]*Plugin, len(plugins))
+	copy(ordered, plugins)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		if ordered[i].moduleName != ordered[j].moduleName {
+			return ordered[i].moduleName < ordered[j].moduleName
+		}
+		return ordered[i].tag < ordered[j].tag
+	})
+
+	seen := make(map[string]struct{}, len(ordered))
+	for _, p := range ordered {
 		for salt := range maxSalt {
 			cand := deterministicPrefix(p.moduleName, uint16(salt))
 			if _, dup := seen[cand]; !dup {

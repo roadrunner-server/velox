@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,10 +17,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
-	"go.uber.org/zap"
 
 	"github.com/roadrunner-server/velox/v3"
 	"github.com/roadrunner-server/velox/v3/builder/templates"
+	"github.com/roadrunner-server/velox/v3/logger"
 	"github.com/roadrunner-server/velox/v3/plugin"
 )
 
@@ -43,7 +44,7 @@ const (
 type Builder struct {
 	rrTempPath string
 	outputDir  string
-	log        *zap.Logger
+	log        *slog.Logger
 	plugins    []*plugin.Plugin
 	replaces   []velox.Replace
 	excludes   []velox.Exclude
@@ -57,7 +58,7 @@ type Builder struct {
 // NewBuilder creates a Builder rooted at the directory containing the
 // downloaded RoadRunner source tree.
 func NewBuilder(rrTmpPath string, opts ...Option) *Builder {
-	b := &Builder{rrTempPath: rrTmpPath, log: zap.NewNop()}
+	b := &Builder{rrTempPath: rrTmpPath, log: logger.Discard()}
 	for _, opt := range opts {
 		opt(b)
 	}
@@ -76,7 +77,7 @@ func (b *Builder) Build(ctx context.Context, rrRef string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	b.log.Info("RoadRunner major version", zap.String("ref", rrRef), zap.String("major", module))
+	b.log.Info("RoadRunner major version", "ref", rrRef, "major", module)
 
 	plugin.ResolvePrefixCollisions(b.plugins)
 
@@ -174,9 +175,9 @@ func (b *Builder) writePluginsGo() error {
 		return fmt.Errorf("render plugins.go template: %w", err)
 	}
 	b.log.Debug("wrote container/plugins.go",
-		zap.String("informer", informer),
-		zap.String("resetter", resetter),
-		zap.Int("user_plugins", len(b.plugins)),
+		"informer", informer,
+		"resetter", resetter,
+		"user_plugins", len(b.plugins),
 	)
 	return nil
 }
@@ -217,17 +218,25 @@ func (b *Builder) verifyResolvedVersions(ctx context.Context) error {
 
 // compile runs `go build` in the RR source tree. Returns the path of the
 // produced binary (still inside the temp dir).
+//
+// All `-ldflags` values are concatenated into a single argument: passing
+// `-ldflags` twice would let the later invocation silently overwrite the
+// earlier one, so the release-mode `-s -w` strip flags must be folded into
+// the same flag value as the version-injection symbols.
 func (b *Builder) compile(ctx context.Context) (string, error) {
 	args := []string{"build", "-v", "-trimpath"}
 	if b.debug {
 		args = append(args, "-gcflags", "all=-N -l", "-tags", "debug")
-	} else {
-		args = append(args, "-ldflags", "-s -w")
 	}
 	if b.race {
 		args = append(args, "-race")
 	}
-	args = append(args, "-ldflags", fmt.Sprintf(ldflagsFmt, b.rrVersion, buildTimestamp()))
+
+	ldParts := []string{fmt.Sprintf(ldflagsFmt, b.rrVersion, buildTimestamp())}
+	if !b.debug {
+		ldParts = append(ldParts, "-s", "-w")
+	}
+	args = append(args, "-ldflags", strings.Join(ldParts, " "))
 
 	outPath := filepath.Join(b.rrTempPath, executableName)
 	args = append(args, "-o", outPath, rrMainGo)
@@ -240,7 +249,7 @@ func (b *Builder) compile(ctx context.Context) (string, error) {
 
 func (b *Builder) relocate(srcBin string) (string, error) {
 	dst := filepath.Join(b.outputDir, executableName)
-	b.log.Info("moving binary", zap.String("from", srcBin), zap.String("to", dst))
+	b.log.Info("moving binary", "from", srcBin, "to", dst)
 	if err := os.Rename(srcBin, dst); err != nil {
 		return "", fmt.Errorf("move binary: %w", err)
 	}
@@ -253,12 +262,12 @@ func (b *Builder) smokeTest(ctx context.Context, binPath string) error {
 	hostOS, hostArch := goosFromRuntime(), goarchFromRuntime()
 	if b.goos != "" && b.goos != hostOS {
 		b.log.Info("skipping smoke test (cross-compiled)",
-			zap.String("target_os", b.goos), zap.String("host_os", hostOS))
+			"target_os", b.goos, "host_os", hostOS)
 		return nil
 	}
 	if b.goarch != "" && b.goarch != hostArch {
 		b.log.Info("skipping smoke test (cross-compiled)",
-			zap.String("target_arch", b.goarch), zap.String("host_arch", hostArch))
+			"target_arch", b.goarch, "host_arch", hostArch)
 		return nil
 	}
 
@@ -268,7 +277,7 @@ func (b *Builder) smokeTest(ctx context.Context, binPath string) error {
 	if err != nil {
 		return fmt.Errorf("`%s --version` failed: %w\n%s", binPath, err, out)
 	}
-	b.log.Info("smoke test passed", zap.ByteString("version", out))
+	b.log.Info("smoke test passed", "version", string(out))
 	return nil
 }
 
@@ -280,7 +289,7 @@ func (b *Builder) cleanupOutputDir() {
 		return
 	}
 	for _, f := range files {
-		b.log.Info("cleaning temporary folder", zap.String("path", f))
+		b.log.Info("cleaning temporary folder", "path", f)
 		_ = os.RemoveAll(f)
 	}
 }

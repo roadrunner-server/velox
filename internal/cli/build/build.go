@@ -3,11 +3,11 @@
 package build
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 
 	"github.com/roadrunner-server/velox/v3"
 	"github.com/roadrunner-server/velox/v3/builder"
@@ -17,12 +17,17 @@ import (
 
 const refKey = "ref"
 
-// BindCommand returns the cobra.Command for `vx build`.
-func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Command {
+// BindCommand returns the cobra.Command for `vx build`. The root *slog.Logger
+// is passed by pointer because the root command's PersistentPreRunE rewrites
+// its pointee with the config-driven logger after construction; child loggers
+// are therefore derived inside RunE, not at wiring time.
+func BindCommand(cfg *velox.Config, out *string, rootLog *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "build",
 		Short: "Build a custom RoadRunner binary using velox.toml",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			log := rootLog.With("component", "builder")
+
 			if *out == "." {
 				wd, err := os.Getwd()
 				if err != nil {
@@ -34,7 +39,7 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 			plugins := make([]*plugin.Plugin, 0, len(cfg.Plugins))
 			for name, p := range cfg.Plugins {
 				if p == nil {
-					zlog.Warn("plugin info is nil", zap.String("name", name))
+					log.Warn("plugin info is nil", "name", name)
 					continue
 				}
 				plugins = append(plugins, plugin.NewPlugin(p.ModuleName, p.Tag))
@@ -50,16 +55,16 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 			}
 
 			ctx := cmd.Context()
-			gh := github.NewClient(baseURL, token, github.NewLRUCache(0), zlog.Named("GitHub"))
+			gh := github.NewClient(baseURL, token, github.NewLRUCache(0), log.With("component", "github"))
 			rrPath, err := gh.DownloadTemplate(ctx, os.TempDir(), uuid.NewString(), cfg.Roadrunner[refKey])
 			if err != nil {
-				zlog.Error("downloading template", zap.Error(err))
+				log.Error("downloading template", "error", err)
 				return err
 			}
 
 			debug := cfg.Debug != nil && cfg.Debug.Enabled
 			binaryPath, err := builder.NewBuilder(rrPath,
-				builder.WithLogger(zlog.Named("Builder")),
+				builder.WithLogger(log.With("component", "build")),
 				builder.WithPlugins(plugins...),
 				builder.WithReplaces(cfg.Replaces),
 				builder.WithExcludes(cfg.Excludes),
@@ -70,11 +75,11 @@ func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Comman
 				builder.WithDebug(debug),
 			).Build(ctx, cfg.Roadrunner[refKey])
 			if err != nil {
-				zlog.Error("build failed", zap.Error(err))
+				log.Error("build failed", "error", err)
 				return err
 			}
 
-			zlog.Info("build finished", zap.String("path", binaryPath))
+			log.Info("build finished", "path", binaryPath)
 			return nil
 		},
 	}

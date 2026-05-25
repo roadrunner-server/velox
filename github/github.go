@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
@@ -39,7 +39,7 @@ type Cache interface {
 // Client fetches the upstream RR source tree.
 type Client struct {
 	http    *http.Client
-	log     *zap.Logger
+	log     *slog.Logger
 	cache   Cache
 	baseURL string
 }
@@ -49,7 +49,7 @@ type Client struct {
 // if empty, the default github.com is used. If accessToken is non-empty, OAuth2
 // is used so the client picks up the larger rate limit available to authenticated
 // requests.
-func NewClient(baseURL, accessToken string, cache Cache, log *zap.Logger) *Client {
+func NewClient(baseURL, accessToken string, cache Cache, log *slog.Logger) *Client {
 	httpc := &http.Client{
 		Timeout: httpTimeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -78,7 +78,7 @@ func NewClient(baseURL, accessToken string, cache Cache, log *zap.Logger) *Clien
 // same ref skip the network call.
 func (c *Client) DownloadTemplate(ctx context.Context, downloadDir, hash, rrRef string) (string, error) {
 	if cached, ok := c.cache.Get(rrRef); ok {
-		c.log.Info("RR archive cache hit", zap.String("ref", rrRef), zap.Int("bytes", len(cached)))
+		c.log.Info("RR archive cache hit", "ref", rrRef, "bytes", len(cached))
 		return c.saveRR(cached, rrRef, filepath.Join(downloadDir, hash))
 	}
 
@@ -86,7 +86,7 @@ func (c *Client) DownloadTemplate(ctx context.Context, downloadDir, hash, rrRef 
 	if err != nil {
 		return "", err
 	}
-	c.log.Info("downloading RR archive", zap.String("ref", rrRef), zap.String("url", archiveURL.String()))
+	c.log.Info("downloading RR archive", "ref", rrRef, "url", archiveURL.String())
 
 	zipBytes, err := c.fetch(ctx, archiveURL)
 	if err != nil {
@@ -99,12 +99,17 @@ func (c *Client) DownloadTemplate(ctx context.Context, downloadDir, hash, rrRef 
 // sha40 matches a 40-character hexadecimal commit SHA.
 var sha40 = regexp.MustCompile(`^[a-f0-9]{40}$`)
 
+// versionTag matches semver-style version tags such as "v3.0.0", "v2025.1.2",
+// "v3.0.0-rc1", "v3.0.0+meta". A bare "v" prefix is not enough; this avoids
+// misrouting branches like "version-fix" or "vintage" through the tag URL.
+var versionTag = regexp.MustCompile(`^v\d+(\.\d+)*([-+].*)?$`)
+
 // archiveURL composes the archive URL for the given ref. Tags use the
 // refs/tags path, branches use refs/heads, SHAs use bare /archive/<sha>.zip.
 func (c *Client) archiveURL(rrRef string) (*url.URL, error) {
 	var raw string
 	switch {
-	case strings.HasPrefix(rrRef, "v"):
+	case versionTag.MatchString(rrRef):
 		raw = fmt.Sprintf("%s/%s/%s/archive/refs/tags/%s%s", c.baseURL, rrOwner, rrRepo, rrRef, zipExt)
 	case sha40.MatchString(rrRef):
 		raw = fmt.Sprintf("%s/%s/%s/archive/%s%s", c.baseURL, rrOwner, rrRepo, rrRef, zipExt)
@@ -127,8 +132,10 @@ func (c *Client) fetch(ctx context.Context, archiveURL *url.URL) ([]byte, error)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusFound {
-		return nil, fmt.Errorf("expected 302 redirect from %s, got %d", archiveURL, resp.StatusCode)
+	// GitHub.com responds with 302 today, but accept any 3xx so the client
+	// works behind GitHub Enterprise / proxies that may return 301/307/308.
+	if resp.StatusCode < 300 || resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("expected 3xx redirect from %s, got %d", archiveURL, resp.StatusCode)
 	}
 	loc, err := resp.Location()
 	if err != nil {
@@ -171,7 +178,7 @@ func (c *Client) saveRR(zipBytes []byte, rrRef, downloadDir string) (string, err
 	}
 
 	zipPath := rrSaveDest + zipExt
-	c.log.Debug("writing archive to disk", zap.String("path", zipPath), zap.Int("bytes", len(zipBytes)))
+	c.log.Debug("writing archive to disk", "path", zipPath, "bytes", len(zipBytes))
 	if err := os.WriteFile(zipPath, zipBytes, 0o600); err != nil {
 		return "", fmt.Errorf("write archive %s: %w", zipPath, err)
 	}
@@ -198,7 +205,7 @@ func (c *Client) saveRR(zipBytes []byte, rrRef, downloadDir string) (string, err
 		}
 	}
 	rootPath := filepath.Join(dest, outDir)
-	c.log.Info("RR archive extracted", zap.String("path", rootPath))
+	c.log.Info("RR archive extracted", "path", rootPath)
 	return rootPath, nil
 }
 

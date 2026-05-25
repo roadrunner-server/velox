@@ -16,7 +16,7 @@ import (
 // PluginsTemplate is the parameterized plugins.go body.
 //
 // InformerImport / ResetterImport hold the full module paths discovered in the
-// upstream RR's go.mod (e.g. "github.com/roadrunner-server/informer/v5").
+// upstream RR's go.mod (e.g. "github.com/roadrunner-server/informer/v6").
 //
 // Imports / Code come from the user-supplied plugin set; each entry is already
 // prefixed with the deterministic 5-letter alias from plugin.Plugin.
@@ -82,7 +82,7 @@ func CompilePlugins(w io.Writer, t *Template) error {
 
 // informerLineRe / resetterLineRe match the require lines in an upstream go.mod
 // that pin informer and resetter. Both modules use semantic import versioning
-// (e.g. /v5), so the regex captures the full module path with its /vN suffix.
+// (e.g. /v6), so the regex captures the full module path with its /vN suffix.
 var (
 	informerLineRe = regexp.MustCompile(`(?m)^\s*(github\.com/roadrunner-server/informer/v\d+)\s+`)
 	resetterLineRe = regexp.MustCompile(`(?m)^\s*(github\.com/roadrunner-server/resetter/v\d+)\s+`)

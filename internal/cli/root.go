@@ -4,11 +4,12 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"runtime"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 
 	"github.com/roadrunner-server/velox/v3"
 	"github.com/roadrunner-server/velox/v3/internal/cli/build"
@@ -20,8 +21,13 @@ import (
 // NewCommand returns the root cobra command. The CLI uses cmd.Context() (set
 // by the caller in main.go) so SIGINT/SIGTERM propagates through the whole
 // build pipeline.
+//
+// The root *slog.Logger is shared with subcommands by pointer. PersistentPreRunE
+// rewrites the pointee with the config-driven logger after the subcommand
+// callbacks have been wired, so each subcommand calls .With(...) inside its
+// RunE to derive a child logger from the *current* state.
 func NewCommand(executableName string) *cobra.Command {
-	lg, _ := zap.NewDevelopment()
+	lg := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	var (
 		pathToConfig string
@@ -73,8 +79,8 @@ func NewCommand(executableName string) *cobra.Command {
 	flag.StringVarP(&address, "address", "a", "127.0.0.1:8080", "Bind address for the build server")
 
 	cmd.AddCommand(
-		build.BindCommand(config, &outputFile, lg.Named("builder")),
-		server.BindCommand(&address, lg.Named("server")),
+		build.BindCommand(config, &outputFile, lg),
+		server.BindCommand(&address, lg),
 	)
 	return cmd
 }

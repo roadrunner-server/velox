@@ -1,153 +1,93 @@
+// Package logger builds the *slog.Logger used by the CLI and build server.
+//
+// Four modes are recognized; "none" / "off" are no-ops returning a logger that
+// discards every record:
+//
+//	production  → JSON, default level INFO  (machine-readable)
+//	development → text, default level DEBUG (human-readable)
+//	raw         → text with only the message (no time/level/source)
+//	none/off    → discard everything
+//
+// `level` (if non-empty) overrides the per-mode default. Accepts the standard
+// slog spellings: "debug" / "info" / "warn" / "error" (case-insensitive).
 package logger
 
 import (
+	"fmt"
+	"log/slog"
+	"os"
 	"strings"
-	"time"
-
-	"github.com/fatih/color"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
-// Mode represents available logger modes
+// Mode names recognized by BuildLogger.
 type Mode string
 
 const (
-	none        Mode = "none"
-	off         Mode = "off"
-	production  Mode = "production"
-	development Mode = "development"
-	raw         Mode = "raw"
-
-	stderrPath      = "stderr"
-	consoleEncoding = "console"
+	None        Mode = "none"
+	Off         Mode = "off"
+	Production  Mode = "production"
+	Development Mode = "development"
+	Raw         Mode = "raw"
 )
 
-// BuildLogger constructs a zap logger with the specified level and mode.
-// Supported modes: production (JSON), development (console with colors), raw (message only), none/off (no-op).
-// If level is specified, it overrides the default level for the mode.
-func BuildLogger(level, mode string) (*zap.Logger, error) {
-	var zCfg zap.Config
+// BuildLogger constructs a *slog.Logger for the given mode and level. An empty
+// level uses the mode's default. Unrecognized modes fall back to development.
+func BuildLogger(level, mode string) (*slog.Logger, error) {
 	switch Mode(strings.ToLower(mode)) {
-	case off, none:
-		return zap.NewNop(), nil
-	case production:
-		zCfg = zap.Config{
-			Level:       zap.NewAtomicLevelAt(zap.InfoLevel),
-			Development: false,
-			Encoding:    "json",
-			EncoderConfig: zapcore.EncoderConfig{
-				TimeKey:        "ts",
-				LevelKey:       "level",
-				NameKey:        "logger",
-				CallerKey:      zapcore.OmitKey,
-				FunctionKey:    zapcore.OmitKey,
-				MessageKey:     "msg",
-				StacktraceKey:  zapcore.OmitKey,
-				EncodeLevel:    zapcore.LowercaseLevelEncoder,
-				EncodeTime:     utcEpochTimeEncoder,
-				EncodeDuration: zapcore.SecondsDurationEncoder,
-				EncodeCaller:   zapcore.ShortCallerEncoder,
-			},
-			OutputPaths:      []string{stderrPath},
-			ErrorOutputPaths: []string{stderrPath},
+	case None, Off:
+		return slog.New(slog.DiscardHandler), nil
+
+	case Production:
+		lvl, err := parseLevel(level, slog.LevelInfo)
+		if err != nil {
+			return nil, err
 		}
-	case development:
-		zCfg = zap.Config{
-			Level:       zap.NewAtomicLevelAt(zap.DebugLevel),
-			Development: true,
-			Encoding:    consoleEncoding,
-			EncoderConfig: zapcore.EncoderConfig{
-				TimeKey:        "ts",
-				LevelKey:       "level",
-				NameKey:        "logger",
-				CallerKey:      zapcore.OmitKey,
-				FunctionKey:    zapcore.OmitKey,
-				MessageKey:     "msg",
-				StacktraceKey:  zapcore.OmitKey,
-				EncodeLevel:    ColoredLevelEncoder,
-				EncodeName:     ColoredNameEncoder,
-				EncodeTime:     utcISO8601TimeEncoder,
-				EncodeDuration: zapcore.StringDurationEncoder,
-				EncodeCaller:   zapcore.ShortCallerEncoder,
-			},
-			OutputPaths:      []string{stderrPath},
-			ErrorOutputPaths: []string{stderrPath},
+		return slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: lvl})), nil
+
+	case Raw:
+		lvl, err := parseLevel(level, slog.LevelInfo)
+		if err != nil {
+			return nil, err
 		}
-	case raw:
-		zCfg = zap.Config{
-			Level:    zap.NewAtomicLevelAt(zap.InfoLevel),
-			Encoding: consoleEncoding,
-			EncoderConfig: zapcore.EncoderConfig{
-				MessageKey: "message",
-			},
-			OutputPaths:      []string{stderrPath},
-			ErrorOutputPaths: []string{stderrPath},
-		}
+		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+			Level:       lvl,
+			ReplaceAttr: dropEverythingButMessage,
+		})), nil
+
+	case Development:
+		fallthrough
 	default:
-		zCfg = zap.Config{
-			Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
-			Encoding: consoleEncoding,
-			EncoderConfig: zapcore.EncoderConfig{
-				TimeKey:        "T",
-				LevelKey:       "L",
-				NameKey:        "N",
-				CallerKey:      zapcore.OmitKey,
-				FunctionKey:    zapcore.OmitKey,
-				MessageKey:     "M",
-				StacktraceKey:  zapcore.OmitKey,
-				EncodeLevel:    ColoredLevelEncoder,
-				EncodeName:     ColoredNameEncoder,
-				EncodeTime:     utcISO8601TimeEncoder,
-				EncodeDuration: zapcore.StringDurationEncoder,
-				EncodeCaller:   zapcore.ShortCallerEncoder,
-			},
-			OutputPaths:      []string{stderrPath},
-			ErrorOutputPaths: []string{stderrPath},
+		lvl, err := parseLevel(level, slog.LevelDebug)
+		if err != nil {
+			return nil, err
 		}
-	}
-
-	if level != "" {
-		lvl := zap.NewAtomicLevel()
-		if err := lvl.UnmarshalText([]byte(level)); err == nil {
-			zCfg.Level = lvl
-		}
-	}
-
-	return zCfg.Build()
-}
-
-// ColoredLevelEncoder colorizes log levels.
-func ColoredLevelEncoder(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
-	switch level {
-	case zapcore.DebugLevel:
-		enc.AppendString(color.HiWhiteString(level.CapitalString()))
-	case zapcore.InfoLevel:
-		enc.AppendString(color.HiCyanString(level.CapitalString()))
-	case zapcore.WarnLevel:
-		enc.AppendString(color.HiYellowString(level.CapitalString()))
-	case zapcore.ErrorLevel, zapcore.DPanicLevel:
-		enc.AppendString(color.HiRedString(level.CapitalString()))
-	case zapcore.PanicLevel, zapcore.FatalLevel, zapcore.InvalidLevel:
-		enc.AppendString(color.HiMagentaString(level.CapitalString()))
+		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: lvl})), nil
 	}
 }
 
-// ColoredNameEncoder colorizes service names.
-func ColoredNameEncoder(s string, enc zapcore.PrimitiveArrayEncoder) {
-	if len(s) < 12 {
-		s += strings.Repeat(" ", 12-len(s))
+// parseLevel converts a slog-style level string ("debug", "info", "warn",
+// "error", case-insensitive) to a slog.Level. Empty input returns the default.
+func parseLevel(s string, fallback slog.Level) (slog.Level, error) {
+	if s == "" {
+		return fallback, nil
 	}
-
-	enc.AppendString(color.HiGreenString(s))
+	var lvl slog.Level
+	if err := lvl.UnmarshalText([]byte(strings.ToUpper(s))); err != nil {
+		return 0, fmt.Errorf("invalid log level %q: %w", s, err)
+	}
+	return lvl, nil
 }
 
-// utcEpochTimeEncoder encodes timestamps as UTC Unix epoch time in nanoseconds for structured logging.
-func utcEpochTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendInt64(t.UTC().UnixNano())
+// dropEverythingButMessage strips time, level, and source attributes so "raw"
+// mode prints just the message text — analogous to the original raw zap config.
+func dropEverythingButMessage(_ []string, a slog.Attr) slog.Attr {
+	switch a.Key {
+	case slog.TimeKey, slog.LevelKey, slog.SourceKey:
+		return slog.Attr{}
+	}
+	return a
 }
 
-// utcISO8601TimeEncoder encodes timestamps in UTC ISO8601 format for human-readable logs.
-func utcISO8601TimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendString(t.UTC().Format("2006-01-02T15:04:05-0700"))
-}
+// Discard is a convenience for callers that want a no-op logger without going
+// through BuildLogger("", "none").
+func Discard() *slog.Logger { return slog.New(slog.DiscardHandler) }

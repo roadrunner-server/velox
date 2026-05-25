@@ -6,13 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 const (
@@ -38,13 +37,13 @@ type runResult struct {
 // fake `go` script via PATH manipulation.
 //
 //nolint:unparam // name is intentionally pluggable for test fakes
-func runCmd(ctx context.Context, log *zap.Logger, dir string, env []string,
+func runCmd(ctx context.Context, log *slog.Logger, dir string, env []string,
 	name string, args ...string,
 ) (runResult, error) {
 	if log != nil {
 		log.Info("executing command",
-			zap.String("cmd", name+" "+strings.Join(args, " ")),
-			zap.String("dir", dir),
+			"cmd", name+" "+strings.Join(args, " "),
+			"dir", dir,
 		)
 	}
 
@@ -56,8 +55,7 @@ func runCmd(ctx context.Context, log *zap.Logger, dir string, env []string,
 	stderr := newRingBuffer(stderrCaptureLimit)
 	cmd.Stdout = stdout
 	if log != nil {
-		// also tee stderr to the debug logger so live builds are observable
-		cmd.Stderr = io.MultiWriter(stderr, &zapDebugWriter{log: log})
+		cmd.Stderr = io.MultiWriter(stderr, &slogDebugWriter{log: log})
 	} else {
 		cmd.Stderr = stderr
 	}
@@ -117,11 +115,11 @@ func (r *ringBuffer) Bytes() []byte {
 	return out
 }
 
-// zapDebugWriter forwards writes to a zap logger at debug level.
-type zapDebugWriter struct{ log *zap.Logger }
+// slogDebugWriter forwards writes to a slog logger at debug level.
+type slogDebugWriter struct{ log *slog.Logger }
 
-func (w *zapDebugWriter) Write(p []byte) (int, error) {
-	w.log.Debug("[stderr]", zap.ByteString("data", p))
+func (w *slogDebugWriter) Write(p []byte) (int, error) {
+	w.log.Debug("[stderr]", "data", string(p))
 	return len(p), nil
 }
 
