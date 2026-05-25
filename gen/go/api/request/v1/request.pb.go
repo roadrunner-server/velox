@@ -87,7 +87,15 @@ type BuildRequest struct {
 	// target platform is required and must be a valid platform. Used to specify the platform for the build (host platform used by default)
 	TargetPlatform *Platform `protobuf:"bytes,4,opt,name=target_platform,json=targetPlatform,proto3" json:"target_platform,omitempty"`
 	// plugins are required and represent the list of plugins to be used for the build
-	Plugins       []*Plugin `protobuf:"bytes,5,rep,name=plugins,proto3" json:"plugins,omitempty"`
+	Plugins []*Plugin `protobuf:"bytes,5,rep,name=plugins,proto3" json:"plugins,omitempty"`
+	// replaces is an optional list of go.mod replace directives to apply before tidy
+	Replaces []*Replace `protobuf:"bytes,6,rep,name=replaces,proto3" json:"replaces,omitempty"`
+	// excludes is an optional list of go.mod exclude directives to apply before tidy
+	Excludes []*Exclude `protobuf:"bytes,7,rep,name=excludes,proto3" json:"excludes,omitempty"`
+	// race enables the race detector in the produced binary (forces CGO_ENABLED=1)
+	Race bool `protobuf:"varint,8,opt,name=race,proto3" json:"race,omitempty"`
+	// debug enables debug build flags (disables optimization/inlining, adds DWARF)
+	Debug         bool `protobuf:"varint,9,opt,name=debug,proto3" json:"debug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -157,6 +165,34 @@ func (x *BuildRequest) GetPlugins() []*Plugin {
 	return nil
 }
 
+func (x *BuildRequest) GetReplaces() []*Replace {
+	if x != nil {
+		return x.Replaces
+	}
+	return nil
+}
+
+func (x *BuildRequest) GetExcludes() []*Exclude {
+	if x != nil {
+		return x.Excludes
+	}
+	return nil
+}
+
+func (x *BuildRequest) GetRace() bool {
+	if x != nil {
+		return x.Race
+	}
+	return false
+}
+
+func (x *BuildRequest) GetDebug() bool {
+	if x != nil {
+		return x.Debug
+	}
+	return false
+}
+
 type Plugin struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// module name in a Go module format, for example: "github.com/roadrunner-server/velox" or "github.com/roadrunner-server/velox/v2"
@@ -211,6 +247,115 @@ func (x *Plugin) GetTag() string {
 	return ""
 }
 
+type Replace struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// new is the replacement target. Either "module@version" or a local path
+	// (./foo, ../foo, or an absolute path). Local paths must NOT carry @version.
+	New string `protobuf:"bytes,1,opt,name=new,proto3" json:"new,omitempty"`
+	// old is the module being replaced. Either "module" or "module@version".
+	Old           string `protobuf:"bytes,2,opt,name=old,proto3" json:"old,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Replace) Reset() {
+	*x = Replace{}
+	mi := &file_api_request_v1_request_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Replace) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Replace) ProtoMessage() {}
+
+func (x *Replace) ProtoReflect() protoreflect.Message {
+	mi := &file_api_request_v1_request_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Replace.ProtoReflect.Descriptor instead.
+func (*Replace) Descriptor() ([]byte, []int) {
+	return file_api_request_v1_request_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Replace) GetNew() string {
+	if x != nil {
+		return x.New
+	}
+	return ""
+}
+
+func (x *Replace) GetOld() string {
+	if x != nil {
+		return x.Old
+	}
+	return ""
+}
+
+type Exclude struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// module is the Go module path to exclude
+	Module string `protobuf:"bytes,1,opt,name=module,proto3" json:"module,omitempty"`
+	// version is the specific module version to exclude
+	Version       string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Exclude) Reset() {
+	*x = Exclude{}
+	mi := &file_api_request_v1_request_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Exclude) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Exclude) ProtoMessage() {}
+
+func (x *Exclude) ProtoReflect() protoreflect.Message {
+	mi := &file_api_request_v1_request_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Exclude.ProtoReflect.Descriptor instead.
+func (*Exclude) Descriptor() ([]byte, []int) {
+	return file_api_request_v1_request_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Exclude) GetModule() string {
+	if x != nil {
+		return x.Module
+	}
+	return ""
+}
+
+func (x *Exclude) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
 var File_api_request_v1_request_proto protoreflect.FileDescriptor
 
 const file_api_request_v1_request_proto_rawDesc = "" +
@@ -218,7 +363,7 @@ const file_api_request_v1_request_proto_rawDesc = "" +
 	"\x1capi/request/v1/request.proto\x12\x0eapi.request.v1\x1a\x1bbuf/validate/validate.proto\".\n" +
 	"\bPlatform\x12\x0e\n" +
 	"\x02os\x18\x01 \x01(\tR\x02os\x12\x12\n" +
-	"\x04arch\x18\x02 \x01(\tR\x04arch\"\xee\x03\n" +
+	"\x04arch\x18\x02 \x01(\tR\x04arch\"\x82\x05\n" +
 	"\fBuildRequest\x12*\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x00r\x03\xb0\x01\x01R\trequestId\x12\xff\x01\n" +
@@ -227,11 +372,21 @@ const file_api_request_v1_request_proto_rawDesc = "" +
 	"\x11rr_version.format\x12~rr_version must be a semantic version starting with 'v' (e.g., v2025.1.0), 'master', or a git commit SHA (7-40 hex characters)\x1a?this.matches('^(v\\\\d+\\\\.\\\\d+\\\\.\\\\d+.*|master|[a-f0-9]{7,40})$')\xc8\x01\x01R\trrVersion\x12+\n" +
 	"\rforce_rebuild\x18\x03 \x01(\bB\x06\xbaH\x03\xc8\x01\x00R\fforceRebuild\x12I\n" +
 	"\x0ftarget_platform\x18\x04 \x01(\v2\x18.api.request.v1.PlatformB\x06\xbaH\x03\xc8\x01\x00R\x0etargetPlatform\x128\n" +
-	"\aplugins\x18\x05 \x03(\v2\x16.api.request.v1.PluginB\x06\xbaH\x03\xc8\x01\x01R\aplugins\"K\n" +
+	"\aplugins\x18\x05 \x03(\v2\x16.api.request.v1.PluginB\x06\xbaH\x03\xc8\x01\x01R\aplugins\x123\n" +
+	"\breplaces\x18\x06 \x03(\v2\x17.api.request.v1.ReplaceR\breplaces\x123\n" +
+	"\bexcludes\x18\a \x03(\v2\x17.api.request.v1.ExcludeR\bexcludes\x12\x12\n" +
+	"\x04race\x18\b \x01(\bR\x04race\x12\x14\n" +
+	"\x05debug\x18\t \x01(\bR\x05debug\"K\n" +
 	"\x06Plugin\x12'\n" +
 	"\vmodule_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"moduleName\x12\x18\n" +
-	"\x03tag\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03tagBJZHgithub.com/roadrunner-server/velox/v2025/gen/go/api/request/v1;requestV1b\x06proto3"
+	"\x03tag\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03tag\"=\n" +
+	"\aReplace\x12\x18\n" +
+	"\x03new\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03new\x12\x18\n" +
+	"\x03old\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03old\"K\n" +
+	"\aExclude\x12\x1e\n" +
+	"\x06module\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06module\x12 \n" +
+	"\aversion\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aversionBGZEgithub.com/roadrunner-server/velox/v3/gen/go/api/request/v1;requestV1b\x06proto3"
 
 var (
 	file_api_request_v1_request_proto_rawDescOnce sync.Once
@@ -245,20 +400,24 @@ func file_api_request_v1_request_proto_rawDescGZIP() []byte {
 	return file_api_request_v1_request_proto_rawDescData
 }
 
-var file_api_request_v1_request_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_api_request_v1_request_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_api_request_v1_request_proto_goTypes = []any{
 	(*Platform)(nil),     // 0: api.request.v1.Platform
 	(*BuildRequest)(nil), // 1: api.request.v1.BuildRequest
 	(*Plugin)(nil),       // 2: api.request.v1.Plugin
+	(*Replace)(nil),      // 3: api.request.v1.Replace
+	(*Exclude)(nil),      // 4: api.request.v1.Exclude
 }
 var file_api_request_v1_request_proto_depIdxs = []int32{
 	0, // 0: api.request.v1.BuildRequest.target_platform:type_name -> api.request.v1.Platform
 	2, // 1: api.request.v1.BuildRequest.plugins:type_name -> api.request.v1.Plugin
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: api.request.v1.BuildRequest.replaces:type_name -> api.request.v1.Replace
+	4, // 3: api.request.v1.BuildRequest.excludes:type_name -> api.request.v1.Exclude
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_api_request_v1_request_proto_init() }
@@ -272,7 +431,7 @@ func file_api_request_v1_request_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_request_v1_request_proto_rawDesc), len(file_api_request_v1_request_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

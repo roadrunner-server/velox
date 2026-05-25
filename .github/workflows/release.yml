@@ -63,8 +63,8 @@ jobs:
           CGO_ENABLED: 0
           LDFLAGS: >-
             -s
-            -X github.com/roadrunner-server/velox/v2025/internal/version.version=${{ steps.values.outputs.version }}
-            -X github.com/roadrunner-server/velox/v2025/internal/version.buildTime=${{ steps.values.outputs.timestamp }}
+            -X github.com/roadrunner-server/velox/v3/internal/version.version=${{ steps.values.outputs.version }}
+            -X github.com/roadrunner-server/velox/v3/internal/version.buildTime=${{ steps.values.outputs.timestamp }}
         run: |
           go build -trimpath -ldflags "$LDFLAGS" -o "./${{ steps.values.outputs.binary-name }}" ./cmd/vx
           stat "./${{ steps.values.outputs.binary-name }}"

@@ -7,8 +7,8 @@
 package serviceV1
 
 import (
-	v1 "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1"
-	v11 "github.com/roadrunner-server/velox/v2025/gen/go/api/response/v1"
+	v1 "github.com/roadrunner-server/velox/v3/gen/go/api/request/v1"
+	v11 "github.com/roadrunner-server/velox/v3/gen/go/api/response/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -28,7 +28,7 @@ const file_api_service_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"\x1capi/service/v1/service.proto\x12\x0eapi.service.v1\x1a\x1capi/request/v1/request.proto\x1a\x1eapi/response/v1/response.proto2U\n" +
 	"\fBuildService\x12E\n" +
-	"\x05Build\x12\x1c.api.request.v1.BuildRequest\x1a\x1e.api.response.v1.BuildResponseBJZHgithub.com/roadrunner-server/velox/v2025/gen/go/api/service/v1;serviceV1b\x06proto3"
+	"\x05Build\x12\x1c.api.request.v1.BuildRequest\x1a\x1e.api.response.v1.BuildResponseBGZEgithub.com/roadrunner-server/velox/v3/gen/go/api/service/v1;serviceV1b\x06proto3"
 
 var file_api_service_v1_service_proto_goTypes = []any{
 	(*v1.BuildRequest)(nil),   // 0: api.request.v1.BuildRequest

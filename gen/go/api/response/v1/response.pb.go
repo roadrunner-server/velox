@@ -80,7 +80,7 @@ const file_api_response_v1_response_proto_rawDesc = "" +
 	"\x1eapi/response/v1/response.proto\x12\x0fapi.response.v1\"7\n" +
 	"\rBuildResponse\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x12\n" +
-	"\x04logs\x18\x02 \x01(\tR\x04logsBLZJgithub.com/roadrunner-server/velox/v2025/gen/go/api/response/v1;responseV1b\x06proto3"
+	"\x04logs\x18\x02 \x01(\tR\x04logsBIZGgithub.com/roadrunner-server/velox/v3/gen/go/api/response/v1;responseV1b\x06proto3"
 
 var (
 	file_api_response_v1_response_proto_rawDescOnce sync.Once

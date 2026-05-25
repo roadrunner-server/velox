@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.response.v1;
 
-option go_package = "github.com/roadrunner-server/velox/v2025/gen/go/api/response/v1;responseV1";
+option go_package = "github.com/roadrunner-server/velox/v3/gen/go/api/response/v1;responseV1";
 
 message BuildResponse {
   string path = 1;

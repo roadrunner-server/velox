@@ -18,6 +18,9 @@ const (
 	production  Mode = "production"
 	development Mode = "development"
 	raw         Mode = "raw"
+
+	stderrPath      = "stderr"
+	consoleEncoding = "console"
 )
 
 // BuildLogger constructs a zap logger with the specified level and mode.
@@ -46,14 +49,14 @@ func BuildLogger(level, mode string) (*zap.Logger, error) {
 				EncodeDuration: zapcore.SecondsDurationEncoder,
 				EncodeCaller:   zapcore.ShortCallerEncoder,
 			},
-			OutputPaths:      []string{"stderr"},
-			ErrorOutputPaths: []string{"stderr"},
+			OutputPaths:      []string{stderrPath},
+			ErrorOutputPaths: []string{stderrPath},
 		}
 	case development:
 		zCfg = zap.Config{
 			Level:       zap.NewAtomicLevelAt(zap.DebugLevel),
 			Development: true,
-			Encoding:    "console",
+			Encoding:    consoleEncoding,
 			EncoderConfig: zapcore.EncoderConfig{
 				TimeKey:        "ts",
 				LevelKey:       "level",
@@ -68,23 +71,23 @@ func BuildLogger(level, mode string) (*zap.Logger, error) {
 				EncodeDuration: zapcore.StringDurationEncoder,
 				EncodeCaller:   zapcore.ShortCallerEncoder,
 			},
-			OutputPaths:      []string{"stderr"},
-			ErrorOutputPaths: []string{"stderr"},
+			OutputPaths:      []string{stderrPath},
+			ErrorOutputPaths: []string{stderrPath},
 		}
 	case raw:
 		zCfg = zap.Config{
 			Level:    zap.NewAtomicLevelAt(zap.InfoLevel),
-			Encoding: "console",
+			Encoding: consoleEncoding,
 			EncoderConfig: zapcore.EncoderConfig{
 				MessageKey: "message",
 			},
-			OutputPaths:      []string{"stderr"},
-			ErrorOutputPaths: []string{"stderr"},
+			OutputPaths:      []string{stderrPath},
+			ErrorOutputPaths: []string{stderrPath},
 		}
 	default:
 		zCfg = zap.Config{
 			Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
-			Encoding: "console",
+			Encoding: consoleEncoding,
 			EncoderConfig: zapcore.EncoderConfig{
 				TimeKey:        "T",
 				LevelKey:       "L",
@@ -99,8 +102,8 @@ func BuildLogger(level, mode string) (*zap.Logger, error) {
 				EncodeDuration: zapcore.StringDurationEncoder,
 				EncodeCaller:   zapcore.ShortCallerEncoder,
 			},
-			OutputPaths:      []string{"stderr"},
-			ErrorOutputPaths: []string{"stderr"},
+			OutputPaths:      []string{stderrPath},
+			ErrorOutputPaths: []string{stderrPath},
 		}
 	}
 

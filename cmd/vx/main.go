@@ -2,17 +2,22 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/fatih/color"
-	"github.com/roadrunner-server/velox/v2025/internal/cli"
+	"github.com/roadrunner-server/velox/v3/internal/cli"
 )
 
 func main() {
-	// os.Args[0] always contains a path to the executable, like foo/bar/rr -> rr
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+
 	cmd := cli.NewCommand(filepath.Base(os.Args[0]))
-	err := cmd.Execute()
+	err := cmd.ExecuteContext(ctx)
+	stop() // release the signal handler explicitly; os.Exit below would skip defers
 	if err != nil {
 		_, _ = color.New(color.FgHiRed, color.Bold).Fprintln(os.Stderr, err.Error())
 		os.Exit(1)

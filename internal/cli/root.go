@@ -1,35 +1,38 @@
+// Package cli wires the root cobra command and the build / server subcommands.
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 
-	"github.com/pkg/errors"
-	"github.com/roadrunner-server/velox/v2025"
-	"github.com/roadrunner-server/velox/v2025/internal/cli/build"
-	"github.com/roadrunner-server/velox/v2025/internal/cli/server"
-	"github.com/roadrunner-server/velox/v2025/internal/version"
-	"github.com/roadrunner-server/velox/v2025/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+
+	"github.com/roadrunner-server/velox/v3"
+	"github.com/roadrunner-server/velox/v3/internal/cli/build"
+	"github.com/roadrunner-server/velox/v3/internal/cli/server"
+	"github.com/roadrunner-server/velox/v3/internal/version"
+	"github.com/roadrunner-server/velox/v3/logger"
 )
 
-// NewCommand creates the root cobra command with build and server subcommands, config loading, and logger setup.
+// NewCommand returns the root cobra command. The CLI uses cmd.Context() (set
+// by the caller in main.go) so SIGINT/SIGTERM propagates through the whole
+// build pipeline.
 func NewCommand(executableName string) *cobra.Command {
 	lg, _ := zap.NewDevelopment()
 
 	var (
-		pathToConfig string // path to the velox configuration
-		cfgPath      = new("")
-		outputFile   string // output file (optionally with directory)
+		pathToConfig string
+		outputFile   string
 		address      string
-		config       = &velox.Config{} // velox configuration
+		config       = &velox.Config{}
 	)
 
 	cmd := &cobra.Command{
 		Use:           executableName,
-		Short:         "Automated build system for the RR and roadrunner-plugins",
+		Short:         "Automated build system for the RoadRunner server and its plugins",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Version:       fmt.Sprintf("%s (build time: %s, %s)", version.Version(), version.BuildTime(), runtime.Version()),
@@ -37,61 +40,41 @@ func NewCommand(executableName string) *cobra.Command {
 			if cmd.Use == "server" {
 				return nil
 			}
-			var cfg *velox.Config
-			// the user doesn't provide a path to the config
 			if pathToConfig == "" {
 				return errors.New("path to the config should be provided")
 			}
 
 			v := viper.New()
 			v.SetConfigFile(pathToConfig)
-			err := v.ReadInConfig()
+			if err := v.ReadInConfig(); err != nil {
+				return err
+			}
+			var cfg velox.Config
+			if err := v.Unmarshal(&cfg); err != nil {
+				return err
+			}
+			if err := cfg.Validate(); err != nil {
+				return err
+			}
+			*config = cfg
+
+			zlog, err := logger.BuildLogger(config.Log[velox.LogLevelKey], config.Log[velox.LogModeKey])
 			if err != nil {
 				return err
 			}
-
-			err = v.Unmarshal(&cfg)
-			if err != nil {
-				return err
-			}
-
-			err = cfg.Validate()
-			if err != nil {
-				return err
-			}
-
-			*config = *cfg
-			*cfgPath = outputFile
-
-			// [log]
-			// level = "debug"
-			// mode = "development"
-			zlog, err := logger.BuildLogger(config.Log["level"], config.Log["mode"])
-			if err != nil {
-				return err
-			}
-
 			*lg = *zlog
-
 			return nil
 		},
 	}
 
 	flag := cmd.PersistentFlags()
-	flag.StringVarP(&pathToConfig, "config", "c", "velox.toml", "Path to the velox configuration file: -c velox.toml")
-	flag.StringVarP(&outputFile, "out", "o", ".", "Output path: -o /usr/local/bin")
-	flag.StringVarP(&address, "address", "a", "127.0.0.1:8080", "Address to bind server: -a 127.0.0.1:8080")
+	flag.StringVarP(&pathToConfig, "config", "c", "velox.toml", "Path to the velox configuration file")
+	flag.StringVarP(&outputFile, "out", "o", ".", "Output directory for the produced RoadRunner binary")
+	flag.StringVarP(&address, "address", "a", "127.0.0.1:8080", "Bind address for the build server")
 
 	cmd.AddCommand(
-		build.BindCommand(config, cfgPath, lg.Named("builder")),
+		build.BindCommand(config, &outputFile, lg.Named("builder")),
 		server.BindCommand(&address, lg.Named("server")),
 	)
 	return cmd
-}
-
-// p is a generic helper function that returns a pointer to the given value.
-//
-//go:fix inline
-func p[T any](val T) *T {
-	return new(val)
 }

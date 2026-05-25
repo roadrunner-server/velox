@@ -1,325 +1,349 @@
+// Package builder orchestrates the assembly of a custom RoadRunner binary:
+// download the upstream template, inject user plugins, apply go.mod
+// replace/exclude directives, run `go mod tidy`, and run `go build`.
 package builder
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-version"
-	"github.com/roadrunner-server/velox/v2025"
-	"github.com/roadrunner-server/velox/v2025/builder/templates"
-	"github.com/roadrunner-server/velox/v2025/plugin"
 	"go.uber.org/zap"
+
+	"github.com/roadrunner-server/velox/v3"
+	"github.com/roadrunner-server/velox/v3/builder/templates"
+	"github.com/roadrunner-server/velox/v3/plugin"
 )
 
 const (
-	// path to the file which should be generated from the template
-	pluginsPath           string = "/container/plugins.go"
-	goModStr              string = "go.mod"
-	rrMainGo              string = "cmd/rr/main.go"
-	executableName        string = "rr"
-	executableNameWindows string = "rr.exe"
-	// cleanup pattern
-	cleanupPattern string = "roadrunner-server*"
-	ldflags        string = "-X github.com/roadrunner-server/roadrunner/v2025/internal/meta.version=%s -X github.com/roadrunner-server/roadrunner/v2025/internal/meta.buildTime=%s"
+	executableName = "rr"
+	pluginsRelPath = "container/plugins.go"
+	goModFile      = "go.mod"
+	rrMainGo       = "cmd/rr/main.go"
+	cleanupPattern = "roadrunner-server*"
+	smokeTimeout   = 5 * time.Second
+
+	// ldflagsFmt injects build metadata into the produced binary. The format
+	// uses v3 paths to match the post-bump upstream RoadRunner repository.
+	ldflagsFmt = "-X github.com/roadrunner-server/roadrunner/v3/internal/meta.version=%s" +
+		" -X github.com/roadrunner-server/roadrunner/v3/internal/meta.buildTime=%s"
 )
 
+// Builder produces a custom RoadRunner binary from a downloaded RR source
+// directory plus a user-supplied plugin set, replace/exclude directives, and
+// build flags. Construct via NewBuilder + functional options.
 type Builder struct {
-	// rrTempPath - path, where RR was saved
 	rrTempPath string
-	// outputDir - output directory
-	outputDir string
-	log       *zap.Logger
-	sb        *strings.Builder
-	plugins   []*plugin.Plugin
-	debug     bool
-	rrVersion string
-	goos      string
-	goarch    string
+	outputDir  string
+	log        *zap.Logger
+	plugins    []*plugin.Plugin
+	replaces   []velox.Replace
+	excludes   []velox.Exclude
+	debug      bool
+	race       bool
+	rrVersion  string
+	goos       string
+	goarch     string
 }
 
-// NewBuilder creates a new Builder with the given required parameters and optional configuration
+// NewBuilder creates a Builder rooted at the directory containing the
+// downloaded RoadRunner source tree.
 func NewBuilder(rrTmpPath string, opts ...Option) *Builder {
-	b := &Builder{
-		rrTempPath: rrTmpPath,
-	}
-
-	// Apply all options
+	b := &Builder{rrTempPath: rrTmpPath, log: zap.NewNop()}
 	for _, opt := range opts {
 		opt(b)
 	}
-
 	return b
 }
 
-// Build builds a RR based on the provided modules info
-func (b *Builder) Build(rrRef string) (string, error) { //nolint:gocyclo
+// Build orchestrates the full produce-binary pipeline. It returns the path to
+// the final binary in the configured output directory, or an error wrapping
+// the failing stage and (when available) the last 8 KB of stderr.
+func (b *Builder) Build(ctx context.Context, rrRef string) (string, error) {
+	if err := b.validateInputs(); err != nil {
+		return "", err
+	}
+
+	module, err := parseRRMajor(rrRef)
+	if err != nil {
+		return "", err
+	}
+	b.log.Info("RoadRunner major version", zap.String("ref", rrRef), zap.String("major", module))
+
+	plugin.ResolvePrefixCollisions(b.plugins)
+
+	defer b.cleanupOutputDir()
+
+	if err := b.writePluginsGo(); err != nil {
+		return "", fmt.Errorf("writePluginsGo: %w", err)
+	}
+	if err := b.applyRequires(ctx); err != nil {
+		return "", fmt.Errorf("applyRequires: %w", err)
+	}
+	if err := b.applyReplaces(ctx); err != nil {
+		return "", fmt.Errorf("applyReplaces: %w", err)
+	}
+	if err := b.applyExcludes(ctx); err != nil {
+		return "", fmt.Errorf("applyExcludes: %w", err)
+	}
+	if err := b.goModTidy(ctx); err != nil {
+		return "", fmt.Errorf("go mod tidy: %w", err)
+	}
+	if err := b.verifyResolvedVersions(ctx); err != nil {
+		return "", fmt.Errorf("verifyResolvedVersions: %w", err)
+	}
+	builtPath, err := b.compile(ctx)
+	if err != nil {
+		return "", fmt.Errorf("compile: %w", err)
+	}
+	finalPath, err := b.relocate(builtPath)
+	if err != nil {
+		return "", fmt.Errorf("relocate: %w", err)
+	}
+	if err := b.smokeTest(ctx, finalPath); err != nil {
+		return "", fmt.Errorf("smokeTest: %w", err)
+	}
+	return finalPath, nil
+}
+
+func (b *Builder) validateInputs() error {
 	if len(b.plugins) == 0 {
-		return "", fmt.Errorf("please, use WithPlugins to add plugins to the RR build")
+		return errors.New("no plugins provided; use WithPlugins to add at least one")
+	}
+	if b.rrTempPath == "" {
+		return errors.New("RR source path is empty")
+	}
+	if b.outputDir == "" {
+		return errors.New("output directory is empty; use WithOutputDir")
+	}
+	if strings.EqualFold(b.goos, "windows") {
+		return errors.New("velox v3 does not support Windows targets")
+	}
+	return b.ensureOutputDir()
+}
+
+func (b *Builder) ensureOutputDir() error {
+	if info, err := os.Stat(b.outputDir); err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("%s is not a directory", b.outputDir)
+		}
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return os.MkdirAll(b.outputDir, 0o755)
+}
+
+// writePluginsGo renders container/plugins.go using the parameterized template.
+// The bundled informer/resetter import paths come from the downloaded RR's own
+// go.mod, so the same template works for every RR major version.
+func (b *Builder) writePluginsGo() error {
+	goModBytes, err := os.ReadFile(filepath.Join(b.rrTempPath, goModFile))
+	if err != nil {
+		return fmt.Errorf("read upstream go.mod: %w", err)
+	}
+	informer, resetter, err := templates.ParseUpstreamModules(goModBytes)
+	if err != nil {
+		return err
 	}
 
 	t := templates.NewTemplate(b.plugins)
+	t.InformerImport = informer
+	t.ResetterImport = resetter
 
-	module, err := validateModule(rrRef)
+	pluginsPath := filepath.Join(b.rrTempPath, pluginsRelPath)
+	if err := os.Remove(pluginsPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove old plugins.go: %w", err)
+	}
+
+	f, err := os.OpenFile(pluginsPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("open plugins.go: %w", err)
 	}
+	defer func() { _ = f.Close() }()
 
-	t.RRModuleVersion = module
-	buf := new(bytes.Buffer)
-
-	// compatibility with version 2
-	switch t.RRModuleVersion {
-	case velox.V2025:
-		err = templates.CompileTemplateV2025(buf, t)
-		if err != nil {
-			return "", err
-		}
-	case velox.V2024:
-		err = templates.CompileTemplateV2024(buf, t)
-		if err != nil {
-			return "", err
-		}
-	default:
-		return "", fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
+	if err := templates.CompilePlugins(f, t); err != nil {
+		return fmt.Errorf("render plugins.go template: %w", err)
 	}
-
-	b.log.Debug("template", zap.String("template", buf.String()))
-
-	f, err := os.Open(b.rrTempPath)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		_ = f.Close()
-		// clean output directory, remove everything except RR binary
-		files, errGl := filepath.Glob(filepath.Join(b.outputDir, cleanupPattern))
-		if errGl != nil {
-			return
-		}
-
-		for i := range files {
-			b.log.Info("cleaning temporary folders", zap.String("file/folder", files[i]))
-			_ = os.RemoveAll(files[i])
-		}
-	}()
-
-	// remove old plugins.go
-	err = os.Remove(filepath.Join(b.rrTempPath, pluginsPath))
-	if err != nil {
-		return "", err
-	}
-
-	err = os.WriteFile(filepath.Join(b.rrTempPath, pluginsPath), buf.Bytes(), 0600)
-	if err != nil {
-		return "", err
-	}
-
-	err = os.Remove(filepath.Join(b.rrTempPath, goModStr))
-	if err != nil {
-		return "", err
-	}
-
-	goModFile, err := os.Create(filepath.Join(b.rrTempPath, goModStr))
-	if err != nil {
-		return "", err
-	}
-
-	// reuse buffer
-	buf.Reset()
-
-	// compatibility with version 2
-	switch t.RRModuleVersion {
-	case velox.V2025:
-		err = templates.CompileGoModTemplate2025(buf, t)
-		if err != nil {
-			return "", err
-		}
-	case velox.V2024:
-		err = templates.CompileGoModTemplate2024(buf, t)
-		if err != nil {
-			return "", err
-		}
-	default:
-		return "", fmt.Errorf("unknown module version: %s", t.RRModuleVersion)
-	}
-
-	b.log.Debug("template", zap.String("template", buf.String()))
-
-	_, err = goModFile.Write(buf.Bytes())
-	if err != nil {
-		return "", err
-	}
-
-	// reuse buffer
-	buf.Reset()
-
-	err = b.exec([]string{"go", "mod", "download"})
-	if err != nil {
-		return "", err
-	}
-
-	err = b.exec([]string{"go", "mod", "tidy"})
-	if err != nil {
-		return "", err
-	}
-
-	b.log.Info("creating output directory", zap.String("dir", b.outputDir))
-	_, err = os.Stat(b.outputDir)
-	if err != nil && !os.IsNotExist(err) {
-		return "", fmt.Errorf("stat failed for output directory %s: %w", b.outputDir, err)
-	}
-
-	if os.IsExist(err) {
-		b.log.Info("output path already exists, cleaning up", zap.String("dir", b.outputDir))
-		_ = os.RemoveAll(b.outputDir)
-	}
-
-	err = os.MkdirAll(b.outputDir, os.ModeDir|os.ModePerm)
-	if err != nil {
-		return "", err
-	}
-
-	// INFO: we can get go envs via go env GOOS for example, but instead we will set them manually
-	err = b.goBuildCmd(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)))
-	if err != nil {
-		return "", err
-	}
-
-	// move the binary to the output directory
-	binaryPath := filepath.Join(b.outputDir, generateExecutableName(b.goos))
-	b.log.Info("moving binary", zap.String("file", filepath.Join(b.rrTempPath, generateExecutableName(b.goos))), zap.String("to", binaryPath))
-	err = os.Rename(filepath.Join(b.rrTempPath, generateExecutableName(b.goos)), binaryPath)
-	if err != nil {
-		return "", err
-	}
-
-	return binaryPath, nil
+	b.log.Debug("wrote container/plugins.go",
+		zap.String("informer", informer),
+		zap.String("resetter", resetter),
+		zap.Int("user_plugins", len(b.plugins)),
+	)
+	return nil
 }
 
-// Write implements io.Writer to capture build command output for logging and debugging.
-// It logs all output to the debug logger and optionally writes to a string builder.
-func (b *Builder) Write(d []byte) (int, error) {
-	b.log.Debug("[STDERR OUTPUT]", zap.ByteString("log", d))
-	if b.sb != nil {
-		// error is always nil
-		_, _ = b.sb.Write(d)
+// verifyResolvedVersions asks the Go toolchain for the post-tidy version of
+// every user-requested plugin. If `go mod tidy` upgraded any plugin past the
+// requested tag (typically because upstream RR transitively pins a newer
+// version), we surface an actionable error instead of building a binary that
+// silently uses a different plugin version than the user asked for.
+//
+// `tag = "latest"` is treated as "whatever tidy resolves" — no check.
+func (b *Builder) verifyResolvedVersions(ctx context.Context) error {
+	for _, p := range b.plugins {
+		if p.Tag() == "" || p.Tag() == "latest" {
+			continue
+		}
+		res, err := runCmd(ctx, b.log, b.rrTempPath, b.env(),
+			"go", "list", "-m", "-json", p.ModuleName())
+		if err != nil {
+			return fmt.Errorf("go list -m %s: %w", p.ModuleName(), err)
+		}
+		var mod struct {
+			Path    string
+			Version string
+		}
+		if err := json.Unmarshal(res.Stdout, &mod); err != nil {
+			return fmt.Errorf("parse go list output for %s: %w", p.ModuleName(), err)
+		}
+		if mod.Version != "" && mod.Version != p.Tag() {
+			return fmt.Errorf(
+				"plugin %s resolved to %s (you requested %s); use a [[replaces]] entry to force this version",
+				p.ModuleName(), mod.Version, p.Tag(),
+			)
+		}
 	}
-	return len(d), nil
+	return nil
 }
 
-// validateModule parses the RoadRunner version string and returns the major version identifier.
-// It converts "master" to v2025 and extracts the major version from semantic versions (e.g., "v2024.1.0" → "v2024").
-func validateModule(module string) (string, error) {
-	if module == "master" {
-		// default branch
-		return velox.V2025, nil
+// compile runs `go build` in the RR source tree. Returns the path of the
+// produced binary (still inside the temp dir).
+func (b *Builder) compile(ctx context.Context) (string, error) {
+	args := []string{"build", "-v", "-trimpath"}
+	if b.debug {
+		args = append(args, "-gcflags", "all=-N -l", "-tags", "debug")
+	} else {
+		args = append(args, "-ldflags", "-s -w")
 	}
+	if b.race {
+		args = append(args, "-race")
+	}
+	args = append(args, "-ldflags", fmt.Sprintf(ldflagsFmt, b.rrVersion, buildTimestamp()))
 
-	v, err := version.NewVersion(module)
-	if err != nil {
+	outPath := filepath.Join(b.rrTempPath, executableName)
+	args = append(args, "-o", outPath, rrMainGo)
+
+	if _, err := runCmd(ctx, b.log, b.rrTempPath, b.env(), "go", args...); err != nil {
 		return "", err
 	}
-
-	// return major version (v2, v2023, etc)
-	return fmt.Sprintf("v%d", v.Segments()[0]), nil
+	return outPath, nil
 }
 
-// goBuildCmd executes the Go build command with appropriate flags for cross-compilation and version injection.
-// It sets GOOS, GOARCH, CGO_ENABLED, and custom GOPATH/GOCACHE for platform-specific builds.
-func (b *Builder) goBuildCmd(outputPath string) error {
-	var cmd *exec.Cmd
+func (b *Builder) relocate(srcBin string) (string, error) {
+	dst := filepath.Join(b.outputDir, executableName)
+	b.log.Info("moving binary", zap.String("from", srcBin), zap.String("to", dst))
+	if err := os.Rename(srcBin, dst); err != nil {
+		return "", fmt.Errorf("move binary: %w", err)
+	}
+	return dst, nil
+}
 
-	buildCmdArgs := make([]string, 0, 5)
-	// regular Go build command starts here.
-	buildCmdArgs = append(buildCmdArgs, "go", "build", "-v", "-trimpath")
-
-	// var ld []string
-	switch b.debug {
-	case true:
-		// debug flags
-		// turn off optimizations
-		buildCmdArgs = append(buildCmdArgs, "-gcflags", "-N")
-		// turn off inlining
-		buildCmdArgs = append(buildCmdArgs, "-gcflags", "-l")
-		// build with debug tags
-		buildCmdArgs = append(buildCmdArgs, "-tags", "debug")
-	case false:
-		buildCmdArgs = append(buildCmdArgs, "-ldflags", "-s")
+// smokeTest invokes `./rr --version` on the freshly-built binary when the host
+// platform matches the target. Cross-compiled binaries are not exercised.
+func (b *Builder) smokeTest(ctx context.Context, binPath string) error {
+	hostOS, hostArch := goosFromRuntime(), goarchFromRuntime()
+	if b.goos != "" && b.goos != hostOS {
+		b.log.Info("skipping smoke test (cross-compiled)",
+			zap.String("target_os", b.goos), zap.String("host_os", hostOS))
+		return nil
+	}
+	if b.goarch != "" && b.goarch != hostArch {
+		b.log.Info("skipping smoke test (cross-compiled)",
+			zap.String("target_arch", b.goarch), zap.String("host_arch", hostArch))
+		return nil
 	}
 
-	// LDFLAGS for version and build time, always appended
-	buildCmdArgs = append(buildCmdArgs, "-ldflags")
-	buildCmdArgs = append(buildCmdArgs, fmt.Sprintf(ldflags, b.rrVersion, time.Now().UTC().Format(time.RFC3339)))
+	smokeCtx, cancel := context.WithTimeout(ctx, smokeTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(smokeCtx, binPath, "--version").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("`%s --version` failed: %w\n%s", binPath, err, out)
+	}
+	b.log.Info("smoke test passed", zap.ByteString("version", out))
+	return nil
+}
 
-	// output
-	buildCmdArgs = append(buildCmdArgs, "-o")
-	// path
-	buildCmdArgs = append(buildCmdArgs, outputPath)
-	// path to main.go
-	buildCmdArgs = append(buildCmdArgs, rrMainGo)
+// cleanupOutputDir removes leftover roadrunner-server* dirs in the output
+// directory so the next build starts from a clean slate.
+func (b *Builder) cleanupOutputDir() {
+	files, err := filepath.Glob(filepath.Join(b.outputDir, cleanupPattern))
+	if err != nil {
+		return
+	}
+	for _, f := range files {
+		b.log.Info("cleaning temporary folder", zap.String("path", f))
+		_ = os.RemoveAll(f)
+	}
+}
 
-	// gosec: don't need here, since we control the input
-	cmd = exec.CommandContext(context.Background(), buildCmdArgs[0], buildCmdArgs[1:]...) //nolint: gosec
-	cmd.Dir = b.rrTempPath
-	// set GOOS and GOARCH if specified (used in the server command)
+// env composes the subprocess environment, inheriting from the parent (so
+// GOPROXY, GOPRIVATE, GOFLAGS, etc. are preserved) and overlaying our
+// target-platform / cgo / GOPATH settings.
+func (b *Builder) env() []string {
+	env := append([]string(nil), os.Environ()...)
 	if b.goos != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("GOOS=%s", b.goos))
+		env = setKV(env, "GOOS", b.goos)
 	}
 	if b.goarch != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("GOARCH=%s", b.goarch))
+		env = setKV(env, "GOARCH", b.goarch)
 	}
-	cmd.Env = append(cmd.Env, "CGO_ENABLED=0") // disable cgo
-	hd, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("get user home dir: %w", err)
+	if b.race {
+		env = setKV(env, "CGO_ENABLED", "1")
+	} else {
+		env = setKV(env, "CGO_ENABLED", "0")
 	}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("GOPATH=%s", filepath.Join(hd, "go", b.goos, b.goarch)))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("GOCACHE=%s", filepath.Join(hd, "go", b.goos, b.goarch, "go-build")))
-
-	b.log.Info("building RoadRunner", zap.String("cmd", cmd.String()))
-	cmd.Stderr = b
-	cmd.Stdout = b
-	err = cmd.Start()
-	if err != nil {
-		return err
+	if home, err := os.UserHomeDir(); err == nil && b.goos != "" && b.goarch != "" {
+		gopath := filepath.Join(home, "go", b.goos, b.goarch)
+		env = setKV(env, "GOPATH", gopath)
+		env = setKV(env, "GOCACHE", filepath.Join(gopath, "go-build"))
 	}
-	err = cmd.Wait()
-	if err != nil {
-		return err
-	}
-	return nil
+	return env
 }
 
-// exec executes an arbitrary command in the RoadRunner temporary directory with output logging.
-func (b *Builder) exec(cmd []string) error {
-	b.log.Info("executing command", zap.String("cmd", strings.Join(cmd, " ")))
-	// gosec: this is not user-controlled input
-	command := exec.CommandContext(context.Background(), cmd[0], cmd[1:]...) //nolint:gosec
-	command.Stderr = b
-	command.Stdout = b
-	command.Dir = b.rrTempPath
-	err := command.Start()
-	if err != nil {
-		return err
+// setKV replaces (or appends) "KEY=value" in env.
+func setKV(env []string, key, value string) []string {
+	prefix := key + "="
+	for i, kv := range env {
+		if strings.HasPrefix(kv, prefix) {
+			env[i] = prefix + value
+			return env
+		}
 	}
-	err = command.Wait()
-	if err != nil {
-		return err
-	}
-	return nil
+	return append(env, prefix+value)
 }
 
-// generateExecutableName returns the executable filename for the given target OS.
-// If goos (case-insensitive) is "windows", it returns the Windows executable name; otherwise it returns the default (Unix-style) executable name.
-func generateExecutableName(goos string) string {
-	if strings.ToLower(goos) == "windows" {
-		return executableNameWindows
+// buildTimestamp returns the RFC3339 timestamp used in ldflags. Honors
+// SOURCE_DATE_EPOCH (https://reproducible-builds.org/specs/source-date-epoch/)
+// so distros / CI can produce bit-identical binaries.
+func buildTimestamp() string {
+	if s := os.Getenv("SOURCE_DATE_EPOCH"); s != "" {
+		if secs, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return time.Unix(secs, 0).UTC().Format(time.RFC3339)
+		}
 	}
-	return executableName
+	return time.Now().UTC().Format(time.RFC3339)
+}
+
+// parseRRMajor returns the major-version identifier (vN or vYYYY) for an RR
+// ref. "master" maps to the current default V3. Legacy year-based refs
+// (v2025.x.y, v2024.x.y) keep their year identifier so older RR releases
+// continue to build.
+func parseRRMajor(ref string) (string, error) {
+	if ref == "master" {
+		return velox.V3, nil
+	}
+	v, err := version.NewVersion(ref)
+	if err != nil {
+		return "", fmt.Errorf("invalid RR ref %q: %w", ref, err)
+	}
+	return fmt.Sprintf("v%d", v.Segments()[0]), nil
 }

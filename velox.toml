@@ -12,9 +12,29 @@ mode = "production"
 os = "darwin"
 arch = "arm64"
 
-# optional, needed only to download RR once (per version)
+[github]
+# base_url is optional. Set it to a GitHub Enterprise host (e.g. "https://ghe.example.com") to
+# download the RoadRunner template from a private GHE installation instead of github.com.
+# base_url = "https://github.com"
+
 [github.token]
 token = "${GITHUB_TOKEN}"
+
+# Optional: go.mod replace directives applied before `go mod tidy`. Both `new` and `old` are
+# single strings; embed @version inline (e.g. "module@v1.2.3"). Local paths in `new` (./, ../,
+# /abs) must NOT carry an @version.
+# [[replaces]]
+# new = "../local-fork"
+# old = "github.com/foo/bar"
+#
+# [[replaces]]
+# new = "github.com/me/bar-fork@v1.2.3-patched"
+# old = "github.com/foo/bar@v1.2.3"
+
+# Optional: go.mod exclude directives applied before `go mod tidy`.
+# [[excludes]]
+# module = "github.com/redis/go-redis/v9"
+# version = "v9.15.0"
 
 [plugins.appLogger]
 tag = "latest"
