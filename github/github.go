@@ -50,17 +50,25 @@ type Client struct {
 // is used so the client picks up the larger rate limit available to authenticated
 // requests.
 func NewClient(baseURL, accessToken string, cache Cache, log *slog.Logger) *Client {
-	httpc := &http.Client{
-		Timeout: httpTimeout,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+	// noFollow stops the http client from following the 3xx redirect to the
+	// archive CDN URL: fetch() depends on seeing the redirect status to read
+	// the Location header explicitly under a context-aware second request.
+	noFollow := func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
 	}
+	httpc := &http.Client{Timeout: httpTimeout, CheckRedirect: noFollow}
+
 	if accessToken != "" {
+		// oauth2.NewClient builds a fresh *http.Client around our transport;
+		// it inherits the Transport via the context value, but neither
+		// CheckRedirect nor Timeout transfers. Re-apply them.
 		ctx := context.WithValue(context.Background(), oauth2.HTTPClient, httpc)
 		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
 		httpc = oauth2.NewClient(ctx, ts)
+		httpc.CheckRedirect = noFollow
+		httpc.Timeout = httpTimeout
 	}
+
 	if baseURL == "" {
 		baseURL = "https://github.com"
 	}

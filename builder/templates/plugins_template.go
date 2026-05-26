@@ -69,6 +69,9 @@ func NewTemplate(plugins []*plugin.Plugin) *Template {
 
 // CompilePlugins renders the plugins.go template into w.
 func CompilePlugins(w io.Writer, t *Template) error {
+	if t == nil {
+		return fmt.Errorf("templates: template must not be nil")
+	}
 	if t.InformerImport == "" || t.ResetterImport == "" {
 		return fmt.Errorf("templates: InformerImport and ResetterImport must be set (got %q, %q)",
 			t.InformerImport, t.ResetterImport)

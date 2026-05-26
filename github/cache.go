@@ -21,5 +21,18 @@ func NewLRUCache(size int) Cache {
 
 type lruCache struct{ inner *lru.Cache[string, []byte] }
 
-func (c *lruCache) Get(key string) ([]byte, bool) { return c.inner.Get(key) }
-func (c *lruCache) Add(key string, value []byte)  { c.inner.Add(key, value) }
+// Get returns a copy of the cached value so the caller cannot mutate the
+// cached archive bytes through the returned slice.
+func (c *lruCache) Get(key string) ([]byte, bool) {
+	v, ok := c.inner.Get(key)
+	if !ok {
+		return nil, false
+	}
+	return append([]byte(nil), v...), true
+}
+
+// Add stores a copy of value so a subsequent caller-side mutation can't
+// silently corrupt the cached archive.
+func (c *lruCache) Add(key string, value []byte) {
+	c.inner.Add(key, append([]byte(nil), value...))
+}
