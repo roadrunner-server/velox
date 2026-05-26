@@ -29,6 +29,7 @@ Velox is an automated build system for RoadRunner server and its plugins. The v3
 - Protocol Buffers via [buf](https://buf.build/)
 - Connect RPC (`connectrpc.com/connect`) and gRPC
 - `hashicorp/golang-lru/v2` for caches
+- `log/slog` (stdlib) for structured logging — no third-party logger
 - Cobra CLI
 
 **Not supported in v3:** Windows targets.
@@ -55,7 +56,7 @@ Velox is an automated build system for RoadRunner server and its plugins. The v3
 │   ├── build/                  # `vx build`
 │   └── server/                 # `vx server` (Connect + gRPC reflection)
 ├── plugin/                     # Plugin metadata + deterministic prefix
-├── logger/                     # zap logger builder
+├── logger/                     # slog logger builder (production / development / raw / off)
 └── velox.toml                  # Sample configuration
 ```
 
@@ -80,12 +81,16 @@ golangci-lint run
 ### Build pipeline (`builder/builder.go:Build`)
 
 ```text
-prepareWorkspace → writePluginsGo → applyRequires → applyReplaces
-  → applyExcludes → goModTidy → verifyResolvedVersions
+validateInputs → ResolvePrefixCollisions → writePluginsGo
+  → applyRequires → applyReplaces → applyExcludes
+  → goModTidy → verifyResolvedVersions
   → compile → relocate → smokeTest
 ```
 
-Each step propagates `context.Context` and surfaces the last 8 KB of stderr in any returned error.
+`ResolvePrefixCollisions` lives in the `plugin` package (it operates on the
+plugin slice, not on the Builder). Every other step is a method on `*Builder`.
+Each step propagates `context.Context` and surfaces the last 8 KB of stderr in
+any returned error.
 
 ### Plugin prefixing (`plugin/plugin.go`)
 
@@ -93,7 +98,11 @@ Every plugin gets a deterministic 5-letter alpha-lowercase prefix derived from `
 
 ### Subprocess execution (`builder/gomod.go:runCmd`)
 
-`runCmd` wraps `exec.Command` with: context propagation (SIGINT then SIGKILL after 15s on `ctx.Done()`), full stdout capture, bounded ring-buffer stderr capture (last 8 KB), and stderr tee to the debug logger.
+`runCmd` wraps `exec.CommandContext` with: context propagation (SIGINT then
+SIGKILL after 15 s on `ctx.Done()` — the manual two-stage signal pattern is
+needed because the Go default would jump straight to SIGKILL), full stdout
+capture, bounded ring-buffer stderr capture (last 8 KB), and a stderr tee to
+the debug logger.
 
 ### Server cache key
 
@@ -131,8 +140,8 @@ level = "debug"
 mode = "production"  # production | development | raw | none
 
 [plugins.http]
-module_name = "github.com/roadrunner-server/http/v6"
-tag = "v6.0.0"
+module_name = "github.com/roadrunner-server/http/v5"
+tag = "latest"  # or pin to v5.x.x for reproducible builds
 
 # Optional: go.mod replace directives. `new` listed first; embed @version inline.
 [[replaces]]
@@ -174,7 +183,7 @@ CI (`.github/workflows/linux.yml`):
 ## Plugin compatibility
 
 - **Do not use `master` branch** for plugins.
-- **All plugins must share a major version** (e.g., http/v6 + logger/v6, never http/v6 + logger/v5).
+- **All plugins must share a major version** (e.g., http/v5 + logger/v5, never http/v5 + logger/v6). RR `v2025.x.x` uses `/v5`; the next RR major (`v3.0.0`) will pair with `/v6`.
 - **`tag = "latest"`** is permitted but skips post-tidy version verification — pin tags for reproducible builds.
 
 ## Implementation notes
