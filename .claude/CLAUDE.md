@@ -195,7 +195,7 @@ CI (`.github/workflows/linux.yml`):
 ### GitHub Enterprise
 
 - `[github] base_url` switches the archive download host. GHE archive paths follow the same `/{owner}/{repo}/archive/...` shape under the GHE base.
-- `Authorization: token …` is sent identically to github.com.
+- `Authorization: token …` is sent identically to GitHub.com.
 
 ## Links
 

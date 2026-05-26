@@ -72,6 +72,14 @@ func NewBuildServer(log *slog.Logger) *BuildServer {
 // requests, serves cached results when possible, and otherwise drives the
 // Builder pipeline end-to-end.
 func (b *BuildServer) Build(ctx context.Context, req *connect.Request[requestV1.BuildRequest]) (*connect.Response[responseV1.BuildResponse], error) {
+	// Default a missing target_platform to the host BEFORE hashing so that
+	// `{platform: nil}` and `{platform: <host>}` produce the same cache key —
+	// they describe the same build.
+	if req.Msg.GetTargetPlatform() == nil {
+		b.log.Info("target platform unspecified; using host platform")
+		req.Msg.TargetPlatform = &requestV1.Platform{Os: runtime.GOOS, Arch: runtime.GOARCH}
+	}
+
 	hash, err := b.generateCacheHash(req.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("generating cache hash: %w", err))
@@ -93,11 +101,6 @@ func (b *BuildServer) Build(ctx context.Context, req *connect.Request[requestV1.
 			Path: cached,
 			Logs: "cached output, logs are available only on the first build",
 		}), nil
-	}
-
-	if req.Msg.GetTargetPlatform() == nil {
-		b.log.Info("target platform unspecified; using host platform")
-		req.Msg.TargetPlatform = &requestV1.Platform{Os: runtime.GOOS, Arch: runtime.GOARCH}
 	}
 
 	plugins := make([]*plugin.Plugin, 0, len(req.Msg.GetPlugins()))

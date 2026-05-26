@@ -73,11 +73,14 @@ func (b *Builder) Build(ctx context.Context, rrRef string) (string, error) {
 		return "", err
 	}
 
-	module, err := parseRRMajor(rrRef)
-	if err != nil {
-		return "", err
+	// parseRRMajor is best-effort: it's only used for the log line below.
+	// Branch names and commit SHAs are valid refs for downloading the template
+	// but don't parse as semver — log a placeholder and continue.
+	major := "unknown"
+	if m, err := parseRRMajor(rrRef); err == nil {
+		major = m
 	}
-	b.log.Info("RoadRunner major version", "ref", rrRef, "major", module)
+	b.log.Info("RoadRunner major version", "ref", rrRef, "major", major)
 
 	plugin.ResolvePrefixCollisions(b.plugins)
 
