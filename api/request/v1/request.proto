@@ -4,7 +4,7 @@ package api.request.v1;
 
 import "buf/validate/validate.proto";
 
-option go_package = "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1;requestV1";
+option go_package = "github.com/roadrunner-server/velox/v3/gen/go/api/request/v1;requestV1";
 
 message Platform {
   // GOOS
@@ -34,6 +34,14 @@ message BuildRequest {
   Platform target_platform = 4 [(buf.validate.field).required = false];
   // plugins are required and represent the list of plugins to be used for the build
   repeated Plugin plugins = 5 [(buf.validate.field).required = true];
+  // replaces is an optional list of go.mod replace directives to apply before tidy
+  repeated Replace replaces = 6;
+  // excludes is an optional list of go.mod exclude directives to apply before tidy
+  repeated Exclude excludes = 7;
+  // race enables the race detector in the produced binary (forces CGO_ENABLED=1)
+  bool race = 8;
+  // debug enables debug build flags (disables optimization/inlining, adds DWARF)
+  bool debug = 9;
 }
 
 message Plugin {
@@ -41,4 +49,19 @@ message Plugin {
   string module_name = 1 [(buf.validate.field).required = true];
   // plugin github tag
   string tag = 2 [(buf.validate.field).required = true];
+}
+
+message Replace {
+  // new is the replacement target. Either "module@version" or a local path
+  // (./foo, ../foo, or an absolute path). Local paths must NOT carry @version.
+  string new = 1 [(buf.validate.field).required = true];
+  // old is the module being replaced. Either "module" or "module@version".
+  string old = 2 [(buf.validate.field).required = true];
+}
+
+message Exclude {
+  // module is the Go module path to exclude
+  string module = 1 [(buf.validate.field).required = true];
+  // version is the specific module version to exclude
+  string version = 2 [(buf.validate.field).required = true];
 }

@@ -78,6 +78,6 @@ jobs:
           VERSION: ${{ secrets.VERSION }}
           TIME: ${{ secrets.TIME }}
         run: |
-          go install github.com/roadrunner-server/velox/v2025/cmd/vx@latest
+          go install ./cmd/vx
           vx build -c velox.toml -o="."
           ./rr --version

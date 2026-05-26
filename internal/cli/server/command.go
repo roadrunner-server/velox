@@ -1,7 +1,9 @@
 package server
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -9,53 +11,63 @@ import (
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/validate"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 
-	servicev1 "github.com/roadrunner-server/velox/v2025/gen/go/api/service/v1/serviceV1connect"
+	servicev1 "github.com/roadrunner-server/velox/v3/gen/go/api/service/v1/serviceV1connect"
 )
 
-// BindCommand returns a cobra.Command that starts the Velox server.
-// The command listens on the provided address and uses zlog for logging.
-// It registers the BuildService handler (with a request validation interceptor) and gRPC reflection,
-// serves HTTP/2 over cleartext (h2c) with a one-minute header timeout, and runs until the server is closed.
-// If the server stops due to an orderly shutdown, the command exits with nil; other listen errors are returned.
-func BindCommand(address *string, zlog *zap.Logger) *cobra.Command {
+const shutdownTimeout = 30 * time.Second
+
+// BindCommand returns the cobra.Command that runs the build server. The root
+// *slog.Logger is passed by pointer because the root command's PersistentPreRunE
+// rewrites its pointee with the config-driven logger after construction; child
+// loggers are therefore derived inside RunE, not at wiring time.
+//
+// The server honors the inherited cobra context for graceful shutdown: on
+// SIGINT/SIGTERM, in-flight HTTP/2 streams get up to shutdownTimeout to
+// finish before forced close.
+func BindCommand(address *string, rootLog *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "server",
-		Short: "Run Velox server",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			zlog.Debug("starting velox server", zap.String("address", *address))
-			reflector := grpcreflect.NewStaticReflector(
-				"/api.service.v1.BuildService/",
-			)
+		Short: "Run the Velox build server (Connect / gRPC over h2c)",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			log := rootLog.With("component", "server")
+			log.Debug("starting velox server", "address", *address)
 
+			reflector := grpcreflect.NewStaticReflector("/api.service.v1.BuildService/")
 			mux := http.NewServeMux()
-			// build server
-			client := NewBuildServer(zlog)
-			path, handler := servicev1.NewBuildServiceHandler(client, connect.WithInterceptors(validate.NewInterceptor()))
-
-			// handlers
+			path, handler := servicev1.NewBuildServiceHandler(
+				NewBuildServer(log),
+				connect.WithInterceptors(validate.NewInterceptor()),
+			)
 			mux.Handle(path, handler)
 			mux.Handle(grpcreflect.NewHandlerV1(reflector))
 
-			server := &http.Server{
-				Addr: *address,
-				Handler: h2c.NewHandler(mux, &http2.Server{
-					MaxConcurrentStreams: 256,
-				}),
+			protocols := &http.Protocols{}
+			protocols.SetHTTP1(true)
+			protocols.SetUnencryptedHTTP2(true)
+			srv := &http.Server{
+				Addr:              *address,
+				Handler:           mux,
 				ReadHeaderTimeout: time.Minute,
+				Protocols:         protocols,
+				HTTP2:             &http.HTTP2Config{MaxConcurrentStreams: 256},
 			}
-			err := server.ListenAndServe()
-			if err != nil {
+
+			errCh := make(chan error, 1)
+			go func() { errCh <- srv.ListenAndServe() }()
+
+			select {
+			case <-cmd.Context().Done():
+				log.Info("shutdown signal received")
+				ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+				defer cancel()
+				return srv.Shutdown(ctx)
+			case err := <-errCh:
 				if errors.Is(err, http.ErrServerClosed) {
 					return nil
 				}
-
 				return err
 			}
-			return nil
 		},
 	}
 }

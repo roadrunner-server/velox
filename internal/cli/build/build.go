@@ -1,75 +1,85 @@
+// Package build implements the `vx build` subcommand: read velox.toml, download
+// the upstream RoadRunner source, and produce a custom binary via the Builder.
 package build
 
 import (
+	"log/slog"
 	"os"
-	"syscall"
 
 	"github.com/google/uuid"
-	"github.com/roadrunner-server/velox/v2025"
-	"github.com/roadrunner-server/velox/v2025/builder"
-	cacheimpl "github.com/roadrunner-server/velox/v2025/cache"
-	"github.com/roadrunner-server/velox/v2025/github"
-	"github.com/roadrunner-server/velox/v2025/plugin"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
+
+	"github.com/roadrunner-server/velox/v3"
+	"github.com/roadrunner-server/velox/v3/builder"
+	"github.com/roadrunner-server/velox/v3/github"
+	"github.com/roadrunner-server/velox/v3/plugin"
 )
 
-const (
-	ref string = "ref"
-)
+const refKey = "ref"
 
-// BindCommand creates the cobra command for building RoadRunner binary with configured plugins.
-func BindCommand(cfg *velox.Config, out *string, zlog *zap.Logger) *cobra.Command {
+// BindCommand returns the cobra.Command for `vx build`. The root *slog.Logger
+// is passed by pointer because the root command's PersistentPreRunE rewrites
+// its pointee with the config-driven logger after construction; child loggers
+// are therefore derived inside RunE, not at wiring time.
+func BindCommand(cfg *velox.Config, out *string, rootLog *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "build",
-		Short: "Build RR",
-		RunE: func(_ *cobra.Command, _ []string) error {
+		Short: "Build a custom RoadRunner binary using velox.toml",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			log := rootLog.With("component", "builder")
+
 			if *out == "." {
-				wd, err := syscall.Getwd()
+				wd, err := os.Getwd()
 				if err != nil {
 					return err
 				}
 				*out = wd
 			}
 
-			bplugins := make([]*plugin.Plugin, 0, len(cfg.Plugins))
+			plugins := make([]*plugin.Plugin, 0, len(cfg.Plugins))
 			for name, p := range cfg.Plugins {
 				if p == nil {
-					zlog.Warn("plugin info is nil", zap.String("name", name))
+					log.Warn("plugin info is nil", "name", name)
 					continue
 				}
-
-				bplugins = append(bplugins, plugin.NewPlugin(p.ModuleName, p.Tag))
+				plugins = append(plugins, plugin.NewPlugin(p.ModuleName, p.Tag))
 			}
 
-			// init out simple cache
-			rrcache := cacheimpl.NewRRCache()
-			// we can use a GITHUB token to download templates, but it's not required
-			rp := github.NewHTTPClient(os.Getenv("GITHUB_TOKEN"), rrcache, zlog.Named("GitHub"))
-			// Download the template for the specified RoadRunner version
-			path, err := rp.DownloadTemplate(os.TempDir(), uuid.NewString(), cfg.Roadrunner[ref])
+			token := ""
+			if cfg.GitHub != nil && cfg.GitHub.Token != nil {
+				token = cfg.GitHub.Token.Token
+			}
+			baseURL := ""
+			if cfg.GitHub != nil {
+				baseURL = cfg.GitHub.BaseURL
+			}
+
+			ctx := cmd.Context()
+			gh := github.NewClient(baseURL, token, github.NewLRUCache(0), log.With("component", "github"))
+			rrPath, err := gh.DownloadTemplate(ctx, os.TempDir(), uuid.NewString(), cfg.Roadrunner[refKey])
 			if err != nil {
-				zlog.Error("downloading template", zap.Error(err))
+				log.Error("downloading template", "error", err)
 				return err
 			}
 
-			opts := make([]builder.Option, 0, 6)
-			opts = append(opts,
-				builder.WithPlugins(bplugins...),
+			debug := cfg.Debug != nil && cfg.Debug.Enabled
+			binaryPath, err := builder.NewBuilder(rrPath,
+				builder.WithLogger(log.With("component", "build")),
+				builder.WithPlugins(plugins...),
+				builder.WithReplaces(cfg.Replaces),
+				builder.WithExcludes(cfg.Excludes),
 				builder.WithOutputDir(*out),
-				builder.WithRRVersion(cfg.Roadrunner[ref]),
-				builder.WithLogger(zlog.Named("Builder")),
+				builder.WithRRVersion(cfg.Roadrunner[refKey]),
 				builder.WithGOOS(cfg.TargetPlatform.OS),
 				builder.WithGOARCH(cfg.TargetPlatform.Arch),
-			)
-
-			binaryPath, err := builder.NewBuilder(path, opts...).Build(cfg.Roadrunner[ref])
+				builder.WithDebug(debug),
+			).Build(ctx, cfg.Roadrunner[refKey])
 			if err != nil {
-				zlog.Error("fatal", zap.Error(err))
+				log.Error("build failed", "error", err)
 				return err
 			}
 
-			zlog.Info("build finished successfully", zap.String("path", binaryPath))
+			log.Info("build finished", "path", binaryPath)
 			return nil
 		},
 	}

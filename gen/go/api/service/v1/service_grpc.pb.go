@@ -8,8 +8,8 @@ package serviceV1
 
 import (
 	context "context"
-	v1 "github.com/roadrunner-server/velox/v2025/gen/go/api/request/v1"
-	v11 "github.com/roadrunner-server/velox/v2025/gen/go/api/response/v1"
+	v1 "github.com/roadrunner-server/velox/v3/gen/go/api/request/v1"
+	v11 "github.com/roadrunner-server/velox/v3/gen/go/api/response/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
