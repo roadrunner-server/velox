@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/roadrunner-server/velox/v3"
@@ -56,7 +55,18 @@ func BindCommand(cfg *velox.Config, out *string, rootLog *slog.Logger) *cobra.Co
 
 			ctx := cmd.Context()
 			gh := github.NewClient(baseURL, token, github.NewLRUCache(0), log.With("component", "github"))
-			rrPath, err := gh.DownloadTemplate(ctx, os.TempDir(), uuid.NewString(), cfg.Roadrunner[refKey])
+
+			// Download into a unique per-build temp dir and remove it once the
+			// build finishes. The builder's own cleanup only sweeps the output
+			// dir, which differs from this download dir in CLI mode — without
+			// this defer the RR source tree + zip would leak into TempDir.
+			dlDir, err := os.MkdirTemp("", "velox-build-*")
+			if err != nil {
+				return err
+			}
+			defer func() { _ = os.RemoveAll(dlDir) }()
+
+			rrPath, err := gh.DownloadTemplate(ctx, dlDir, "", cfg.Roadrunner[refKey])
 			if err != nil {
 				log.Error("downloading template", "error", err)
 				return err

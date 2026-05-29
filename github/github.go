@@ -205,6 +205,8 @@ func (c *Client) saveRR(zipBytes []byte, rrRef, downloadDir string) (string, err
 	if err != nil {
 		return "", err
 	}
+	// GitHub (and GHE) archives always list the single "<repo>-<ref>/" root
+	// directory as the first entry, so File[0].Name is the extracted root.
 	outDir := rc.File[0].Name
 
 	for _, zf := range rc.File {

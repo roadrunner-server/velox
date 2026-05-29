@@ -3,9 +3,10 @@
 package plugin
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -36,11 +37,6 @@ func (p *Plugin) Prefix() string     { return p.prefix }
 func (p *Plugin) ModuleName() string { return p.moduleName }
 func (p *Plugin) Tag() string        { return p.tag }
 
-// Require returns "moduleName tag" — the form historically embedded in go.mod
-// template require() blocks. With the v3 go-mod-edit driven flow, the value is
-// instead passed as `go mod edit -require=moduleName@tag`; see RequireArg.
-func (p *Plugin) Require() string { return fmt.Sprintf("%s %s", p.moduleName, p.tag) }
-
 // RequireArg returns "moduleName@tag" suitable for `go mod edit -require=...`.
 func (p *Plugin) RequireArg() string { return p.moduleName + "@" + p.tag }
 
@@ -66,13 +62,9 @@ func (p *Plugin) Code() string { return p.prefix + ".Plugin{}" }
 func ResolvePrefixCollisions(plugins []*Plugin) {
 	const maxSalt = 1 << 16
 
-	ordered := make([]*Plugin, len(plugins))
-	copy(ordered, plugins)
-	sort.SliceStable(ordered, func(i, j int) bool {
-		if ordered[i].moduleName != ordered[j].moduleName {
-			return ordered[i].moduleName < ordered[j].moduleName
-		}
-		return ordered[i].tag < ordered[j].tag
+	ordered := slices.Clone(plugins)
+	slices.SortStableFunc(ordered, func(a, b *Plugin) int {
+		return cmp.Or(cmp.Compare(a.moduleName, b.moduleName), cmp.Compare(a.tag, b.tag))
 	})
 
 	seen := make(map[string]struct{}, len(ordered))

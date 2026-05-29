@@ -20,9 +20,6 @@ const (
 
 	// V3 is the canonical major version for the current RoadRunner line.
 	V3 = "v3"
-	// V2025 and V2024 remain accepted for the year-based legacy series.
-	V2025 = "v2025"
-	V2024 = "v2024"
 )
 
 type Config struct {
@@ -30,7 +27,7 @@ type Config struct {
 	Roadrunner map[string]string `mapstructure:"roadrunner"`
 	// Debug toggles debug build flags.
 	Debug *Debug `mapstructure:"debug"`
-	// Log holds level/mode settings for the zap logger.
+	// Log holds level/mode settings for the slog logger.
 	Log map[string]string `mapstructure:"log"`
 	// TargetPlatform overrides GOOS/GOARCH for cross-compilation. Defaults to host.
 	TargetPlatform *TargetPlatform `mapstructure:"target_platform"`

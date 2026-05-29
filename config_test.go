@@ -1,7 +1,6 @@
 package velox
 
 import (
-	"os"
 	"runtime"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 func TestExpandEnvs(t *testing.T) {
 	token := "foobarbaz"
 
-	require.NoError(t, os.Setenv("TOKEN", token))
+	t.Setenv("TOKEN", token)
 	c := &Config{
 		Roadrunner: map[string]string{ref: "v2025.1.0"},
 		Debug: &Debug{

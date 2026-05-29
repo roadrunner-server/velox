@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -301,7 +302,7 @@ func (b *Builder) cleanupOutputDir() {
 // GOPROXY, GOPRIVATE, GOFLAGS, etc. are preserved) and overlaying our
 // target-platform / cgo / GOPATH settings.
 func (b *Builder) env() []string {
-	env := append([]string(nil), os.Environ()...)
+	env := slices.Clone(os.Environ())
 	if b.goos != "" {
 		env = setKV(env, "GOOS", b.goos)
 	}

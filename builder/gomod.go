@@ -3,7 +3,6 @@ package builder
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -139,11 +138,9 @@ func (b *Builder) goModTidy(ctx context.Context) error {
 }
 
 // applyRequires invokes `go mod edit -require=<module>@<tag>` for each plugin.
-// Batching all requires in one call avoids spawning N subprocesses.
+// Batching all requires in one call avoids spawning N subprocesses. Build's
+// validateInputs already guarantees at least one plugin.
 func (b *Builder) applyRequires(ctx context.Context) error {
-	if len(b.plugins) == 0 {
-		return errors.New("no plugins provided; use WithPlugins to add at least one")
-	}
 	args := make([]string, 0, len(b.plugins))
 	for _, p := range b.plugins {
 		args = append(args, "-require="+p.RequireArg())
