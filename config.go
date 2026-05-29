@@ -20,9 +20,6 @@ const (
 
 	// V3 is the canonical major version for the current RoadRunner line.
 	V3 = "v3"
-	// V2025 and V2024 remain accepted for the year-based legacy series.
-	V2025 = "v2025"
-	V2024 = "v2024"
 )
 
 type Config struct {

@@ -1,6 +1,8 @@
 package github
 
 import (
+	"bytes"
+
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
@@ -28,11 +30,11 @@ func (c *lruCache) Get(key string) ([]byte, bool) {
 	if !ok {
 		return nil, false
 	}
-	return append([]byte(nil), v...), true
+	return bytes.Clone(v), true
 }
 
 // Add stores a copy of value so a subsequent caller-side mutation can't
 // silently corrupt the cached archive.
 func (c *lruCache) Add(key string, value []byte) {
-	c.inner.Add(key, append([]byte(nil), value...))
+	c.inner.Add(key, bytes.Clone(value))
 }

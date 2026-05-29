@@ -3,6 +3,7 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"hash/fnv"
@@ -10,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -164,29 +165,31 @@ func (b *BuildServer) generateCacheHash(req *requestV1.BuildRequest) (string, er
 }
 
 func sortedPlugins(in []*requestV1.Plugin) []*requestV1.Plugin {
-	out := append([]*requestV1.Plugin(nil), in...)
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].GetModuleName() != out[j].GetModuleName() {
-			return out[i].GetModuleName() < out[j].GetModuleName()
-		}
-		return out[i].GetTag() < out[j].GetTag()
+	out := slices.Clone(in)
+	slices.SortStableFunc(out, func(a, b *requestV1.Plugin) int {
+		return cmp.Or(
+			cmp.Compare(a.GetModuleName(), b.GetModuleName()),
+			cmp.Compare(a.GetTag(), b.GetTag()),
+		)
 	})
 	return out
 }
 
 func sortedReplaces(in []*requestV1.Replace) []*requestV1.Replace {
-	out := append([]*requestV1.Replace(nil), in...)
-	sort.SliceStable(out, func(i, j int) bool { return out[i].GetOld() < out[j].GetOld() })
+	out := slices.Clone(in)
+	slices.SortStableFunc(out, func(a, b *requestV1.Replace) int {
+		return cmp.Compare(a.GetOld(), b.GetOld())
+	})
 	return out
 }
 
 func sortedExcludes(in []*requestV1.Exclude) []*requestV1.Exclude {
-	out := append([]*requestV1.Exclude(nil), in...)
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].GetModule() != out[j].GetModule() {
-			return out[i].GetModule() < out[j].GetModule()
-		}
-		return out[i].GetVersion() < out[j].GetVersion()
+	out := slices.Clone(in)
+	slices.SortStableFunc(out, func(a, b *requestV1.Exclude) int {
+		return cmp.Or(
+			cmp.Compare(a.GetModule(), b.GetModule()),
+			cmp.Compare(a.GetVersion(), b.GetVersion()),
+		)
 	})
 	return out
 }
