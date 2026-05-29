@@ -27,7 +27,7 @@ type Config struct {
 	Roadrunner map[string]string `mapstructure:"roadrunner"`
 	// Debug toggles debug build flags.
 	Debug *Debug `mapstructure:"debug"`
-	// Log holds level/mode settings for the zap logger.
+	// Log holds level/mode settings for the slog logger.
 	Log map[string]string `mapstructure:"log"`
 	// TargetPlatform overrides GOOS/GOARCH for cross-compilation. Defaults to host.
 	TargetPlatform *TargetPlatform `mapstructure:"target_platform"`
