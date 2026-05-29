@@ -5,9 +5,7 @@ package build
 import (
 	"log/slog"
 	"os"
-	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/roadrunner-server/velox/v3"
@@ -62,7 +60,10 @@ func BindCommand(cfg *velox.Config, out *string, rootLog *slog.Logger) *cobra.Co
 			// build finishes. The builder's own cleanup only sweeps the output
 			// dir, which differs from this download dir in CLI mode — without
 			// this defer the RR source tree + zip would leak into TempDir.
-			dlDir := filepath.Join(os.TempDir(), uuid.NewString())
+			dlDir, err := os.MkdirTemp("", "velox-build-*")
+			if err != nil {
+				return err
+			}
 			defer func() { _ = os.RemoveAll(dlDir) }()
 
 			rrPath, err := gh.DownloadTemplate(ctx, dlDir, "", cfg.Roadrunner[refKey])

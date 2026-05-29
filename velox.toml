@@ -8,9 +8,11 @@ enabled = false
 level = "debug"
 mode = "production"
 
-[target_platform]
-os = "darwin"
-arch = "arm64"
+# [target_platform] is optional and defaults to the host GOOS/GOARCH.
+# Uncomment and set os/arch to cross-compile (e.g. os = "linux", arch = "amd64").
+# [target_platform]
+# os = "linux"
+# arch = "amd64"
 
 [github]
 # base_url is optional. Set it to a GitHub Enterprise host (e.g. "https://ghe.example.com") to
