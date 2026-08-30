@@ -10,7 +10,7 @@ Velox is an automated build system for RoadRunner server and its plugins. The v3
 
 **Pipeline:**
 
-1. Download RoadRunner source archive from GitHub (tag, branch, or 40-char SHA). Archive bytes are cached in-process (LRU, 32 entries) so repeat builds of the same ref skip the network.
+1. Download RoadRunner source archive from GitHub (tag, branch, or 40-char SHA). Archive bytes go through an in-process LRU (32 entries), so a single run refetches a repeated ref only once.
 2. Preserve the upstream `go.mod` as-is — it already pins informer/resetter and the core deps.
 3. Render `container/plugins.go` from a single parameterized template. The informer/resetter major version is read out of the upstream `go.mod` at build time, so one template covers every RR major.
 4. Apply user-supplied `require`, `replace`, and `exclude` directives via `go mod edit`.
@@ -18,16 +18,11 @@ Velox is an automated build system for RoadRunner server and its plugins. The v3
 6. Run `go build` with `-trimpath`, version ldflags, and (optionally) `-race` / debug flags.
 7. Smoke-test the binary (`./rr --version`) when host platform == target platform.
 
-**Two modes:**
-
-- **CLI (`vx build`)**: local builds driven by `velox.toml`.
-- **Build server (`vx server`)**: Connect/gRPC service with LRU caching of built binaries.
+**Interface:** CLI only (`vx build`), driven by `velox.toml`.
 
 **Key technologies:**
 
 - Go 1.26+ (module path: `github.com/roadrunner-server/velox/v3`)
-- Protocol Buffers via [buf](https://buf.build/)
-- Connect RPC (`connectrpc.com/connect`) and gRPC
 - `hashicorp/golang-lru/v2` for caches
 - `log/slog` (stdlib) for structured logging — no third-party logger
 - Cobra CLI
@@ -37,7 +32,6 @@ Velox is an automated build system for RoadRunner server and its plugins. The v3
 ## Repository structure
 
 ```text
-├── api/                         # Protocol Buffers (BuildService RPC)
 ├── builder/
 │   ├── builder.go              # Build pipeline (decomposed into named steps)
 │   ├── gomod.go                # `go mod edit/tidy` driver + runCmd helper
@@ -48,29 +42,23 @@ Velox is an automated build system for RoadRunner server and its plugins. The v3
 │       └── template_test.go
 ├── cmd/vx/                     # Main CLI entry point
 ├── config.go                   # Config, Replace, Exclude, validation
-├── gen/                        # buf-generated protobuf code
 ├── github/
 │   ├── github.go               # Archive download + extraction
 │   └── cache.go                # LRU-backed Cache implementation
 ├── internal/cli/               # cobra wiring
-│   ├── build/                  # `vx build`
-│   └── server/                 # `vx server` (Connect + gRPC reflection)
+│   └── build/                  # `vx build`
 ├── plugin/                     # Plugin metadata + deterministic prefix
 ├── logger/                     # slog logger builder (production / development / raw / off)
 └── velox.toml                  # Sample configuration
 ```
 
-`go.mod` has the replace directive `github.com/roadrunner-server/velox/v3/gen => ./gen` so the generated protobuf code is consumed as a local module.
-
 ## Common commands
 
 ```bash
 make test          # go test -v -race ./...
-make regenerate    # rm -rf ./gen && buf generate && buf format -w
 
 go build -o vx ./cmd/vx
 ./vx -c velox.toml build -o ./output
-./vx -c velox.toml server -a 127.0.0.1:8080
 
 go test -cover ./...
 golangci-lint run
@@ -104,10 +92,6 @@ needed because the Go default would jump straight to SIGKILL), full stdout
 capture, bounded ring-buffer stderr capture (last 8 KB), and a stderr tee to
 the debug logger.
 
-### Server cache key
-
-`server.go:generateCacheHash` produces a deterministic FNV-64a hash over a sorted `BuildRequest` (plugins by module, replaces by `old`, excludes by `module+version`). The `RequestId` field is excluded.
-
 ### Key files
 
 - `builder/builder.go` — pipeline orchestration
@@ -116,7 +100,6 @@ the debug logger.
 - `config.go` — `Config`, `Replace`, `Exclude`, validation (incl. Windows rejection)
 - `plugin/plugin.go` — deterministic prefix + collision resolver
 - `github/github.go` — archive download (GHE-aware) + zip extraction with CWE-22 guard
-- `internal/cli/server/server.go` — build-as-a-service with sorted-key caching
 
 ## Configuration (`velox.toml`)
 
@@ -159,13 +142,6 @@ version = "v9.15.0"
 ```
 
 `Config.Validate()` expands `${ENV}` in the GitHub token, defaults `base_url` to `https://github.com`, defaults target platform to host, and rejects `windows`.
-
-## Protocol buffers
-
-- `buf.yaml` pulls `buf.build/bufbuild/protovalidate`.
-- `buf.gen.yaml` produces Go (protobuf + Connect + gRPC stubs) into `gen/go`.
-- After editing `.proto` files: `make regenerate`.
-- `BuildRequest` now carries `repeated Replace replaces`, `repeated Exclude excludes`, `bool race`, `bool debug`.
 
 ## Testing
 

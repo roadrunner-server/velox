@@ -1,4 +1,4 @@
-// Package cli wires the root cobra command and the build / server subcommands.
+// Package cli wires the root cobra command and the build subcommand.
 package cli
 
 import (
@@ -13,7 +13,6 @@ import (
 
 	"github.com/roadrunner-server/velox/v3"
 	"github.com/roadrunner-server/velox/v3/internal/cli/build"
-	"github.com/roadrunner-server/velox/v3/internal/cli/server"
 	"github.com/roadrunner-server/velox/v3/internal/version"
 	"github.com/roadrunner-server/velox/v3/logger"
 )
@@ -32,7 +31,6 @@ func NewCommand(executableName string) *cobra.Command {
 	var (
 		pathToConfig string
 		outputFile   string
-		address      string
 		config       = &velox.Config{}
 	)
 
@@ -42,10 +40,7 @@ func NewCommand(executableName string) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Version:       fmt.Sprintf("%s (build time: %s, %s)", version.Version(), version.BuildTime(), runtime.Version()),
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			if cmd.Use == "server" {
-				return nil
-			}
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			if pathToConfig == "" {
 				return errors.New("path to the config should be provided")
 			}
@@ -76,11 +71,7 @@ func NewCommand(executableName string) *cobra.Command {
 	flag := cmd.PersistentFlags()
 	flag.StringVarP(&pathToConfig, "config", "c", "velox.toml", "Path to the velox configuration file")
 	flag.StringVarP(&outputFile, "out", "o", ".", "Output directory for the produced RoadRunner binary")
-	flag.StringVarP(&address, "address", "a", "127.0.0.1:8080", "Bind address for the build server")
 
-	cmd.AddCommand(
-		build.BindCommand(config, &outputFile, lg),
-		server.BindCommand(&address, lg),
-	)
+	cmd.AddCommand(build.BindCommand(config, &outputFile, lg))
 	return cmd
 }

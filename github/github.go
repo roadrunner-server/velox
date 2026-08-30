@@ -81,13 +81,13 @@ func NewClient(baseURL, accessToken string, cache Cache, log *slog.Logger) *Clie
 }
 
 // DownloadTemplate fetches the RR archive for rrRef (tag, branch, or 40-char
-// SHA), unpacks it into downloadDir/hash/, and returns the path of the
-// extracted source tree. The archive bytes are cached so repeat builds of the
-// same ref skip the network call.
-func (c *Client) DownloadTemplate(ctx context.Context, downloadDir, hash, rrRef string) (string, error) {
+// SHA), unpacks it into downloadDir, and returns the path of the extracted
+// source tree. The archive bytes are cached so repeat builds of the same ref
+// skip the network call.
+func (c *Client) DownloadTemplate(ctx context.Context, downloadDir, rrRef string) (string, error) {
 	if cached, ok := c.cache.Get(rrRef); ok {
 		c.log.Info("RR archive cache hit", "ref", rrRef, "bytes", len(cached))
-		return c.saveRR(cached, rrRef, filepath.Join(downloadDir, hash))
+		return c.saveRR(cached, rrRef, downloadDir)
 	}
 
 	archiveURL, err := c.archiveURL(rrRef)
@@ -101,7 +101,7 @@ func (c *Client) DownloadTemplate(ctx context.Context, downloadDir, hash, rrRef 
 		return "", err
 	}
 	c.cache.Add(rrRef, zipBytes)
-	return c.saveRR(zipBytes, rrRef, filepath.Join(downloadDir, hash))
+	return c.saveRR(zipBytes, rrRef, downloadDir)
 }
 
 // sha40 matches a 40-character hexadecimal commit SHA.

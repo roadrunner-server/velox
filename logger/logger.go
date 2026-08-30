@@ -1,4 +1,4 @@
-// Package logger builds the *slog.Logger used by the CLI and build server.
+// Package logger builds the *slog.Logger used by the CLI.
 //
 // Four modes are recognized; "none" / "off" are no-ops returning a logger that
 // discards every record:
