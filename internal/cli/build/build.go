@@ -66,7 +66,7 @@ func BindCommand(cfg *velox.Config, out *string, rootLog *slog.Logger) *cobra.Co
 			}
 			defer func() { _ = os.RemoveAll(dlDir) }()
 
-			rrPath, err := gh.DownloadTemplate(ctx, dlDir, "", cfg.Roadrunner[refKey])
+			rrPath, err := gh.DownloadTemplate(ctx, dlDir, cfg.Roadrunner[refKey])
 			if err != nil {
 				log.Error("downloading template", "error", err)
 				return err
