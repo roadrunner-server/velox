@@ -1,15 +1,3 @@
-// Package logger builds the *slog.Logger used by the CLI.
-//
-// Four modes are recognized; "none" / "off" are no-ops returning a logger that
-// discards every record:
-//
-//	production  → JSON, default level INFO  (machine-readable)
-//	development → text, default level DEBUG (human-readable)
-//	raw         → text with only the message (no time/level/source)
-//	none/off    → discard everything
-//
-// `level` (if non-empty) overrides the per-mode default. Accepts the standard
-// slog spellings: "debug" / "info" / "warn" / "error" (case-insensitive).
 package logger
 
 import (
@@ -30,8 +18,7 @@ const (
 	Raw         Mode = "raw"
 )
 
-// BuildLogger constructs a *slog.Logger for the given mode and level. An empty
-// level uses the mode's default. Unrecognized modes fall back to development.
+// BuildLogger returns a logger for the mode and level; an unknown mode falls back to development.
 func BuildLogger(level, mode string) (*slog.Logger, error) {
 	switch Mode(strings.ToLower(mode)) {
 	case None, Off:
@@ -65,8 +52,7 @@ func BuildLogger(level, mode string) (*slog.Logger, error) {
 	}
 }
 
-// parseLevel converts a slog-style level string ("debug", "info", "warn",
-// "error", case-insensitive) to a slog.Level. Empty input returns the default.
+// parseLevel converts a case-insensitive slog level name to a slog.Level and maps empty input to fallback.
 func parseLevel(s string, fallback slog.Level) (slog.Level, error) {
 	if s == "" {
 		return fallback, nil
@@ -78,8 +64,7 @@ func parseLevel(s string, fallback slog.Level) (slog.Level, error) {
 	return lvl, nil
 }
 
-// dropEverythingButMessage strips time, level, and source attributes so "raw"
-// mode prints just the message text — analogous to the original raw zap config.
+// dropEverythingButMessage strips the time, level, and source attributes so raw mode prints the message alone.
 func dropEverythingButMessage(_ []string, a slog.Attr) slog.Attr {
 	switch a.Key {
 	case slog.TimeKey, slog.LevelKey, slog.SourceKey:
@@ -88,6 +73,5 @@ func dropEverythingButMessage(_ []string, a slog.Attr) slog.Attr {
 	return a
 }
 
-// Discard is a convenience for callers that want a no-op logger without going
-// through BuildLogger("", "none").
+// Discard returns a no-op logger without a BuildLogger call.
 func Discard() *slog.Logger { return slog.New(slog.DiscardHandler) }

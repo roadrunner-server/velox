@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -17,28 +19,27 @@ const (
 	// LogLevelKey / LogModeKey are the velox.toml keys for the Log map.
 	LogLevelKey = "level"
 	LogModeKey  = "mode"
-
-	// V3 is the canonical major version for the current RoadRunner line.
-	V3 = "v3"
 )
 
+var ErrWindowsTarget = errors.New("velox v3 does not support Windows targets")
+
+// ValidateTargetOS rejects target operating systems that velox v3 does not support.
+func ValidateTargetOS(goos string) error {
+	if strings.EqualFold(goos, "windows") {
+		return ErrWindowsTarget
+	}
+	return nil
+}
+
 type Config struct {
-	// Roadrunner holds the ref (tag, branch, or SHA) under the "ref" key.
-	Roadrunner map[string]string `mapstructure:"roadrunner"`
-	// Debug toggles debug build flags.
-	Debug *Debug `mapstructure:"debug"`
-	// Log holds level/mode settings for the slog logger.
-	Log map[string]string `mapstructure:"log"`
-	// TargetPlatform overrides GOOS/GOARCH for cross-compilation. Defaults to host.
-	TargetPlatform *TargetPlatform `mapstructure:"target_platform"`
-	// GitHub configures token + (optional) GitHub Enterprise base URL.
-	GitHub *GitHub `mapstructure:"github"`
-	// Plugins is the map of user plugins to inject.
-	Plugins map[string]*Plugin `mapstructure:"plugins"`
-	// Replaces is an optional list of go.mod replace directives applied before tidy.
-	Replaces []Replace `mapstructure:"replaces"`
-	// Excludes is an optional list of go.mod exclude directives applied before tidy.
-	Excludes []Exclude `mapstructure:"excludes"`
+	Roadrunner     map[string]string  `mapstructure:"roadrunner"`
+	Debug          *Debug             `mapstructure:"debug"`
+	Log            map[string]string  `mapstructure:"log"`
+	TargetPlatform *TargetPlatform    `mapstructure:"target_platform"`
+	GitHub         *GitHub            `mapstructure:"github"`
+	Plugins        map[string]*Plugin `mapstructure:"plugins"`
+	Replaces       []Replace          `mapstructure:"replaces"`
+	Excludes       []Exclude          `mapstructure:"excludes"`
 }
 
 type Debug struct {
@@ -64,9 +65,7 @@ type Plugin struct {
 	ModuleName string `mapstructure:"module_name"`
 }
 
-// Replace mirrors `replace old => new` in go.mod.
-// Both fields embed @version inline when needed (e.g., "module@v1.2.3").
-// Local paths (./, ../, /abs) in New must NOT carry @version.
+// Replace mirrors `replace old => new` in go.mod, with the version embedded inline as "module@v1.2.3".
 type Replace struct {
 	New string `mapstructure:"new"`
 	Old string `mapstructure:"old"`
@@ -87,8 +86,34 @@ func (r Replace) Validate() error {
 	if r.New == "" || r.Old == "" {
 		return errors.New("replace: new and old are required")
 	}
-	if IsLocalPath(r.New) && strings.Contains(r.New, "@") {
-		return fmt.Errorf("replace: local path %q in `new` must not include @version", r.New)
+	// "=" breaks the old=new split that `go mod edit -replace` performs on the operand.
+	if strings.Contains(r.Old, "=") {
+		return fmt.Errorf("replace: %q in `old` must not contain '='", r.Old)
+	}
+	if strings.Contains(r.New, "=") {
+		return fmt.Errorf("replace: %q in `new` must not contain '='", r.New)
+	}
+	if IsLocalPath(r.New) {
+		// Only a trailing "@<semver>" is a version; "@" inside a directory name is fine.
+		if _, ver, ok := strings.CutLast(r.New, "@"); ok && semver.IsValid(ver) {
+			return fmt.Errorf("replace: local path %q in `new` must not include @version", r.New)
+		}
+	}
+	return nil
+}
+
+// ValidateRef rejects refs carrying characters that are unsafe in the unquoted -ldflags value.
+func ValidateRef(ref string) error {
+	if ref == "" {
+		return errors.New("roadrunner ref must not be empty")
+	}
+	for i := range len(ref) {
+		c := ref[i]
+		allowed := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' ||
+			c == '.' || c == '_' || c == '/' || c == '+' || c == '-'
+		if !allowed {
+			return fmt.Errorf("roadrunner ref %q contains an unsupported character %q", ref, string(c))
+		}
 	}
 	return nil
 }
@@ -100,9 +125,7 @@ func (e Exclude) Validate() error {
 	return nil
 }
 
-// Validate validates the configuration, applies defaults, and expands ${ENV} in
-// the GitHub token. The Roadrunner ref defaults to "master", TargetPlatform to
-// runtime GOOS/GOARCH, log to debug/development, GitHub base URL to github.com.
+// Validate checks the configuration, applies the defaults, and expands ${ENV} in the GitHub token.
 func (c *Config) Validate() error {
 	if c.Roadrunner == nil {
 		c.Roadrunner = map[string]string{}
@@ -110,12 +133,15 @@ func (c *Config) Validate() error {
 	if _, ok := c.Roadrunner[ref]; !ok {
 		c.Roadrunner[ref] = defaultBranch
 	}
+	if err := ValidateRef(c.Roadrunner[ref]); err != nil {
+		return err
+	}
 
 	if c.TargetPlatform == nil {
 		c.TargetPlatform = &TargetPlatform{OS: runtime.GOOS, Arch: runtime.GOARCH}
 	}
-	if strings.EqualFold(c.TargetPlatform.OS, "windows") {
-		return errors.New("velox v3 does not support Windows targets")
+	if err := ValidateTargetOS(c.TargetPlatform.OS); err != nil {
+		return err
 	}
 
 	if c.GitHub == nil {

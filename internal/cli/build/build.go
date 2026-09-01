@@ -1,5 +1,3 @@
-// Package build implements the `vx build` subcommand: read velox.toml, download
-// the upstream RoadRunner source, and produce a custom binary via the Builder.
 package build
 
 import (
@@ -16,10 +14,7 @@ import (
 
 const refKey = "ref"
 
-// BindCommand returns the cobra.Command for `vx build`. The root *slog.Logger
-// is passed by pointer because the root command's PersistentPreRunE rewrites
-// its pointee with the config-driven logger after construction; child loggers
-// are therefore derived inside RunE, not at wiring time.
+// BindCommand returns the cobra command for `vx build`; the root logger is a pointer because PersistentPreRunE replaces its pointee after wiring.
 func BindCommand(cfg *velox.Config, out *string, rootLog *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "build",
@@ -56,10 +51,7 @@ func BindCommand(cfg *velox.Config, out *string, rootLog *slog.Logger) *cobra.Co
 			ctx := cmd.Context()
 			gh := github.NewClient(baseURL, token, github.NewLRUCache(0), log.With("component", "github"))
 
-			// Download into a unique per-build temp dir and remove it once the
-			// build finishes. The builder's own cleanup only sweeps the output
-			// dir, which differs from this download dir in CLI mode — without
-			// this defer the RR source tree + zip would leak into TempDir.
+			// The download dir holds the source tree and the zip, so remove it once the build finishes.
 			dlDir, err := os.MkdirTemp("", "velox-build-*")
 			if err != nil {
 				return err

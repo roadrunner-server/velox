@@ -15,10 +15,7 @@ ENV LDFLAGS="-s \
     -X github.com/roadrunner-server/velox/v3/internal/version.version=$APP_VERSION \
     -X github.com/roadrunner-server/velox/v3/internal/version.buildTime=$BUILD_TIME"
 
-# verbose
-RUN set -x
 RUN go mod download
-RUN go mod tidy
 
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o ./velox ./cmd/vx
 

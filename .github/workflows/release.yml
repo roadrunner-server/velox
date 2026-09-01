@@ -4,95 +4,81 @@ on:
   release: # Docs: <https://help.github.com/en/articles/events-that-trigger-workflows#release-event-release>
     types: [published]
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
-    name: Build for ${{ matrix.os }} (${{ matrix.arch }}, ${{ matrix.compiler }})
+    name: Build for ${{ matrix.os }} (${{ matrix.arch }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
-        os: [windows, darwin] # linux, darwin, windows
-        compiler: [gcc] # gcc, musl-gcc
-        archiver: [zip] # tar, zip
-        arch: [amd64] # amd64, 386
         include:
           - os: linux
-            compiler: gcc
-            archiver: tar
             arch: amd64
+            archiver: tar
           - os: linux
-            compiler: gcc
-            archiver: tar
             arch: arm64
+            archiver: tar
           - os: darwin
-            compiler: gcc
-            archiver: tar
-            arch: arm64
-          - os: ""
-            compiler: musl-gcc # more info: <https://musl.libc.org/>
-            archiver: zip
             arch: amd64
+            archiver: zip
+          - os: darwin
+            arch: arm64
+            archiver: tar
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: stable
-
       - name: Check out code
         uses: actions/checkout@v7
 
-      - name: Install musl
-        if: matrix.compiler == 'musl-gcc'
-        run: sudo apt-get install -y musl-tools
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
 
       - name: Download dependencies
-        run: go mod download # `-x` means "verbose" mode
+        run: go mod download
 
       - name: Generate builder values
         id: values
         run: |
           echo "version=$(echo ${GITHUB_REF##*/} | sed -e 's/^[vV ]*//')" >> $GITHUB_OUTPUT
-          echo "timestamp=$(echo $(date +%FT%T%z))" >> $GITHUB_OUTPUT
-          echo "binary-name=$(echo $(echo vx`[ ${{ matrix.os }} = 'windows' ] && echo '.exe'`))" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date +%FT%T%z)" >> $GITHUB_OUTPUT
 
       - name: Compile binary file
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-          CC: ${{ matrix.compiler }}
           CGO_ENABLED: 0
           LDFLAGS: >-
             -s
             -X github.com/roadrunner-server/velox/v3/internal/version.version=${{ steps.values.outputs.version }}
             -X github.com/roadrunner-server/velox/v3/internal/version.buildTime=${{ steps.values.outputs.timestamp }}
         run: |
-          go build -trimpath -ldflags "$LDFLAGS" -o "./${{ steps.values.outputs.binary-name }}" ./cmd/vx
-          stat "./${{ steps.values.outputs.binary-name }}"
+          go build -trimpath -ldflags "$LDFLAGS" -o ./vx ./cmd/vx
+          stat ./vx
 
       - name: Generate distributive directory name
         id: dist-dir
-        run: >
-          echo "name=$(echo velox-${{ steps.values.outputs.version }}-$(
-            [ ${{ matrix.os }} != '' ] && echo '${{ matrix.os }}' || echo 'unknown'
-          )$(
-            [ ${{ matrix.compiler }} = 'musl-gcc' ] && echo '-musl'
-          ))-${{ matrix.arch }}" >> $GITHUB_OUTPUT
+        run: echo "name=velox-${{ steps.values.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}" >> $GITHUB_OUTPUT
 
       - name: Generate distributive archive name
         id: dist-arch
-        run: >
-          echo "name=$(echo ${{ steps.dist-dir.outputs.name }}.$(
-            case ${{ matrix.archiver }} in
-              zip) echo 'zip';;
-              tar) echo 'tar.gz';;
-              *)   exit 10;
-            esac
-          ))" >> $GITHUB_OUTPUT
+        run: |
+          case "${{ matrix.archiver }}" in
+            zip) ext='zip';;
+            tar) ext='tar.gz';;
+            *)   exit 10;;
+          esac
+          echo "name=${{ steps.dist-dir.outputs.name }}.${ext}" >> $GITHUB_OUTPUT
 
       - name: Create distributive
         run: |
           mkdir ${{ steps.dist-dir.outputs.name }}
-          mv "./${{ steps.values.outputs.binary-name }}" ./${{ steps.dist-dir.outputs.name }}/
+          mv ./vx ./${{ steps.dist-dir.outputs.name }}/
           cp ./README.md ./LICENSE ./velox.toml ./${{ steps.dist-dir.outputs.name }}/
 
       - name: Pack distributive using tar
@@ -122,6 +108,10 @@ jobs:
   docker:
     name: Build docker image
     runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Check out code
         uses: actions/checkout@v7
@@ -149,7 +139,25 @@ jobs:
         id: values
         run: |
           echo "version=$(echo ${GITHUB_REF##*/} | sed -e 's/^[vV ]*//')" >> $GITHUB_OUTPUT
-          echo "timestamp=$(echo $(date +%FT%T%z))" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date +%FT%T%z)" >> $GITHUB_OUTPUT
+
+      - name: Compose image tags
+        id: tags
+        env:
+          VERSION: ${{ steps.values.outputs.version }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          {
+            echo "list<<EOF"
+            echo "spiralscout/velox:${VERSION}"
+            echo "ghcr.io/roadrunner-server/velox:${VERSION}"
+            # a prerelease must not move the :latest tag
+            if [ "${PRERELEASE}" = "false" ]; then
+              echo "spiralscout/velox:latest"
+              echo "ghcr.io/roadrunner-server/velox:latest"
+            fi
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Build image
         uses: docker/build-push-action@v7 # Action page: <https://github.com/docker/build-push-action>
@@ -161,6 +169,4 @@ jobs:
           build-args: |
             APP_VERSION=${{ steps.values.outputs.version }}
             BUILD_TIME=${{ steps.values.outputs.timestamp }}
-          tags: |
-            spiralscout/velox:2025.2-beta.2
-            ghcr.io/roadrunner-server/velox:2025.2-beta.2
+          tags: ${{ steps.tags.outputs.list }}

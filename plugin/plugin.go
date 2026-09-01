@@ -1,5 +1,3 @@
-// Package plugin describes a single RoadRunner plugin entry and how it is
-// rendered into the generated container/plugins.go file.
 package plugin
 
 import (
@@ -18,12 +16,7 @@ type Plugin struct {
 	tag        string
 }
 
-// NewPlugin returns a Plugin with a deterministic alpha-only 5-letter prefix
-// derived from moduleName. The prefix is used in the generated plugins.go to
-// avoid import-name collisions between different plugin modules.
-//
-// If multiple plugins might share a prefix, call ResolvePrefixCollisions on
-// the slice after construction to re-salt any duplicates.
+// NewPlugin returns a Plugin whose import prefix is derived from moduleName alone.
 func NewPlugin(moduleName, tag string) *Plugin {
 	return &Plugin{
 		prefix:     deterministicPrefix(moduleName, 0),
@@ -40,28 +33,17 @@ func (p *Plugin) Tag() string        { return p.tag }
 // RequireArg returns "moduleName@tag" suitable for `go mod edit -require=...`.
 func (p *Plugin) RequireArg() string { return p.moduleName + "@" + p.tag }
 
-// Imports returns the import line embedded in the generated plugins.go:
-//
-//	prefix "moduleName"
+// Imports returns the `prefix "moduleName"` import line for the generated plugins.go.
 func (p *Plugin) Imports() string { return fmt.Sprintf("%s %q", p.prefix, p.moduleName) }
 
-// Code returns the plugin-registration expression embedded in plugins.go:
-//
-//	prefix.Plugin{}
+// Code returns the `prefix.Plugin{}` registration expression for the generated plugins.go.
 func (p *Plugin) Code() string { return p.prefix + ".Plugin{}" }
 
-// ResolvePrefixCollisions assigns unique prefixes to every plugin. Assignment
-// order is independent of the input slice order: prefixes are computed by
-// walking a copy sorted lexicographically by module name, so the same plugin
-// set always yields the same prefix mapping regardless of how the caller
-// happened to construct the slice. The original slice order is preserved for
-// downstream rendering (the function mutates Plugin objects in place).
-//
-// On collision, the salt is bumped (up to maxSalt) until a unique prefix is
-// found. Two plugins sharing a module name (rare) get distinct salts.
+// ResolvePrefixCollisions gives every plugin a unique prefix by raising the salt until the candidate is free.
 func ResolvePrefixCollisions(plugins []*Plugin) {
 	const maxSalt = 1 << 16
 
+	// Sorting a copy keeps the assignment independent of the caller slice order and leaves that order intact.
 	ordered := slices.Clone(plugins)
 	slices.SortStableFunc(ordered, func(a, b *Plugin) int {
 		return cmp.Or(cmp.Compare(a.moduleName, b.moduleName), cmp.Compare(a.tag, b.tag))
@@ -80,9 +62,7 @@ func ResolvePrefixCollisions(plugins []*Plugin) {
 	}
 }
 
-// deterministicPrefix produces an alpha-only (a-z) prefix of length prefixLen
-// from sha256(moduleName||salt). With ~26^5 ≈ 11.8M outputs, collisions among
-// realistic plugin sets are rare; salts > 0 are used to break the ties.
+// deterministicPrefix maps sha256(moduleName, salt) to a prefixLen prefix over a-z.
 func deterministicPrefix(moduleName string, salt uint16) string {
 	var buf [2]byte
 	buf[0] = byte(salt >> 8)

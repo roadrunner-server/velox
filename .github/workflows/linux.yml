@@ -4,31 +4,32 @@ on:
   push:
     branches:
       - master
+      - pre-release/**
   pull_request:
     branches:
       - master
+      - pre-release/**
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron: "30 5 * * *"
 
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   golang:
-    name: Build (Go ${{ matrix.go }}, OS ${{matrix.os}})
-    runs-on: ${{ matrix.os }}
+    name: Build and test
+    runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: true
-      matrix:
-        go: [stable]
-        os: ["ubuntu-latest"]
     steps:
-      - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
-        with:
-          go-version: ${{ matrix.go }}
-
       - name: Check out code
         uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
+        with:
+          go-version-file: go.mod
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
         uses: actions/cache@v6
@@ -44,22 +45,17 @@ jobs:
         run: make test
 
   build-sample-rr:
-    name: Build (Go ${{ matrix.go }}, OS ${{matrix.os}})
-    runs-on: ${{ matrix.os }}
+    name: Build sample RoadRunner
+    runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: true
-      matrix:
-        go: [stable]
-        os: ["ubuntu-latest"]
     steps:
-      - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
-        with:
-          go-version: ${{ matrix.go }}
-
       - name: Check out code
         uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
+        with:
+          go-version-file: go.mod
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
         uses: actions/cache@v6
@@ -74,9 +70,6 @@ jobs:
       - name: Build RoadRunner
         env:
           GITHUB_TOKEN: ${{ secrets.RT_TOKEN }}
-          GL_TOKEN: ${{ secrets.GL_TOKEN }}
-          VERSION: ${{ secrets.VERSION }}
-          TIME: ${{ secrets.TIME }}
         run: |
           go install ./cmd/vx
           vx build -c velox.toml -o="."
