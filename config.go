@@ -3,20 +3,24 @@ package velox
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
 
 const (
-	ref                  = "ref"
 	defaultBranch        = "master"
 	defaultGitHubBaseURL = "https://github.com"
 
-	// LogLevelKey / LogModeKey are the velox.toml keys for the Log map.
+	// RefKey, LogLevelKey, and LogModeKey are the velox.toml keys of the Roadrunner and Log maps.
+	RefKey      = "ref"
 	LogLevelKey = "level"
 	LogModeKey  = "mode"
 )
@@ -44,6 +48,7 @@ type Config struct {
 
 type Debug struct {
 	Enabled bool `mapstructure:"enabled"`
+	Race    bool `mapstructure:"race"`
 }
 
 type TargetPlatform struct {
@@ -77,10 +82,8 @@ type Exclude struct {
 	Version string `mapstructure:"version"`
 }
 
-// IsLocalPath reports whether s denotes a local filesystem path (./, ../, or absolute).
-func IsLocalPath(s string) bool {
-	return strings.HasPrefix(s, "./") || strings.HasPrefix(s, "../") || filepath.IsAbs(s)
-}
+// IsLocalPath reports whether s denotes a local filesystem path, using the predicate `go mod edit -replace` applies to its operand.
+func IsLocalPath(s string) bool { return modfile.IsDirectoryPath(s) }
 
 func (r Replace) Validate() error {
 	if r.New == "" || r.Old == "" {
@@ -122,6 +125,13 @@ func (e Exclude) Validate() error {
 	if e.Module == "" || e.Version == "" {
 		return errors.New("exclude: module and version are required")
 	}
+	// go mod edit writes the version as given, and the next go.mod parse accepts only the canonical form.
+	if module.CanonicalVersion(e.Version) != e.Version {
+		return fmt.Errorf("exclude: version %q must be of the form v1.2.3", e.Version)
+	}
+	if err := module.Check(e.Module, e.Version); err != nil {
+		return fmt.Errorf("exclude: %w", err)
+	}
 	return nil
 }
 
@@ -130,15 +140,21 @@ func (c *Config) Validate() error {
 	if c.Roadrunner == nil {
 		c.Roadrunner = map[string]string{}
 	}
-	if _, ok := c.Roadrunner[ref]; !ok {
-		c.Roadrunner[ref] = defaultBranch
+	if _, ok := c.Roadrunner[RefKey]; !ok {
+		c.Roadrunner[RefKey] = defaultBranch
 	}
-	if err := ValidateRef(c.Roadrunner[ref]); err != nil {
+	if err := ValidateRef(c.Roadrunner[RefKey]); err != nil {
 		return err
 	}
 
 	if c.TargetPlatform == nil {
-		c.TargetPlatform = &TargetPlatform{OS: runtime.GOOS, Arch: runtime.GOARCH}
+		c.TargetPlatform = &TargetPlatform{}
+	}
+	if c.TargetPlatform.OS == "" {
+		c.TargetPlatform.OS = runtime.GOOS
+	}
+	if c.TargetPlatform.Arch == "" {
+		c.TargetPlatform.Arch = runtime.GOARCH
 	}
 	if err := ValidateTargetOS(c.TargetPlatform.OS); err != nil {
 		return err
@@ -157,7 +173,9 @@ func (c *Config) Validate() error {
 	if len(c.Plugins) == 0 {
 		return errors.New("plugins configuration is required")
 	}
-	for name, plugin := range c.Plugins {
+	modules := make(map[string]string, len(c.Plugins))
+	for _, name := range slices.Sorted(maps.Keys(c.Plugins)) {
+		plugin := c.Plugins[name]
 		if plugin == nil {
 			return fmt.Errorf("plugin %q is empty", name)
 		}
@@ -167,6 +185,10 @@ func (c *Config) Validate() error {
 		if plugin.Tag == "" {
 			return fmt.Errorf("plugin %q (%s) tag is required", name, plugin.ModuleName)
 		}
+		if first, dup := modules[plugin.ModuleName]; dup {
+			return fmt.Errorf("plugin %q: module %s is already listed under %q", name, plugin.ModuleName, first)
+		}
+		modules[plugin.ModuleName] = name
 	}
 
 	seen := make(map[string]struct{}, len(c.Replaces))
@@ -178,6 +200,14 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("replaces[%d]: duplicate old %q", i, r.Old)
 		}
 		seen[r.Old] = struct{}{}
+		// go.mod resolves a relative replacement against its own directory, which is the extracted RoadRunner tree; the user means the working directory.
+		if IsLocalPath(r.New) && !filepath.IsAbs(r.New) {
+			abs, err := filepath.Abs(r.New)
+			if err != nil {
+				return fmt.Errorf("replaces[%d]: %w", i, err)
+			}
+			c.Replaces[i].New = abs
+		}
 	}
 	for i, e := range c.Excludes {
 		if err := e.Validate(); err != nil {

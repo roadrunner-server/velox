@@ -20,16 +20,12 @@ jobs:
         include:
           - os: linux
             arch: amd64
-            archiver: tar
           - os: linux
             arch: arm64
-            archiver: tar
           - os: darwin
             arch: amd64
-            archiver: zip
           - os: darwin
             arch: arm64
-            archiver: tar
     steps:
       - name: Check out code
         uses: actions/checkout@v7
@@ -67,13 +63,7 @@ jobs:
 
       - name: Generate distributive archive name
         id: dist-arch
-        run: |
-          case "${{ matrix.archiver }}" in
-            zip) ext='zip';;
-            tar) ext='tar.gz';;
-            *)   exit 10;;
-          esac
-          echo "name=${{ steps.dist-dir.outputs.name }}.${ext}" >> $GITHUB_OUTPUT
+        run: echo "name=${{ steps.dist-dir.outputs.name }}.tar.gz" >> $GITHUB_OUTPUT
 
       - name: Create distributive
         run: |
@@ -81,13 +71,8 @@ jobs:
           mv ./vx ./${{ steps.dist-dir.outputs.name }}/
           cp ./README.md ./LICENSE ./velox.toml ./${{ steps.dist-dir.outputs.name }}/
 
-      - name: Pack distributive using tar
-        if: matrix.archiver == 'tar'
+      - name: Pack distributive
         run: tar -zcf "${{ steps.dist-arch.outputs.name }}" "${{ steps.dist-dir.outputs.name }}"
-
-      - name: Pack distributive using zip
-        if: matrix.archiver == 'zip'
-        run: zip -r -q "${{ steps.dist-arch.outputs.name }}" "${{ steps.dist-dir.outputs.name }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

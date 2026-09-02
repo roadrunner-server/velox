@@ -100,15 +100,15 @@ The `velox.toml` shipped in this repository is the full sample: it lists every p
 
 ### `[github]` and `[github.token]`
 
-- `base_url`: GitHub host, default `https://github.com`. Set it to a GitHub Enterprise host (`https://ghe.example.com`) to download the source from a private installation; the archive paths and the `Authorization` header are the same as on github.com.
-- `token`: personal access token used for the download. `${ENV_VAR}` is expanded from the environment.
+- `base_url`: GitHub host, default `https://github.com`. Set it to a GitHub Enterprise host (`https://ghe.example.com`) to download the source from a private installation; the archive paths and the `Authorization` header are the same as on github.com. Only the host is configurable: the mirror must live at `<base_url>/roadrunner-server/roadrunner`.
+- `token`: personal access token used for the download. `${ENV_VAR}` is expanded from the environment. It is sent as a bearer `Authorization` header and dropped on a redirect to another host.
 
 ### `[target_platform]`
 
 - `os`: target `GOOS`, default the host `GOOS`. `windows` is rejected.
 - `arch`: target `GOARCH`, default the host `GOARCH`.
 
-A cross build gets its own `GOPATH` and `GOCACHE` under `~/go/<os>/<arch>` and skips the `rr --version` smoke test. A native build reuses the caller module cache.
+Either key may be omitted on its own; the host value fills it. Every build reuses the caller module and build caches (Go keys build cache entries by target). A cross build skips the `rr --version` smoke test.
 
 ### `[log]`
 
@@ -118,11 +118,12 @@ A cross build gets its own `GOPATH` and `GOCACHE` under `~/go/<os>/<arch>` and s
 ### `[debug]`
 
 - `enabled`: compiles with `-gcflags "all=-N -l" -tags debug` and keeps the symbol table for a debugger.
+- `race`: compiles with `-race` (sets `CGO_ENABLED=1`).
 
 ### `[plugins.<name>]`
 
-- `module_name`: full Go module path of the plugin, including the major-version suffix.
-- `tag`: version to require, or `latest`.
+- `module_name`: full Go module path of the plugin, including the major-version suffix; each module may be listed once.
+- `tag`: semver version to require, or a non-semver ref (`latest`, a branch, a commit) that skips the post-tidy version check.
 
 `informer` and `resetter` are compiled in from the versions the downloaded RoadRunner requires. Listing either of them here is skipped with a warning, because a user entry would register the plugin twice.
 
@@ -141,9 +142,10 @@ old = "github.com/foo/bar@v1.2.3"
 ```
 
 - Both fields are single strings; embed the version inline with `@`.
-- A local path in `new` (`./`, `../`, or absolute) must not carry an `@version`. An `@` inside a directory name is fine: only a trailing `@<semver>` counts as a version.
+- A local path in `new` (`.`, `..`, `./`, `../`, or absolute) must not carry an `@version`. An `@` inside a directory name is fine: only a trailing `@<semver>` counts as a version.
 - Neither field may contain `=`.
 - `old` must be unique across the list.
+- A relative local path in `new` resolves against the working directory of `vx`, not against the downloaded source tree.
 
 ### `[[excludes]]`
 
@@ -155,6 +157,8 @@ module = "github.com/redis/go-redis/v9"
 version = "v9.15.0"
 ```
 
+- `version` must be a canonical semver version (`v9.15.0`, not `v9.15`) whose major matches the module path (`/v9` needs `v9.x.y`).
+
 ## Plugin compatibility
 
 - Supported: RoadRunner `master` (the `v2025` module line) with the `/v6` beta plugins. RoadRunner `v2025.x` releases pair with the `/v5` plugins.
@@ -164,7 +168,9 @@ version = "v9.15.0"
 ## Notes
 
 - Windows build targets are not supported in velox v3.
-- Pin plugin tags for reproducible builds. `tag = "latest"` is allowed but skips the post-tidy version check, so the resolved version depends on when the build runs.
+- Pin plugin tags for reproducible builds. A tag that is not a semver version (`latest`, a branch, a commit) skips the post-tidy version check, so the resolved version depends on when the build runs.
+- Plugins are registered in module-path order, so the same plugin set renders the same `container/plugins.go`.
+- The binary is compiled as `rr.tmp` in the output directory and renamed to `rr` once `rr --version` prints the requested ref; a cross build skips that check.
 - `-trimpath` is always set, and `SOURCE_DATE_EPOCH` is honored for the injected build timestamp.
 
 ## Links

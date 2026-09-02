@@ -31,13 +31,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
-        uses: actions/cache@v6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
-
       - name: Install Go dependencies
         run: go mod download
 
@@ -56,13 +49,14 @@ jobs:
         uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
         uses: actions/cache@v6
         with:
           path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
+          key: sample-rr-${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: sample-rr-${{ runner.os }}-go-
 
       - name: Install Go dependencies
         run: go mod download

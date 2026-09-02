@@ -3,7 +3,6 @@ package builder
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -52,37 +51,26 @@ func TestRunGo_ContextCancel(t *testing.T) {
 }
 
 func TestNewEnv_NativeKeepsGOPATH(t *testing.T) {
-	home, err := os.UserHomeDir()
-	require.NoError(t, err)
-
 	env := newEnv(runtime.GOOS, runtime.GOARCH, false)
 
 	require.Equal(t, runtime.GOOS, envValue(env, "GOOS"))
 	require.Equal(t, runtime.GOARCH, envValue(env, "GOARCH"))
 	require.Equal(t, "0", envValue(env, "CGO_ENABLED"))
-	require.NotEqual(t,
-		filepath.Join(home, "go", runtime.GOOS, runtime.GOARCH),
-		envValue(env, "GOPATH"),
-	)
 	require.Equal(t, os.Getenv("GOPATH"), envValue(env, "GOPATH"))
 	require.Equal(t, os.Getenv("GOCACHE"), envValue(env, "GOCACHE"))
 }
 
-func TestNewEnv_CrossRedirectsGOPATH(t *testing.T) {
-	home, err := os.UserHomeDir()
-	require.NoError(t, err)
-
+func TestNewEnv_CrossKeepsCallerCaches(t *testing.T) {
 	goos, goarch := "linux", "arm64"
 	if goos == runtime.GOOS && goarch == runtime.GOARCH {
 		goos, goarch = "darwin", "amd64"
 	}
 
 	env := newEnv(goos, goarch, true)
-	gopath := filepath.Join(home, "go", goos, goarch)
 
 	require.Equal(t, goos, envValue(env, "GOOS"))
 	require.Equal(t, goarch, envValue(env, "GOARCH"))
 	require.Equal(t, "1", envValue(env, "CGO_ENABLED"))
-	require.Equal(t, gopath, envValue(env, "GOPATH"))
-	require.Equal(t, filepath.Join(gopath, "go-build"), envValue(env, "GOCACHE"))
+	require.Equal(t, os.Getenv("GOPATH"), envValue(env, "GOPATH"))
+	require.Equal(t, os.Getenv("GOCACHE"), envValue(env, "GOCACHE"))
 }

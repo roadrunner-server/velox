@@ -2,6 +2,7 @@ package builder
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
@@ -18,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/mod/semver"
 
 	"github.com/roadrunner-server/velox/v3"
 	"github.com/roadrunner-server/velox/v3/builder/templates"
@@ -54,37 +57,32 @@ func NewBuilder(rrTmpPath string, opts ...Option) *Builder {
 	for _, opt := range opts {
 		opt(b)
 	}
+	b.plugins = b.userPlugins()
 	b.env = newEnv(b.goos, b.goarch, b.race)
 	return b
 }
 
 // Build runs the whole pipeline and returns the path of the binary in the output directory.
-func (b *Builder) Build(ctx context.Context, rrRef string) (string, error) {
+func (b *Builder) Build(ctx context.Context) (string, error) {
 	if err := b.validateInputs(); err != nil {
 		return "", err
 	}
-	b.log.Info("building RoadRunner", "ref", rrRef)
+	b.log.Info("building RoadRunner", "ref", b.rrVersion)
 
 	plugin.ResolvePrefixCollisions(b.plugins)
 
-	// Read the upstream go.mod before applyRequires adds the user plugins to it.
+	// Read the upstream go.mod before applyGoModEdits adds the user plugins to it.
 	up, err := b.upstreamModule(ctx)
 	if err != nil {
 		return "", fmt.Errorf("upstreamModule: %w", err)
 	}
-	b.log.Info("RoadRunner module", "ref", rrRef, "module", up.Path, "major", majorVersion(up.Path))
+	b.log.Info("RoadRunner module", "ref", b.rrVersion, "module", up.Path, "major", majorVersion(up.Path))
 
 	if err := b.writePluginsGo(up); err != nil {
 		return "", fmt.Errorf("writePluginsGo: %w", err)
 	}
-	if err := b.applyRequires(ctx); err != nil {
-		return "", fmt.Errorf("applyRequires: %w", err)
-	}
-	if err := b.applyReplaces(ctx); err != nil {
-		return "", fmt.Errorf("applyReplaces: %w", err)
-	}
-	if err := b.applyExcludes(ctx); err != nil {
-		return "", fmt.Errorf("applyExcludes: %w", err)
+	if err := b.applyGoModEdits(ctx); err != nil {
+		return "", fmt.Errorf("applyGoModEdits: %w", err)
 	}
 	if err := b.goModTidy(ctx); err != nil {
 		return "", fmt.Errorf("go mod tidy: %w", err)
@@ -92,16 +90,18 @@ func (b *Builder) Build(ctx context.Context, rrRef string) (string, error) {
 	if err := b.verifyResolvedVersions(ctx); err != nil {
 		return "", fmt.Errorf("verifyResolvedVersions: %w", err)
 	}
-	builtPath, err := b.compile(ctx, up)
-	if err != nil {
+	// The binary lands next to its final path under a temporary name; publish renames it once the smoke test passes.
+	tmpPath := filepath.Join(b.outputDir, executableName+".tmp")
+	defer func() { _ = os.Remove(tmpPath) }()
+	if err := b.compile(ctx, up, tmpPath); err != nil {
 		return "", fmt.Errorf("compile: %w", err)
 	}
-	finalPath, err := b.relocate(builtPath)
-	if err != nil {
-		return "", fmt.Errorf("relocate: %w", err)
-	}
-	if err := b.smokeTest(ctx, finalPath); err != nil {
+	if err := b.smokeTest(ctx, tmpPath); err != nil {
 		return "", fmt.Errorf("smokeTest: %w", err)
+	}
+	finalPath, err := b.publish(tmpPath)
+	if err != nil {
+		return "", fmt.Errorf("publish: %w", err)
 	}
 	return finalPath, nil
 }
@@ -119,6 +119,17 @@ func (b *Builder) validateInputs() error {
 	if err := velox.ValidateTargetOS(b.goos); err != nil {
 		return err
 	}
+	if b.rrVersion != "" {
+		if err := velox.ValidateRef(b.rrVersion); err != nil {
+			return err
+		}
+	}
+	// go build runs inside the RoadRunner tree, so its -o path must not depend on the working directory.
+	abs, err := filepath.Abs(b.outputDir)
+	if err != nil {
+		return err
+	}
+	b.outputDir = abs
 	return b.ensureOutputDir()
 }
 
@@ -134,19 +145,25 @@ func (b *Builder) ensureOutputDir() error {
 	return os.MkdirAll(b.outputDir, 0o755)
 }
 
-// writePluginsGo renders container/plugins.go using the parameterized template.
-func (b *Builder) writePluginsGo(up upstreamModule) error {
+// userPlugins drops the bundled informer and resetter entries, which the template registers itself, and sorts the rest by module path; NewBuilder stores the result so every step sees the same set and the same set always renders the same plugins.go.
+func (b *Builder) userPlugins() []*plugin.Plugin {
 	kept := make([]*plugin.Plugin, 0, len(b.plugins))
 	for _, p := range b.plugins {
-		// The template hardcodes informer and resetter; a user entry registers them twice.
 		if isModuleUnder(p.ModuleName(), informerModule) || isModuleUnder(p.ModuleName(), resetterModule) {
 			b.log.Warn("skipping bundled plugin listed in velox.toml", "module", p.ModuleName())
 			continue
 		}
 		kept = append(kept, p)
 	}
+	slices.SortStableFunc(kept, func(x, y *plugin.Plugin) int {
+		return cmp.Compare(x.ModuleName(), y.ModuleName())
+	})
+	return kept
+}
 
-	src, err := templates.Render(templates.NewTemplate(up.Informer, up.Resetter, kept))
+// writePluginsGo renders container/plugins.go using the parameterized template.
+func (b *Builder) writePluginsGo(up upstreamModule) error {
+	src, err := templates.Render(templates.NewTemplate(up.Informer, up.Resetter, b.plugins))
 	if err != nil {
 		return fmt.Errorf("render plugins.go template: %w", err)
 	}
@@ -159,16 +176,17 @@ func (b *Builder) writePluginsGo(up upstreamModule) error {
 	b.log.Debug("wrote container/plugins.go",
 		"informer", up.Informer,
 		"resetter", up.Resetter,
-		"user_plugins", len(kept),
+		"user_plugins", len(b.plugins),
 	)
 	return nil
 }
 
-// verifyResolvedVersions checks the resolved version of every pinned plugin; a "latest" tag stays unchecked.
+// verifyResolvedVersions checks the resolved version of every plugin pinned to a semver tag; latest, a branch name, or a commit stays unchecked.
 func (b *Builder) verifyResolvedVersions(ctx context.Context) error {
 	want := make(map[string]string, len(b.plugins))
 	for _, p := range b.plugins {
-		if p.Tag() == "" || p.Tag() == "latest" {
+		// Only a semver tag is comparable: anything else resolves to whatever version tidy picked.
+		if !semver.IsValid(p.Tag()) {
 			continue
 		}
 		want[p.ModuleName()] = p.Tag()
@@ -229,41 +247,31 @@ func (b *Builder) verifyResolvedVersions(ctx context.Context) error {
 	}
 }
 
-// compile runs go build; all -ldflags values go in one argument because a repeated -ldflags flag overwrites the earlier value.
-func (b *Builder) compile(ctx context.Context, up upstreamModule) (string, error) {
-	args := []string{"build", "-v", "-trimpath"}
+// compile runs go build with outPath as the -o target; the go tool copies the binary itself when the destination is on another filesystem.
+func (b *Builder) compile(ctx context.Context, up upstreamModule, outPath string) error {
+	_, err := b.runGo(ctx, b.buildArgs(up, outPath)...)
+	return err
+}
+
+// buildArgs assembles the go build arguments; all -ldflags values go in one flag because a repeated -ldflags overwrites the earlier value.
+func (b *Builder) buildArgs(up upstreamModule, outPath string) []string {
+	args := []string{"build", "-trimpath"}
 	if b.debug {
-		args = append(args, "-gcflags", "all=-N -l", "-tags", "debug")
+		args = append(args, "-v", "-gcflags", "all=-N -l", "-tags", "debug")
 	}
 	if b.race {
 		args = append(args, "-race")
 	}
 
-	ldParts := []string{ldflags(up.Path, b.rrVersion, buildTimestamp())}
+	ldParts := []string{ldflags(up.Path, b.rrVersion, b.buildTimestamp())}
 	if !b.debug {
 		ldParts = append(ldParts, "-s", "-w")
 	}
 	args = append(args, "-ldflags", strings.Join(ldParts, " "))
-
-	outPath := filepath.Join(b.rrTempPath, executableName)
-	args = append(args, "-o", outPath, rrMainGo)
-
-	if _, err := b.runGo(ctx, args...); err != nil {
-		return "", err
-	}
-	return outPath, nil
+	return append(args, "-o", outPath, rrMainGo)
 }
 
-func (b *Builder) relocate(srcBin string) (string, error) {
-	dst := filepath.Join(b.outputDir, executableName)
-	b.log.Info("moving binary", "from", srcBin, "to", dst)
-	if err := os.Rename(srcBin, dst); err != nil {
-		return "", fmt.Errorf("move binary: %w", err)
-	}
-	return dst, nil
-}
-
-// smokeTest runs `rr --version` on the new binary when the host platform matches the target.
+// smokeTest runs `rr --version` on the new binary when the host platform matches the target and checks that the injected version reached the output.
 func (b *Builder) smokeTest(ctx context.Context, binPath string) error {
 	hostOS, hostArch := runtime.GOOS, runtime.GOARCH
 	if b.goos != "" && b.goos != hostOS {
@@ -283,8 +291,31 @@ func (b *Builder) smokeTest(ctx context.Context, binPath string) error {
 	if err != nil {
 		return fmt.Errorf("`%s --version` failed: %w\n%s", binPath, err, out)
 	}
+	// The linker ignores -X for a symbol it cannot find, so a missing version means the meta package path is wrong.
+	if want := displayVersion(b.rrVersion); want != "" && !strings.Contains(string(out), want) {
+		return fmt.Errorf("`%s --version` printed %q, which lacks the injected version %q",
+			binPath, strings.TrimSpace(string(out)), want)
+	}
 	b.log.Info("smoke test passed", "version", string(out))
 	return nil
+}
+
+// displayVersion mirrors RoadRunner's meta.Version, which drops a leading v before a digit.
+func displayVersion(ref string) string {
+	if len(ref) > 1 && (ref[0] == 'v' || ref[0] == 'V') && ref[1] >= '0' && ref[1] <= '9' {
+		return ref[1:]
+	}
+	return ref
+}
+
+// publish gives the smoke-tested binary its final name; the rename stays inside the output directory.
+func (b *Builder) publish(tmpPath string) (string, error) {
+	dst := filepath.Join(b.outputDir, executableName)
+	if err := os.Rename(tmpPath, dst); err != nil {
+		return "", fmt.Errorf("move binary: %w", err)
+	}
+	b.log.Info("binary ready", "path", dst)
+	return dst, nil
 }
 
 // newEnv overlays the target platform settings on the parent environment.
@@ -296,20 +327,11 @@ func newEnv(goos, goarch string, race bool) []string {
 	if goarch != "" {
 		env = setKV(env, "GOARCH", goarch)
 	}
+	cgo := "0"
 	if race {
-		env = setKV(env, "CGO_ENABLED", "1")
-	} else {
-		env = setKV(env, "CGO_ENABLED", "0")
+		cgo = "1"
 	}
-
-	// A cross build gets its own GOPATH tree; a native build keeps the caller caches.
-	cross := goos != "" && goarch != "" && (goos != runtime.GOOS || goarch != runtime.GOARCH)
-	if home, err := os.UserHomeDir(); err == nil && cross {
-		gopath := filepath.Join(home, "go", goos, goarch)
-		env = setKV(env, "GOPATH", gopath)
-		env = setKV(env, "GOCACHE", filepath.Join(gopath, "go-build"))
-	}
-	return env
+	return setKV(env, "CGO_ENABLED", cgo)
 }
 
 // setKV replaces (or appends) "KEY=value" in env.
@@ -325,11 +347,13 @@ func setKV(env []string, key, value string) []string {
 }
 
 // buildTimestamp returns the RFC3339 timestamp for ldflags and honors SOURCE_DATE_EPOCH for reproducible builds.
-func buildTimestamp() string {
+func (b *Builder) buildTimestamp() string {
 	if s := os.Getenv("SOURCE_DATE_EPOCH"); s != "" {
-		if secs, err := strconv.ParseInt(s, 10, 64); err == nil {
+		secs, err := strconv.ParseInt(s, 10, 64)
+		if err == nil {
 			return time.Unix(secs, 0).UTC().Format(time.RFC3339)
 		}
+		b.log.Warn("ignoring malformed SOURCE_DATE_EPOCH", "value", s, "error", err)
 	}
 	return time.Now().UTC().Format(time.RFC3339)
 }

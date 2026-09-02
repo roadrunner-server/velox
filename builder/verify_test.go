@@ -134,7 +134,7 @@ func TestVerifyResolvedVersions_UnresolvableModule(t *testing.T) {
 	require.Contains(t, err.Error(), missingModule)
 }
 
-func TestVerifyResolvedVersions_LatestSkipsResolution(t *testing.T) {
+func TestVerifyResolvedVersions_NonSemverTagsSkipResolution(t *testing.T) {
 	useLocalProxy(t, t.TempDir())
 
 	dir := t.TempDir()
@@ -144,6 +144,8 @@ func TestVerifyResolvedVersions_LatestSkipsResolution(t *testing.T) {
 	b := NewBuilder(dir, WithPlugins(
 		plugin.NewPlugin(demoModule, "latest"),
 		plugin.NewPlugin(missingModule, ""),
+		plugin.NewPlugin("example.com/branch", "master"),
+		plugin.NewPlugin("example.com/sha", "0123456789abcdef0123456789abcdef01234567"),
 	))
 
 	_, err := b.runGo(t.Context(), "list", "-m", "-e", "-json", demoModule)

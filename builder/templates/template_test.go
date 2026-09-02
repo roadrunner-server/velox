@@ -121,7 +121,7 @@ func Plugins() []any {
 		// bundled
 		&informer.Plugin{},
 		&resetter.Plugin{},
-		// user-supplied (matches order in velox.toml)
+		// user-supplied (sorted by module path)
 		&ukleg.Plugin{},
 		&yvmxt.Plugin{},
 		&xxfns.Plugin{},

@@ -4,11 +4,15 @@ import (
 	"cmp"
 	"crypto/sha256"
 	"fmt"
+	"go/token"
 	"slices"
 	"strings"
 )
 
-const prefixLen = 5
+const (
+	prefixLen = 5
+	maxSalt   = 1 << 16
+)
 
 type Plugin struct {
 	prefix     string
@@ -19,7 +23,7 @@ type Plugin struct {
 // NewPlugin returns a Plugin whose import prefix is derived from moduleName alone.
 func NewPlugin(moduleName, tag string) *Plugin {
 	return &Plugin{
-		prefix:     deterministicPrefix(moduleName, 0),
+		prefix:     prefixFor(moduleName, nil),
 		moduleName: moduleName,
 		tag:        tag,
 	}
@@ -41,25 +45,29 @@ func (p *Plugin) Code() string { return p.prefix + ".Plugin{}" }
 
 // ResolvePrefixCollisions gives every plugin a unique prefix by raising the salt until the candidate is free.
 func ResolvePrefixCollisions(plugins []*Plugin) {
-	const maxSalt = 1 << 16
-
 	// Sorting a copy keeps the assignment independent of the caller slice order and leaves that order intact.
 	ordered := slices.Clone(plugins)
 	slices.SortStableFunc(ordered, func(a, b *Plugin) int {
 		return cmp.Or(cmp.Compare(a.moduleName, b.moduleName), cmp.Compare(a.tag, b.tag))
 	})
 
-	seen := make(map[string]struct{}, len(ordered))
+	taken := make(map[string]struct{}, len(ordered))
 	for _, p := range ordered {
-		for salt := range maxSalt {
-			cand := deterministicPrefix(p.moduleName, uint16(salt))
-			if _, dup := seen[cand]; !dup {
-				p.prefix = cand
-				seen[cand] = struct{}{}
-				break
-			}
-		}
+		p.prefix = prefixFor(p.moduleName, taken)
+		taken[p.prefix] = struct{}{}
 	}
+}
+
+// prefixFor returns the lowest-salt prefix of moduleName that is not taken and not a Go keyword, which the generated import declaration could not use.
+func prefixFor(moduleName string, taken map[string]struct{}) string {
+	for salt := range maxSalt {
+		cand := deterministicPrefix(moduleName, uint16(salt))
+		if _, dup := taken[cand]; dup || token.IsKeyword(cand) {
+			continue
+		}
+		return cand
+	}
+	return deterministicPrefix(moduleName, 0)
 }
 
 // deterministicPrefix maps sha256(moduleName, salt) to a prefixLen prefix over a-z.

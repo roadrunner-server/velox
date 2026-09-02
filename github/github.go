@@ -2,7 +2,6 @@ package github
 
 import (
 	"archive/zip"
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -17,7 +16,6 @@ import (
 	"time"
 
 	"golang.org/x/mod/semver"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -30,55 +28,29 @@ const (
 	httpTimeout = time.Minute
 )
 
-// Cache stores downloaded RoadRunner archives keyed by ref.
-type Cache interface {
-	Get(key string) ([]byte, bool)
-	Add(key string, value []byte)
-}
-
 // Client fetches the upstream RR source tree.
 type Client struct {
 	http    *http.Client
 	log     *slog.Logger
-	cache   Cache
 	baseURL string
+	token   string
 }
 
-// NewClient builds a client for baseURL, defaulting to github.com and adding OAuth2 when accessToken is set.
-func NewClient(baseURL, accessToken string, cache Cache, log *slog.Logger) *Client {
-	// fetch reads the Location header itself, so the client must stop at the 3xx response.
-	noFollow := func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-	httpc := &http.Client{Timeout: httpTimeout, CheckRedirect: noFollow}
-
-	if accessToken != "" {
-		// oauth2.NewClient returns a new client that inherits the Transport alone, so re-apply CheckRedirect and Timeout.
-		ctx := context.WithValue(context.Background(), oauth2.HTTPClient, httpc)
-		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
-		httpc = oauth2.NewClient(ctx, ts)
-		httpc.CheckRedirect = noFollow
-		httpc.Timeout = httpTimeout
-	}
-
+// NewClient builds a client for baseURL, defaulting to github.com. accessToken, when set, goes into the Authorization header of the archive request, and net/http drops that header on a redirect to another host.
+func NewClient(baseURL, accessToken string, log *slog.Logger) *Client {
 	if baseURL == "" {
 		baseURL = "https://github.com"
 	}
 	return &Client{
-		http:    httpc,
+		http:    &http.Client{Timeout: httpTimeout},
 		log:     log,
-		cache:   cache,
 		baseURL: strings.TrimRight(baseURL, "/"),
+		token:   accessToken,
 	}
 }
 
 // DownloadTemplate fetches the archive for rrRef, unpacks it into downloadDir, and returns the source tree path.
 func (c *Client) DownloadTemplate(ctx context.Context, downloadDir, rrRef string) (string, error) {
-	if cached, ok := c.cache.Get(rrRef); ok {
-		c.log.Info("RR archive cache hit", "ref", rrRef, "bytes", len(cached))
-		return c.saveRR(cached, rrRef, downloadDir)
-	}
-
 	archiveURL, err := c.archiveURL(rrRef)
 	if err != nil {
 		return "", err
@@ -89,7 +61,6 @@ func (c *Client) DownloadTemplate(ctx context.Context, downloadDir, rrRef string
 	if err != nil {
 		return "", err
 	}
-	c.cache.Add(rrRef, zipBytes)
 	return c.saveRR(zipBytes, rrRef, downloadDir)
 }
 
@@ -116,11 +87,14 @@ func (c *Client) archiveURL(rrRef string) (*url.URL, error) {
 	return url.Parse(raw)
 }
 
-// fetch gets archiveURL, follows the single redirect to the CDN, and returns the body bytes.
+// fetch gets archiveURL and returns the body bytes; net/http follows the redirect to the archive host with the request context intact.
 func (c *Client) fetch(ctx context.Context, archiveURL *url.URL) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, archiveURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -128,36 +102,14 @@ func (c *Client) fetch(ctx context.Context, archiveURL *url.URL) ([]byte, error)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	// GitHub.com answers with 302; accept any 3xx for GitHub Enterprise and proxies that send 301, 307, or 308.
-	if resp.StatusCode < 300 || resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("expected 3xx redirect from %s, got %d", archiveURL, resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GET %s returned %d", archiveURL, resp.StatusCode)
 	}
-	loc, err := resp.Location()
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read redirect Location: %w", err)
-	}
-	if loc == nil {
-		return nil, errors.New("redirect response had no Location header")
-	}
-
-	// Follow the redirect with a context-aware request so cancellation works.
-	req2, err := http.NewRequestWithContext(ctx, http.MethodGet, loc.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	resp2, err := c.http.Do(req2)
-	if err != nil {
-		return nil, fmt.Errorf("GET %s: %w", loc, err)
-	}
-	defer func() { _ = resp2.Body.Close() }()
-	if resp2.StatusCode >= 300 {
-		return nil, fmt.Errorf("download %s returned %d", loc, resp2.StatusCode)
-	}
-	buf := &bytes.Buffer{}
-	if _, err := io.Copy(buf, resp2.Body); err != nil {
 		return nil, fmt.Errorf("read archive body: %w", err)
 	}
-	return buf.Bytes(), nil
+	return body, nil
 }
 
 // saveRR writes the archive bytes to disk, extracts them, and returns the absolute root directory.
@@ -229,7 +181,7 @@ func archiveRoot(files []*zip.File) (string, error) {
 }
 
 // extract writes a single zip entry to dest and refuses any entry whose resolved path escapes dest (CWE-22).
-func extract(dest string, zf *zip.File) error {
+func extract(dest string, zf *zip.File) (err error) {
 	pt := filepath.Join(dest, zf.Name) //nolint:gosec // G305: the prefix check below rejects paths that escape dest
 	cleanDest := filepath.Clean(dest) + string(os.PathSeparator)
 	if !strings.HasPrefix(filepath.Clean(pt)+string(os.PathSeparator), cleanDest) {
@@ -249,7 +201,12 @@ func extract(dest string, zf *zip.File) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = destFile.Close() }()
+	// A write that fails at close leaves a truncated file, so the close error counts once the copy succeeded.
+	defer func() {
+		if cerr := destFile.Close(); err == nil {
+			err = cerr
+		}
+	}()
 
 	zr, err := zf.Open()
 	if err != nil {
@@ -257,8 +214,6 @@ func extract(dest string, zf *zip.File) error {
 	}
 	defer func() { _ = zr.Close() }()
 
-	if _, err := io.Copy(destFile, zr); err != nil { //nolint:gosec // G110: the archive comes from github.com or the configured GHE host
-		return err
-	}
-	return nil
+	_, err = io.Copy(destFile, zr) //nolint:gosec // G110: the archive comes from github.com or the configured GHE host
+	return err
 }

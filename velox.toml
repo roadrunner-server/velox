@@ -5,6 +5,7 @@ ref = "master"
 
 [debug]
 enabled = false
+# race = true  # build with -race (sets CGO_ENABLED=1)
 
 [log]
 level = "debug"
@@ -19,14 +20,15 @@ mode = "production"
 [github]
 # base_url is optional. Set it to a GitHub Enterprise host (e.g. "https://ghe.example.com") to
 # download the RoadRunner template from a private GHE installation instead of github.com.
+# Only the host is configurable: the mirror must live at <base_url>/roadrunner-server/roadrunner.
 # base_url = "https://github.com"
 
 [github.token]
 token = "${GITHUB_TOKEN}"
 
 # Optional: go.mod replace directives applied before `go mod tidy`. Both `new` and `old` are
-# single strings; embed @version inline (e.g. "module@v1.2.3"). Local paths in `new` (./, ../,
-# /abs) must not carry an @version.
+# single strings; embed @version inline (e.g. "module@v1.2.3"). Local paths in `new` (., .., ./, ../,
+# /abs) must not carry an @version; a relative path resolves against the working directory of vx.
 # [[replaces]]
 # new = "../local-fork"
 # old = "github.com/foo/bar"
@@ -107,6 +109,10 @@ module_name = "github.com/roadrunner-server/nsq/v6"
 [plugins.http]
 tag = "latest"
 module_name = "github.com/roadrunner-server/http/v6"
+
+[plugins.tcp]
+tag = "latest"
+module_name = "github.com/roadrunner-server/tcp/v6"
 
 [plugins.static]
 tag = "latest"

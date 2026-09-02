@@ -1,6 +1,8 @@
 package velox
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -13,7 +15,7 @@ func TestExpandEnvs(t *testing.T) {
 
 	t.Setenv("TOKEN", token)
 	c := &Config{
-		Roadrunner: map[string]string{ref: "v2025.1.0"},
+		Roadrunner: map[string]string{RefKey: "v2025.1.0"},
 		Debug: &Debug{
 			Enabled: true,
 		},
@@ -48,7 +50,7 @@ func TestNils(t *testing.T) {
 
 func TestPluginsRequired(t *testing.T) {
 	c := &Config{
-		Roadrunner: map[string]string{ref: "v2025.1.0"},
+		Roadrunner: map[string]string{RefKey: "v2025.1.0"},
 		Log:        map[string]string{"level": "info"},
 		Plugins:    nil,
 	}
@@ -59,7 +61,7 @@ func TestPluginsRequired(t *testing.T) {
 
 func TestPluginValidation(t *testing.T) {
 	c := &Config{
-		Roadrunner: map[string]string{ref: "v2025.1.0"},
+		Roadrunner: map[string]string{RefKey: "v2025.1.0"},
 		Log:        map[string]string{"level": "info"},
 		Plugins: map[string]*Plugin{
 			"invalid": {
@@ -73,9 +75,21 @@ func TestPluginValidation(t *testing.T) {
 	assert.Contains(t, c.Validate().Error(), "tag is required")
 }
 
+func TestPluginModuleNameRequired(t *testing.T) {
+	c := &Config{Plugins: map[string]*Plugin{"x": {Tag: "v1.0.0"}}}
+	err := c.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "module name is required")
+
+	c = &Config{Plugins: map[string]*Plugin{"nil": nil}}
+	err = c.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is empty")
+}
+
 func TestTargetPlatformDefaults(t *testing.T) {
 	c := &Config{
-		Roadrunner: map[string]string{ref: "v2025.1.0"},
+		Roadrunner: map[string]string{RefKey: "v2025.1.0"},
 		Plugins: map[string]*Plugin{
 			"logger": {
 				Tag:        "v6.1.8",
@@ -92,7 +106,7 @@ func TestTargetPlatformDefaults(t *testing.T) {
 
 func TestWindowsTargetRejected(t *testing.T) {
 	c := &Config{
-		Roadrunner:     map[string]string{ref: "v3.0.0"},
+		Roadrunner:     map[string]string{RefKey: "v3.0.0"},
 		TargetPlatform: &TargetPlatform{OS: "windows", Arch: "amd64"},
 		Plugins: map[string]*Plugin{
 			"logger": {Tag: "v6.1.8", ModuleName: "github.com/roadrunner-server/logger/v6"},
@@ -105,7 +119,7 @@ func TestWindowsTargetRejected(t *testing.T) {
 
 func TestGitHubBaseURLDefault(t *testing.T) {
 	c := &Config{
-		Roadrunner: map[string]string{ref: "v3.0.0"},
+		Roadrunner: map[string]string{RefKey: "v3.0.0"},
 		Plugins: map[string]*Plugin{
 			"logger": {Tag: "v6.1.8", ModuleName: "github.com/roadrunner-server/logger/v6"},
 		},
@@ -145,7 +159,7 @@ func TestReplaceValidation(t *testing.T) {
 
 func TestReplaceDuplicateOld(t *testing.T) {
 	c := &Config{
-		Roadrunner: map[string]string{ref: "v3.0.0"},
+		Roadrunner: map[string]string{RefKey: "v3.0.0"},
 		Plugins: map[string]*Plugin{
 			"logger": {Tag: "v6.1.8", ModuleName: "github.com/roadrunner-server/logger/v6"},
 		},
@@ -161,7 +175,7 @@ func TestReplaceDuplicateOld(t *testing.T) {
 
 func TestExcludeValidation(t *testing.T) {
 	c := &Config{
-		Roadrunner: map[string]string{ref: "v3.0.0"},
+		Roadrunner: map[string]string{RefKey: "v3.0.0"},
 		Plugins: map[string]*Plugin{
 			"logger": {Tag: "v6.1.8", ModuleName: "github.com/roadrunner-server/logger/v6"},
 		},
@@ -203,7 +217,7 @@ func TestValidateRef(t *testing.T) {
 
 func TestConfigRejectsUnsafeRef(t *testing.T) {
 	c := &Config{
-		Roadrunner: map[string]string{ref: "master; rm -rf /"},
+		Roadrunner: map[string]string{RefKey: "master; rm -rf /"},
 		Plugins: map[string]*Plugin{
 			"logger": {Tag: "v6.1.8", ModuleName: "github.com/roadrunner-server/logger/v6"},
 		},
@@ -213,10 +227,71 @@ func TestConfigRejectsUnsafeRef(t *testing.T) {
 	assert.Contains(t, err.Error(), "unsupported character")
 }
 
+func TestTargetPlatformPartialDefaults(t *testing.T) {
+	plugins := map[string]*Plugin{
+		"logger": {Tag: "v6.1.8", ModuleName: "github.com/roadrunner-server/logger/v6"},
+	}
+
+	c := &Config{TargetPlatform: &TargetPlatform{OS: "linux"}, Plugins: plugins}
+	require.NoError(t, c.Validate())
+	assert.Equal(t, "linux", c.TargetPlatform.OS)
+	assert.Equal(t, runtime.GOARCH, c.TargetPlatform.Arch)
+
+	c = &Config{TargetPlatform: &TargetPlatform{Arch: "arm64"}, Plugins: plugins}
+	require.NoError(t, c.Validate())
+	assert.Equal(t, runtime.GOOS, c.TargetPlatform.OS)
+	assert.Equal(t, "arm64", c.TargetPlatform.Arch)
+}
+
+func TestDuplicateModuleRejected(t *testing.T) {
+	c := &Config{
+		Plugins: map[string]*Plugin{
+			"http":  {Tag: "v6.0.0", ModuleName: "github.com/roadrunner-server/http/v6"},
+			"http2": {Tag: "latest", ModuleName: "github.com/roadrunner-server/http/v6"},
+		},
+	}
+	err := c.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "github.com/roadrunner-server/http/v6")
+	assert.Contains(t, err.Error(), "already listed")
+}
+
+func TestReplaceRelativeLocalPathAbsolutized(t *testing.T) {
+	t.Chdir(t.TempDir())
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	c := &Config{
+		Plugins: map[string]*Plugin{
+			"logger": {Tag: "v6.1.8", ModuleName: "github.com/roadrunner-server/logger/v6"},
+		},
+		Replaces: []Replace{
+			{New: "../fork", Old: "github.com/foo/bar"},
+			{New: "github.com/me/fork@v1.2.3", Old: "github.com/foo/baz"},
+		},
+	}
+	require.NoError(t, c.Validate())
+	assert.Equal(t, filepath.Join(filepath.Dir(cwd), "fork"), c.Replaces[0].New)
+	assert.Equal(t, "github.com/me/fork@v1.2.3", c.Replaces[1].New)
+}
+
+func TestExcludeRejectsInvalidVersion(t *testing.T) {
+	for _, e := range []Exclude{
+		{Module: "github.com/redis/go-redis/v9", Version: "v9.15"},
+		{Module: "github.com/redis/go-redis/v9", Version: "9.15.0"},
+		{Module: "github.com/redis/go-redis/v9", Version: "v1.2.3"},
+	} {
+		require.Error(t, e.Validate(), "%+v", e)
+	}
+	require.NoError(t, Exclude{Module: "github.com/redis/go-redis/v9", Version: "v9.15.0"}.Validate())
+}
+
 func TestIsLocalPath(t *testing.T) {
 	cases := map[string]bool{
 		"./foo":                 true,
 		"../foo":                true,
+		".":                     true,
+		"..":                    true,
 		"/abs/path":             true,
 		"github.com/foo":        false,
 		"github.com/foo@v1.0.0": false,
