@@ -23,12 +23,34 @@ func TestArchiveURL(t *testing.T) {
 		{"feature/x", "https://github.com/roadrunner-server/roadrunner/archive/refs/heads/feature/x.zip"},
 		{"version-fix", "https://github.com/roadrunner-server/roadrunner/archive/refs/heads/version-fix.zip"},
 		{"569ffe0d833580af456150546eec35c44b7ca1fa", "https://github.com/roadrunner-server/roadrunner/archive/569ffe0d833580af456150546eec35c44b7ca1fa.zip"},
+		{"v1.2.3.4", "https://github.com/roadrunner-server/roadrunner/archive/refs/heads/v1.2.3.4.zip"},
+		{"v2-wip", "https://github.com/roadrunner-server/roadrunner/archive/refs/heads/v2-wip.zip"},
+		{"v2025", "https://github.com/roadrunner-server/roadrunner/archive/refs/tags/v2025.zip"},
+		{"569FFE0D833580AF456150546EEC35C44B7CA1FA", "https://github.com/roadrunner-server/roadrunner/archive/569FFE0D833580AF456150546EEC35C44B7CA1FA.zip"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.ref, func(t *testing.T) {
 			u, err := c.archiveURL(tc.ref)
 			require.NoError(t, err)
 			require.Equal(t, tc.want, u.String())
+		})
+	}
+}
+
+func TestIsCommitSHA(t *testing.T) {
+	cases := map[string]bool{
+		"569ffe0d833580af456150546eec35c44b7ca1fa":  true,
+		"569FFE0D833580AF456150546EEC35C44B7CA1FA":  true,
+		"569Ffe0d833580af456150546eec35c44b7ca1fA":  true,
+		"569ffe0d833580af456150546eec35c44b7ca1f":   false,
+		"569ffe0d833580af456150546eec35c44b7ca1fab": false,
+		"569ffe0d833580af456150546eec35c44b7ca1fz":  false,
+		"master":                                    false,
+		"":                                          false,
+	}
+	for input, want := range cases {
+		t.Run(input, func(t *testing.T) {
+			require.Equal(t, want, isCommitSHA(input))
 		})
 	}
 }

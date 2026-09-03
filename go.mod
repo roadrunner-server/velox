@@ -6,11 +6,11 @@ toolchain go1.27.1
 
 require (
 	github.com/fatih/color v1.19.0
-	github.com/hashicorp/go-version v1.9.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
+	golang.org/x/mod v0.40.0
 	golang.org/x/oauth2 v0.36.0
 )
 

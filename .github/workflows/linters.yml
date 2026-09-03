@@ -2,6 +2,10 @@ name: Linters
 
 on: [push, pull_request]
 
+concurrency:
+  group: linters-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   golangci-lint:
     name: Golang-CI (lint)

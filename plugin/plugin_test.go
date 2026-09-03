@@ -30,7 +30,7 @@ func TestResolvePrefixCollisions(t *testing.T) {
 	// Force a collision by reusing an identical module name twice.
 	plugins := []*Plugin{
 		NewPlugin("github.com/foo/bar", "v1"),
-		NewPlugin("github.com/foo/bar", "v2"), // duplicate moduleName → same base prefix
+		NewPlugin("github.com/foo/bar", "v2"), // a duplicate module name yields the same base prefix
 	}
 	ResolvePrefixCollisions(plugins)
 	if plugins[0].Prefix() == plugins[1].Prefix() {

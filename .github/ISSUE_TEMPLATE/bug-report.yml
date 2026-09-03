@@ -31,7 +31,7 @@ body:
     attributes:
       label: Version
       description: What version of our software are you running?
-      placeholder: 2.6.0
+      placeholder: 3.0.0-beta.1
     validations:
       required: true
   - type: textarea

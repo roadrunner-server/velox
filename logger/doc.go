@@ -1,2 +1,2 @@
-// Package logger builds zap loggers and custom encoders used by Velox.
+// Package logger builds the *slog.Logger used by the CLI in production, development, raw, or none mode.
 package logger

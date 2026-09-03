@@ -33,16 +33,9 @@ linters:
     - unused
     - whitespace
   settings:
-    dupl:
-      threshold: 100
     goconst:
       min-len: 2
       min-occurrences: 3
-    godot:
-      scope: declarations
-      capital: true
-    lll:
-      line-length: 120
     misspell:
       locale: US
     nolintlint:
@@ -56,8 +49,6 @@ linters:
       rules:
         - name: var-naming
           disabled: true
-    wsl:
-      allow-assign-and-anything: true
   exclusions:
     generated: lax
     presets:
@@ -71,7 +62,6 @@ linters:
           - funlen
           - gocognit
           - goconst
-          - scopelint
         path: _test\.go
     paths:
       - .github
