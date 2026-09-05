@@ -2,12 +2,14 @@ package builder
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -205,4 +207,146 @@ func TestPublish(t *testing.T) {
 	require.Equal(t, filepath.Join(out, executableName), final)
 	require.FileExists(t, final)
 	require.NoFileExists(t, tmp)
+}
+
+// useFakeGo stops compilation while the source directory contains a wait file.
+func useFakeGo(t *testing.T) {
+	t.Helper()
+
+	dir := t.TempDir()
+	const script = `#!/bin/sh
+set -eu
+trap 'exit 130' INT
+case "$1 $2" in
+  "mod edit")
+    if [ "$3" = "-json" ]; then
+      printf '%s\n' '{"Module":{"Path":"example.com/rr"},"Require":[{"Path":"github.com/roadrunner-server/informer"},{"Path":"github.com/roadrunner-server/resetter"}]}'
+    fi
+    ;;
+  "mod tidy") ;;
+  "build -trimpath")
+    while [ "$1" != "-o" ]; do shift; done
+    cp binary "$2"
+    printf '%s\n' "$2" > output-path
+    while [ -f wait ]; do sleep 0.01; done
+    if [ -f compile-error ]; then exit 1; fi
+    ;;
+  *) exit 1 ;;
+esac
+`
+	//nolint:gosec // G306: runGo must execute the test command.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "go"), []byte(script), 0o755))
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+func newBuildFixture(t *testing.T, out, version string) *Builder {
+	t.Helper()
+
+	dir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "container"), 0o750))
+	require.NoError(t, os.Rename(fakeBinary(t, version), filepath.Join(dir, "binary")))
+	return NewBuilder(dir,
+		WithPlugins(plugin.NewPlugin(demoModule, "latest")),
+		WithOutputDir(out),
+		WithRRVersion(version),
+	)
+}
+
+func TestBuild_ConcurrentOutputDirectory(t *testing.T) {
+	useFakeGo(t)
+	out := t.TempDir()
+	final := filepath.Join(out, executableName)
+	writeFixture(t, final, "previous")
+	builders := []*Builder{
+		newBuildFixture(t, out, "first"),
+		newBuildFixture(t, out, "second"),
+	}
+	type result struct {
+		path string
+		err  error
+	}
+	results := make([]chan result, len(builders))
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	var workers sync.WaitGroup
+	defer func() {
+		cancel()
+		workers.Wait()
+	}()
+
+	for i, b := range builders {
+		writeFixture(t, filepath.Join(b.rrTempPath, "wait"), "")
+		results[i] = make(chan result, 1)
+		workers.Go(func() {
+			path, err := b.Build(ctx)
+			results[i] <- result{path: path, err: err}
+		})
+	}
+
+	tmpPaths := make([]string, len(builders))
+	for i, b := range builders {
+		pathFile := filepath.Join(b.rrTempPath, "output-path")
+		require.Eventually(t, func() bool {
+			data, err := os.ReadFile(pathFile)
+			return err == nil && len(data) > 0
+		}, 5*time.Second, 10*time.Millisecond)
+		data, err := os.ReadFile(pathFile)
+		require.NoError(t, err)
+		tmpPaths[i] = strings.TrimSpace(string(data))
+		require.FileExists(t, tmpPaths[i])
+	}
+	require.NotEqual(t, tmpPaths[0], tmpPaths[1])
+	data, err := os.ReadFile(final)
+	require.NoError(t, err)
+	require.Equal(t, "previous", string(data))
+
+	for i, b := range builders {
+		require.Equal(t, out, filepath.Dir(filepath.Dir(tmpPaths[i])))
+		require.FileExists(t, tmpPaths[i])
+		require.NoError(t, os.Remove(filepath.Join(b.rrTempPath, "wait")))
+		res := <-results[i]
+		require.NoError(t, res.err)
+		require.Equal(t, final, res.path)
+		data, err := os.ReadFile(final)
+		require.NoError(t, err)
+		require.Contains(t, string(data), b.rrVersion)
+		require.NoDirExists(t, filepath.Dir(tmpPaths[i]))
+	}
+}
+
+func TestBuild_CleansTemporaryOutput(t *testing.T) {
+	useFakeGo(t)
+	for _, stage := range []string{"success", "compile", "smokeTest", "publish"} {
+		t.Run(stage, func(t *testing.T) {
+			out := t.TempDir()
+			final := filepath.Join(out, executableName)
+			previous := final
+			if stage == "publish" {
+				previous = filepath.Join(final, "previous")
+			}
+			writeFixture(t, previous, "previous")
+			b := newBuildFixture(t, out, "master")
+			switch stage {
+			case "compile":
+				writeFixture(t, filepath.Join(b.rrTempPath, "compile-error"), "")
+			case "smokeTest":
+				b.rrVersion = "missing"
+			}
+
+			path, err := b.Build(t.Context())
+			if stage == "success" {
+				require.NoError(t, err)
+				require.Equal(t, final, path)
+			} else {
+				require.ErrorContains(t, err, stage+":")
+				require.Empty(t, path)
+				data, err := os.ReadFile(previous)
+				require.NoError(t, err)
+				require.Equal(t, "previous", string(data))
+			}
+			entries, err := os.ReadDir(out)
+			require.NoError(t, err)
+			require.Len(t, entries, 1)
+			require.Equal(t, executableName, entries[0].Name())
+		})
+	}
 }

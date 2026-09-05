@@ -118,7 +118,7 @@ Either key may be omitted on its own; the host value fills it. Every build reuse
 ### `[debug]`
 
 - `enabled`: compiles with `-gcflags "all=-N -l" -tags debug` and keeps the symbol table for a debugger.
-- `race`: compiles with `-race` (sets `CGO_ENABLED=1`).
+- `race`: compiles with `-race` (sets `CGO_ENABLED=1`). Requires a C toolchain for the target platform. The Docker image includes GCC and musl development headers for native Linux builds.
 
 ### `[plugins.<name>]`
 
@@ -170,7 +170,7 @@ version = "v9.15.0"
 - Windows build targets are not supported in velox v3.
 - Pin plugin tags for reproducible builds. A tag that is not a semver version (`latest`, a branch, a commit) skips the post-tidy version check, so the resolved version depends on when the build runs.
 - Plugins are registered in module-path order, so the same plugin set renders the same `container/plugins.go`.
-- The binary is compiled as `rr.tmp` in the output directory and renamed to `rr` once `rr --version` prints the requested ref; a cross build skips that check.
+- Each build compiles the binary in a unique temporary directory inside the output directory. The binary is renamed to `rr` after `rr --version` prints the requested ref; a cross build skips that check.
 - `-trimpath` is always set, and `SOURCE_DATE_EPOCH` is honored for the injected build timestamp.
 
 ## Links

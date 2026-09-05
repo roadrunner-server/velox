@@ -90,9 +90,13 @@ func (b *Builder) Build(ctx context.Context) (string, error) {
 	if err := b.verifyResolvedVersions(ctx); err != nil {
 		return "", fmt.Errorf("verifyResolvedVersions: %w", err)
 	}
-	// The binary lands next to its final path under a temporary name; publish renames it once the smoke test passes.
-	tmpPath := filepath.Join(b.outputDir, executableName+".tmp")
-	defer func() { _ = os.Remove(tmpPath) }()
+	// Each build uses a separate directory on the output filesystem so publish can rename the binary.
+	tmpDir, err := os.MkdirTemp(b.outputDir, ".rr-build-*")
+	if err != nil {
+		return "", fmt.Errorf("create temporary output directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+	tmpPath := filepath.Join(tmpDir, executableName)
 	if err := b.compile(ctx, up, tmpPath); err != nil {
 		return "", fmt.Errorf("compile: %w", err)
 	}
