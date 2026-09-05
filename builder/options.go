@@ -7,12 +7,10 @@ import (
 	"github.com/roadrunner-server/velox/v3/plugin"
 )
 
-// Option configures a Builder. Pass these to NewBuilder.
+// Option configures a Builder and is passed to NewBuilder.
 type Option func(*Builder)
 
-// WithLogger sets the slog logger used for builder diagnostics. A nil logger
-// is ignored so the Builder's discard default is preserved (rather than
-// nil-panicking on the first log call).
+// WithLogger sets the builder logger and ignores a nil value so the discard default survives.
 func WithLogger(log *slog.Logger) Option {
 	return func(b *Builder) {
 		if log != nil {
@@ -41,7 +39,7 @@ func WithOutputDir(outputDir string) Option {
 	return func(b *Builder) { b.outputDir = outputDir }
 }
 
-// WithRRVersion sets the RR ref used to populate the binary's `-X meta.version` ldflag.
+// WithRRVersion sets the RoadRunner ref that fills the `-X meta.version` ldflag.
 func WithRRVersion(rrVersion string) Option {
 	return func(b *Builder) { b.rrVersion = rrVersion }
 }

@@ -5,16 +5,24 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ master, beta, stable ]
+    branches: [ master, stable, "pre-release/**" ]
   pull_request:
-    branches: [ master, beta, stable ]
+    branches: [ master, stable, "pre-release/**" ]
   schedule:
     - cron: '0 15 * * 6'
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix:

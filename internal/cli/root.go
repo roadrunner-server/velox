@@ -1,4 +1,3 @@
-// Package cli wires the root cobra command and the build subcommand.
 package cli
 
 import (
@@ -17,14 +16,7 @@ import (
 	"github.com/roadrunner-server/velox/v3/logger"
 )
 
-// NewCommand returns the root cobra command. The CLI uses cmd.Context() (set
-// by the caller in main.go) so SIGINT/SIGTERM propagates through the whole
-// build pipeline.
-//
-// The root *slog.Logger is shared with subcommands by pointer. PersistentPreRunE
-// rewrites the pointee with the config-driven logger after the subcommand
-// callbacks have been wired, so each subcommand calls .With(...) inside its
-// RunE to derive a child logger from the *current* state.
+// NewCommand returns the root cobra command; PersistentPreRunE replaces the pointee of the shared logger after wiring.
 func NewCommand(executableName string) *cobra.Command {
 	lg := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 

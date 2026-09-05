@@ -3,13 +3,14 @@ package builder
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -21,70 +22,46 @@ const (
 // runResult holds the captured output of a single subprocess invocation.
 type runResult struct {
 	Stdout []byte
-	// Stderr is the last stderrCaptureLimit bytes of stderr (older bytes dropped).
 	Stderr []byte
 }
 
-// runCmd executes name with args in dir under env, honoring ctx for cancellation.
-// stderr is captured into a bounded buffer (last 8 KB) and embedded in the returned
-// error on failure. stdout is captured fully and returned for callers that need it.
-//
-// On ctx.Done(): SIGINT is sent immediately; if the process hasn't exited within
-// gracefulKillTimeout, it is killed.
-//
-// name is parameterized (rather than hard-coded to "go") so tests can inject a
-// fake `go` script via PATH manipulation.
-//
-//nolint:unparam // name is intentionally pluggable for test fakes
-func runCmd(ctx context.Context, log *slog.Logger, dir string, env []string,
-	name string, args ...string,
-) (runResult, error) {
-	if log != nil {
-		log.Info("executing command",
-			"cmd", name+" "+strings.Join(args, " "),
-			"dir", dir,
-		)
-	}
+// runGo runs the go tool with args in the RoadRunner source tree under the builder environment and captures its output.
+func (b *Builder) runGo(ctx context.Context, args ...string) (runResult, error) {
+	b.log.Info("executing command",
+		"cmd", "go "+strings.Join(args, " "),
+		"dir", b.rrTempPath,
+	)
 
-	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Dir = dir
-	cmd.Env = env
+	cmd := exec.CommandContext(ctx, "go", args...)
+	cmd.Dir = b.rrTempPath
+	cmd.Env = b.env
+	// Cancellation sends SIGINT and falls back to SIGKILL after the wait delay.
+	cmd.Cancel = func() error { return cmd.Process.Signal(os.Interrupt) }
+	cmd.WaitDelay = gracefulKillTimeout
 
+	// The runner keeps all of stdout and the last stderrCaptureLimit bytes of stderr.
 	stdout := &bytes.Buffer{}
 	stderr := newRingBuffer(stderrCaptureLimit)
 	cmd.Stdout = stdout
-	if log != nil {
-		cmd.Stderr = io.MultiWriter(stderr, &slogDebugWriter{log: log})
-	} else {
-		cmd.Stderr = stderr
+	cmd.Stderr = io.MultiWriter(stderr, &slogDebugWriter{log: b.log})
+
+	err := cmd.Run()
+	res := runResult{Stdout: stdout.Bytes(), Stderr: stderr.Bytes()}
+
+	// go build grandchildren inherit the stderr pipe and can hold it open after the parent exits.
+	if errors.Is(err, exec.ErrWaitDelay) && cmd.ProcessState != nil && cmd.ProcessState.Success() {
+		err = nil
 	}
-
-	if err := cmd.Start(); err != nil {
-		return runResult{}, fmt.Errorf("starting %s: %w", name, err)
-	}
-
-	doneCh := make(chan error, 1)
-	go func() { doneCh <- cmd.Wait() }()
-
-	select {
-	case err := <-doneCh:
-		res := runResult{Stdout: stdout.Bytes(), Stderr: stderr.Bytes()}
-		if err != nil {
-			return res, fmt.Errorf("%s failed: %w\n--- stderr (last %d bytes) ---\n%s",
-				name, err, len(res.Stderr), res.Stderr)
-		}
+	if err == nil {
 		return res, nil
-	case <-ctx.Done():
-		// Send SIGINT first for graceful shutdown.
-		_ = cmd.Process.Signal(syscall.SIGINT)
-		select {
-		case <-doneCh:
-		case <-time.After(gracefulKillTimeout):
-			_ = cmd.Process.Kill()
-			<-doneCh
-		}
-		return runResult{Stdout: stdout.Bytes(), Stderr: stderr.Bytes()}, ctx.Err()
 	}
+
+	failed := fmt.Errorf("go failed: %w\n--- stderr (last %d bytes) ---\n%s",
+		err, len(res.Stderr), res.Stderr)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return res, errors.Join(ctxErr, failed)
+	}
+	return res, failed
 }
 
 // ringBuffer keeps at most capacity bytes; older bytes are dropped on overflow.
@@ -122,52 +99,27 @@ func (w *slogDebugWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// goModEdit runs `go mod edit args...` inside b.rrTempPath.
-func (b *Builder) goModEdit(ctx context.Context, args ...string) error {
-	_, err := runCmd(ctx, b.log, b.rrTempPath, b.env(),
-		"go", append([]string{"mod", "edit"}, args...)...)
-	return err
-}
-
-// goModTidy runs `go mod tidy -e` inside b.rrTempPath. The -e flag continues on
-// errors from replace directives that reference modules not yet present in the
-// module cache — important because we apply replaces before tidy.
+// goModTidy runs `go mod tidy -e` so replace directives for uncached modules do not stop the build.
 func (b *Builder) goModTidy(ctx context.Context) error {
-	_, err := runCmd(ctx, b.log, b.rrTempPath, b.env(), "go", "mod", "tidy", "-e")
+	_, err := b.runGo(ctx, "mod", "tidy", "-e")
 	return err
 }
 
-// applyRequires invokes `go mod edit -require=<module>@<tag>` for each plugin.
-// Batching all requires in one call avoids spawning N subprocesses. Build's
-// validateInputs already guarantees at least one plugin.
-func (b *Builder) applyRequires(ctx context.Context) error {
-	args := make([]string, 0, len(b.plugins))
+// applyGoModEdits applies every require, replace, and exclude directive in one `go mod edit` call. The go tool writes a non-semver version such as "latest" as given, and a later `go mod edit` call refuses to parse it.
+func (b *Builder) applyGoModEdits(ctx context.Context) error {
+	edits := make([]string, 0, len(b.plugins)+len(b.replaces)+len(b.excludes))
 	for _, p := range b.plugins {
-		args = append(args, "-require="+p.RequireArg())
+		edits = append(edits, "-require="+p.RequireArg())
 	}
-	return b.goModEdit(ctx, args...)
-}
-
-// applyReplaces invokes `go mod edit -replace=<old>=<new>` for each Replace.
-func (b *Builder) applyReplaces(ctx context.Context) error {
-	if len(b.replaces) == 0 {
-		return nil
-	}
-	args := make([]string, 0, len(b.replaces))
 	for _, r := range b.replaces {
-		args = append(args, "-replace="+r.Old+"="+r.New)
+		edits = append(edits, "-replace="+r.Old+"="+r.New)
 	}
-	return b.goModEdit(ctx, args...)
-}
-
-// applyExcludes invokes `go mod edit -exclude=<module>@<version>` for each Exclude.
-func (b *Builder) applyExcludes(ctx context.Context) error {
-	if len(b.excludes) == 0 {
+	for _, e := range b.excludes {
+		edits = append(edits, "-exclude="+e.Module+"@"+e.Version)
+	}
+	if len(edits) == 0 {
 		return nil
 	}
-	args := make([]string, 0, len(b.excludes))
-	for _, e := range b.excludes {
-		args = append(args, "-exclude="+e.Module+"@"+e.Version)
-	}
-	return b.goModEdit(ctx, args...)
+	_, err := b.runGo(ctx, append([]string{"mod", "edit"}, edits...)...)
+	return err
 }

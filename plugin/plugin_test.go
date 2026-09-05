@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"go/token"
 	"strings"
 	"testing"
 )
@@ -30,7 +31,7 @@ func TestResolvePrefixCollisions(t *testing.T) {
 	// Force a collision by reusing an identical module name twice.
 	plugins := []*Plugin{
 		NewPlugin("github.com/foo/bar", "v1"),
-		NewPlugin("github.com/foo/bar", "v2"), // duplicate moduleName → same base prefix
+		NewPlugin("github.com/foo/bar", "v2"), // a duplicate module name yields the same base prefix
 	}
 	ResolvePrefixCollisions(plugins)
 	if plugins[0].Prefix() == plugins[1].Prefix() {
@@ -116,5 +117,22 @@ func TestImportsAndCode(t *testing.T) {
 	}
 	if got, want := p.RequireArg(), "github.com/roadrunner-server/http/v6@v6.1.0"; got != want {
 		t.Fatalf("RequireArg() = %q, want %q", got, want)
+	}
+}
+
+func TestPrefixSkipsGoKeywords(t *testing.T) {
+	// sha256 of this module name with salt 0 maps to "break".
+	const module = "example.com/keyword/308114"
+	if got := deterministicPrefix(module, 0); got != "break" {
+		t.Fatalf("fixture drifted: deterministicPrefix(%q, 0) = %q, want \"break\"", module, got)
+	}
+
+	p := NewPlugin(module, "v1.0.0")
+	if token.IsKeyword(p.Prefix()) {
+		t.Fatalf("NewPlugin handed out the keyword %q as a prefix", p.Prefix())
+	}
+	ResolvePrefixCollisions([]*Plugin{p})
+	if token.IsKeyword(p.Prefix()) {
+		t.Fatalf("ResolvePrefixCollisions handed out the keyword %q as a prefix", p.Prefix())
 	}
 }

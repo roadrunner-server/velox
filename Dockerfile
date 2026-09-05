@@ -15,14 +15,14 @@ ENV LDFLAGS="-s \
     -X github.com/roadrunner-server/velox/v3/internal/version.version=$APP_VERSION \
     -X github.com/roadrunner-server/velox/v3/internal/version.buildTime=$BUILD_TIME"
 
-# verbose
-RUN set -x
 RUN go mod download
-RUN go mod tidy
 
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "$LDFLAGS" -o ./velox ./cmd/vx
 
 FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.27-alpine
+
+# Race builds require CGO and a C toolchain.
+RUN apk add --no-cache gcc musl-dev
 
 # use same build arguments for image labels
 ARG APP_VERSION="undefined"
