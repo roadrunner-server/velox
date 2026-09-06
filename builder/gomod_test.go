@@ -15,8 +15,8 @@ func envValue(env []string, key string) string {
 	prefix := key + "="
 	value := ""
 	for _, kv := range env {
-		if strings.HasPrefix(kv, prefix) {
-			value = strings.TrimPrefix(kv, prefix)
+		if after, ok := strings.CutPrefix(kv, prefix); ok {
+			value = after
 		}
 	}
 	return value
