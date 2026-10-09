@@ -14,6 +14,7 @@
 - `[[replaces]]` and `[[excludes]]` sections map to go.mod `replace` and `exclude` directives, applied before `go mod tidy`. A relative local path in `[[replaces]].new` resolves against the working directory.
 - Deterministic 5-letter plugin import prefixes and module-path ordering, so the same plugin set renders a bit-identical `container/plugins.go`.
 - `[debug] race = true` builds with `-race`.
+- A stable release also pushes the major and minor image tags (`3`, `3.0`) next to the version tag and `latest`.
 
 ### Changed
 

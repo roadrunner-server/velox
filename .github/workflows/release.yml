@@ -136,10 +136,12 @@ jobs:
             echo "list<<EOF"
             echo "spiralscout/velox:${VERSION}"
             echo "ghcr.io/roadrunner-server/velox:${VERSION}"
-            # a prerelease must not move the :latest tag
+            # a prerelease must not move the :latest, major (3) and minor (3.0) tags
             if [ "${PRERELEASE}" = "false" ]; then
-              echo "spiralscout/velox:latest"
-              echo "ghcr.io/roadrunner-server/velox:latest"
+              for tag in latest "${VERSION%%.*}" "${VERSION%.*}"; do
+                echo "spiralscout/velox:${tag}"
+                echo "ghcr.io/roadrunner-server/velox:${tag}"
+              done
             fi
             echo "EOF"
           } >> $GITHUB_OUTPUT

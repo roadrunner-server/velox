@@ -47,7 +47,7 @@ curl -fsSL https://github.com/roadrunner-server/velox/releases/download/v3.0.0/v
 docker pull ghcr.io/roadrunner-server/velox:3.0.0
 ```
 
-Images are published to `ghcr.io/roadrunner-server/velox` and `spiralscout/velox`. The image tag is the release tag without the leading `v`, and a stable release also moves `latest`. The entrypoint is `vx`, and the image ships the sample config at `/etc/velox.toml`.
+Images are published to `ghcr.io/roadrunner-server/velox` and `spiralscout/velox`. The image tag is the release tag without the leading `v`. A stable release also moves `latest`, the major tag (`3`), and the minor tag (`3.0`). The entrypoint is `vx`, and the image ships the sample config at `/etc/velox.toml`.
 
 ```bash
 docker run --rm \
