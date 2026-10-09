@@ -42,7 +42,7 @@ Each package has a `doc.go` and `*_test.go` files next to the code. The reposito
 
 ```text
 ├── .claude/CLAUDE.md           # Instructions for Claude Code
-├── .github/workflows/          # linux.yml (tests, sample build), linters.yml (golangci-lint), release.yml (archives, images), codeql-analysis.yml
+├── .github/workflows/          # linux.yml (tests, sample build), linters.yml (golangci-lint), release.yml (archives, images), release-please.yml (release PR), codeql-analysis.yml
 ├── .golangci.yml               # golangci-lint v2 configuration
 ├── builder/
 │   ├── builder.go              # Build pipeline (decomposed into named steps)
@@ -190,6 +190,7 @@ The sample `velox.toml` tracks RoadRunner `master`: every plugin is on the `/v6`
 
 ## Releases and Docker
 
+- Release Please (`.github/workflows/release-please.yml`) keeps a release PR on `master` from Conventional Commits and writes `CHANGELOG.md` and `.release-please-manifest.json`. Merging the release PR creates the tag and the GitHub release with the GitHub App token, which starts `release.yml`. The GitHub release notes come from the release PR description, not from `CHANGELOG.md`. A push to `master` regenerates an open release PR and drops manual edits to it.
 - `.github/workflows/release.yml` runs when a GitHub release is published. It runs no tests. The version is the tag without the leading `v`.
 - Job `build` compiles `vx` for linux and darwin on amd64 and arm64 with `CGO_ENABLED=0`, `-trimpath`, and the version ldflags for `github.com/roadrunner-server/velox/v3/internal/version`. Each release asset is `velox-<version>-<os>-<arch>.tar.gz` with `vx`, `README.md`, `LICENSE`, and `velox.toml`.
 - Job `docker` builds `Dockerfile` for linux/amd64 and linux/arm64 and pushes `spiralscout/velox:<version>` and `ghcr.io/roadrunner-server/velox:<version>`. It moves `:latest` on both registries only for a release that is not a prerelease.
