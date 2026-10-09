@@ -32,8 +32,8 @@ Velox builds a custom RoadRunner binary from the plugin list in `velox.toml`. It
 ## Release lines
 
 - `master` is velox v3, module `github.com/roadrunner-server/velox/v3`. It builds RoadRunner v3 (module `/v3`) with the `/v6` plugins.
-- `stable` is velox v2025, module `github.com/roadrunner-server/velox/v2025`. It builds RoadRunner `v2025.x` with the `/v5` plugins. The `v2025.1.x` tags are on `stable`, not on `master`.
-- `pre-release/**` branches get the same CI as `master`.
+- Velox v2025, module `github.com/roadrunner-server/velox/v2025`, builds RoadRunner `v2025.x` with the `/v5` plugins. It has no branch anymore; its `v2025.x` tags remain.
+- Every release comes from `master`.
 - The builder reads the RoadRunner module path from the downloaded `go.mod`, so the code has no RoadRunner major built in. Unit tests use `/v2025` module paths as fixtures.
 
 ## Repository structure
@@ -177,9 +177,9 @@ The sample `velox.toml` tracks RoadRunner `master`: every plugin is on the `/v6`
 
 ## CI
 
-- `linux.yml` runs on push and pull request to `master` and `pre-release/**`, and daily at 05:30 UTC. Job `golang` runs `make test`. Job `build-sample-rr` installs `vx`, builds RoadRunner `master` from `velox.toml` with `latest` plugins, and runs `./rr --version`. A failure there can come from a RoadRunner or plugin change, not from velox.
+- `linux.yml` runs on push and pull request to `master`, and daily at 05:30 UTC. Job `golang` runs `make test`. Job `build-sample-rr` installs `vx`, builds RoadRunner `master` from `velox.toml` with `latest` plugins, and runs `./rr --version`. A failure there can come from a RoadRunner or plugin change, not from velox.
 - `linters.yml` runs on every push and pull request with the latest stable Go.
-- `codeql-analysis.yml` runs on `master`, `stable`, and `pre-release/**`, and weekly.
+- `codeql-analysis.yml` runs on `master`, and weekly.
 - Unit tests run the go tool against a local `file://` GOPROXY and `httptest` servers. They need `go` on `PATH` but no network. No unit test runs a full RoadRunner build.
 
 ## Lint
@@ -194,7 +194,7 @@ The sample `velox.toml` tracks RoadRunner `master`: every plugin is on the `/v6`
 - `.github/workflows/release.yml` runs when a GitHub release is published. It runs no tests. The version is the tag without the leading `v`.
 - Job `build` compiles `vx` for linux and darwin on amd64 and arm64 with `CGO_ENABLED=0`, `-trimpath`, and the version ldflags for `github.com/roadrunner-server/velox/v3/internal/version`. Each release asset is `velox-<version>-<os>-<arch>.tar.gz` with `vx`, `README.md`, `LICENSE`, and `velox.toml`.
 - Job `docker` builds `Dockerfile` for linux/amd64 and linux/arm64 and pushes `spiralscout/velox:<version>` and `ghcr.io/roadrunner-server/velox:<version>`. A release that is not a prerelease also moves `:latest`, the major tag (`:3`), and the minor tag (`:3.0`) on both registries.
-- A release runs the `release.yml` of the tagged commit. The `stable` copy moves `:latest` on every release, so a v2025 release moves `:latest` to velox v2025.
+- A release runs the `release.yml` of the tagged commit.
 - `release.yml` and `Dockerfile` hard-code the package path `github.com/roadrunner-server/velox/v3/internal/version`. Change both when the module path changes.
 - `Dockerfile` builds `vx` on `golang:1.27-alpine`. The final image is also `golang:1.27-alpine`, because `vx` runs the go tool. It adds `gcc` and `musl-dev` for `[debug] race = true`. A Go version change touches `go.mod` (`go` and `toolchain`) and both `FROM` lines in `Dockerfile`.
 - `Dockerfile_sample` and `README.md` pin the image tag `3.0.0`. Update the pins after a release.
