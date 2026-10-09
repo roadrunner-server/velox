@@ -188,8 +188,6 @@ version = "v9.15.0"
 
 [Release Please](https://github.com/googleapis/release-please) updates a release PR on `master` from [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). It updates `CHANGELOG.md` and `.release-please-manifest.json`. Merge the release PR to create the tag and GitHub release. The release workflow then builds the `vx` archives and the container images.
 
-The workflow uses the organization secrets `RR_CICD_APP_ID` and `RR_CICD_PRIVATE_KEY`. The GitHub App needs write access to Contents, Issues, and Pull requests for this repository. Its token lets release PRs and releases [start GitHub Actions workflows](https://github.com/googleapis/release-please-action#other-actions-on-release-please-prs).
-
 ## Links
 
 - [RoadRunner build documentation](https://docs.roadrunner.dev/customization/build)
