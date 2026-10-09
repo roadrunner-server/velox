@@ -173,6 +173,14 @@ version = "v9.15.0"
 - Each build compiles the binary in a unique temporary directory inside the output directory. The binary is renamed to `rr` after `rr --version` prints the requested ref; a cross build skips that check.
 - `-trimpath` is always set, and `SOURCE_DATE_EPOCH` is honored for the injected build timestamp.
 
+## Releases
+
+[Release Please](https://github.com/googleapis/release-please) updates a release PR on `master` from [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). It updates `CHANGELOG.md` and `.release-please-manifest.json`. Merge the release PR to create the tag and GitHub release. The release workflow then builds the `vx` archives and the container images.
+
+The workflow uses the organization secrets `RR_CICD_APP_ID` and `RR_CICD_PRIVATE_KEY`. The GitHub App needs write access to Contents, Issues, and Pull requests for this repository. Its token lets release PRs and releases [start GitHub Actions workflows](https://github.com/googleapis/release-please-action#other-actions-on-release-please-prs).
+
+The first managed release is `v3.0.0`. The initial manifest value `0.0.0` selects `initial-version` from `release-please-config.json`. The bootstrap commit is the `v2025.2-beta.2` tag, the last tag on `master`.
+
 ## Links
 
 - [RoadRunner build documentation](https://docs.roadrunner.dev/customization/build)
