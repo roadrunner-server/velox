@@ -190,8 +190,6 @@ version = "v9.15.0"
 
 The workflow uses the organization secrets `RR_CICD_APP_ID` and `RR_CICD_PRIVATE_KEY`. The GitHub App needs write access to Contents, Issues, and Pull requests for this repository. Its token lets release PRs and releases [start GitHub Actions workflows](https://github.com/googleapis/release-please-action#other-actions-on-release-please-prs).
 
-The first managed release is `v3.0.0`. The initial manifest value `0.0.0` selects `initial-version` from `release-please-config.json`. The bootstrap commit is the `v2025.2-beta.2` tag, the last tag on `master`.
-
 ## Links
 
 - [RoadRunner build documentation](https://docs.roadrunner.dev/customization/build)
