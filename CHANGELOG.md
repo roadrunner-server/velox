@@ -2,25 +2,6 @@
 
 ## 3.0.0 (2026-10-09)
 
-
-### Features
-
-* remove the Connect/gRPC build server ([c4123c1](https://github.com/roadrunner-server/velox/commit/c4123c1affe4b534e2289665f6093f5c7bb97c23))
-* v3 beta ([6b71101](https://github.com/roadrunner-server/velox/commit/6b71101ce0080143b4927cf2d84ab0ba02189b67))
-* v3 beta ([67911be](https://github.com/roadrunner-server/velox/commit/67911be8d5ee53c01685ed2e9508d312b2c64a8e))
-* v3 modernization — replace directives, go-mod-edit driven build ([72ced78](https://github.com/roadrunner-server/velox/commit/72ced78ddbc0ba473c2cd39d47c8a025d2b99cf2))
-
-
-### Bug Fixes
-
-* **ci:** default sample to host platform; harden temp dir; drop uuid dep ([61f62e8](https://github.com/roadrunner-server/velox/commit/61f62e8ac7584cfa55c243fefc8e0935723ebfb6))
-* isolate build outputs and support Docker race builds ([c7df00d](https://github.com/roadrunner-server/velox/commit/c7df00db7a661707b8006b0fe9eaaa31a82b2eed))
-* **v3:** review-comment fixes, bump sample plugins to v6, swap zap for log/slog ([547e636](https://github.com/roadrunner-server/velox/commit/547e63636f29b06a68336fa215345e98fdb1cedf))
-* **v3:** second round of PR review fixes ([272a06c](https://github.com/roadrunner-server/velox/commit/272a06cdc60a4c19909a009382bbeb6b147fa778))
-* **v3:** third-round PR review fixes (oauth redirect, cache copy, nil guard) ([82a7c74](https://github.com/roadrunner-server/velox/commit/82a7c74a5b3ae6e4caa29e2d7b528ac440bdc646))
-
-## v3.0.0
-
 ### Breaking
 
 - Velox v3 builds RoadRunner v3 (the `/v3` module line) with the `/v6` plugins. Build RoadRunner `v2025.x` with velox `v2025`.
