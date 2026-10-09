@@ -22,11 +22,24 @@ Documentation: [docs.roadrunner.dev/customization/build](https://docs.roadrunner
 
 ## Installation
 
+`vx` runs the `go` command to build RoadRunner, so install Go 1.27 or later. The container image includes Go.
+
+### Go
+
 ```bash
 go install github.com/roadrunner-server/velox/v3/cmd/vx@latest
 ```
 
 Migration: releases before v3 install from `github.com/roadrunner-server/velox/v2025/cmd/vx`.
+
+### Release archive
+
+Each release has a `velox-<version>-<os>-<arch>.tar.gz` archive for `linux` and `darwin` on `amd64` and `arm64`. The archive holds `vx`, the sample `velox.toml`, `README.md`, and `LICENSE`:
+
+```bash
+curl -fsSL https://github.com/roadrunner-server/velox/releases/download/v3.0.0/velox-3.0.0-linux-amd64.tar.gz | tar -xz
+./velox-3.0.0-linux-amd64/vx --version
+```
 
 ### Docker
 
@@ -34,7 +47,7 @@ Migration: releases before v3 install from `github.com/roadrunner-server/velox/v
 docker pull ghcr.io/roadrunner-server/velox:3.0.0
 ```
 
-Images are published to `ghcr.io/roadrunner-server/velox` and `spiralscout/velox`; the image tag is the release tag without the leading `v`. The entrypoint is `vx`, and the image ships the sample config at `/etc/velox.toml`.
+Images are published to `ghcr.io/roadrunner-server/velox` and `spiralscout/velox`. The image tag is the release tag without the leading `v`, and a stable release also moves `latest`. The entrypoint is `vx`, and the image ships the sample config at `/etc/velox.toml`.
 
 ```bash
 docker run --rm \
