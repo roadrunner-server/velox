@@ -23,17 +23,15 @@ Documentation: [docs.roadrunner.dev/customization/build](https://docs.roadrunner
 ## Installation
 
 ```bash
-go install github.com/roadrunner-server/velox/v3/cmd/vx@v3.0.0-beta.1
+go install github.com/roadrunner-server/velox/v3/cmd/vx@latest
 ```
-
-Install the exact tag. The `/v3` module line has only pre-release tags for now, so `@latest` has no stable release to resolve to.
 
 Migration: releases before v3 install from `github.com/roadrunner-server/velox/v2025/cmd/vx`.
 
 ### Docker
 
 ```bash
-docker pull ghcr.io/roadrunner-server/velox:3.0.0-beta.1
+docker pull ghcr.io/roadrunner-server/velox:3.0.0
 ```
 
 Images are published to `ghcr.io/roadrunner-server/velox` and `spiralscout/velox`; the image tag is the release tag without the leading `v`. The entrypoint is `vx`, and the image ships the sample config at `/etc/velox.toml`.
@@ -43,7 +41,7 @@ docker run --rm \
   -e GITHUB_TOKEN \
   -v "$PWD/velox.toml:/etc/velox.toml" \
   -v "$PWD:/output" \
-  ghcr.io/roadrunner-server/velox:3.0.0-beta.1 build -c /etc/velox.toml -o /output
+  ghcr.io/roadrunner-server/velox:3.0.0 build -c /etc/velox.toml -o /output
 ```
 
 The `docker-compose.yml` in this repository builds the image from source and runs `build -c=/etc/velox.toml -o=/tmp/`; uncomment the volume mapping there to copy the produced binary to the host.
@@ -96,7 +94,7 @@ The `velox.toml` shipped in this repository is the full sample: it lists every p
 
 ### `[roadrunner]`
 
-- `ref`: tag, branch, or 40-character commit SHA of `roadrunner-server/roadrunner`. Default `master`. A valid semver value (`v2025.1.7`) downloads `refs/tags`, a 40-character hex value downloads that commit, anything else downloads `refs/heads`.
+- `ref`: tag, branch, or 40-character commit SHA of `roadrunner-server/roadrunner`. Default `master`. A valid semver value (`v3.0.0`) downloads `refs/tags`, a 40-character hex value downloads that commit, anything else downloads `refs/heads`.
 
 ### `[github]` and `[github.token]`
 
@@ -161,7 +159,7 @@ version = "v9.15.0"
 
 ## Plugin compatibility
 
-- Supported: RoadRunner `master` (the `v2025` module line) with the `/v6` beta plugins. RoadRunner `v2025.x` releases pair with the `/v5` plugins.
+- Supported: RoadRunner v3 (the `/v3` module line) with the `/v6` plugins. RoadRunner `v2025.x` releases pair with the `/v5` plugins and velox `v2025`.
 - All plugins in one build must share the same major version: `http/v6` with `logger/v6`, never `http/v6` with `logger/v5`.
 - Do not point plugins at a `master` branch.
 

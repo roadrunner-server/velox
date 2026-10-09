@@ -1,9 +1,10 @@
 # Changelog
 
-## v3.0.0-beta.1
+## v3.0.0
 
 ### Breaking
 
+- Velox v3 builds RoadRunner v3 (the `/v3` module line) with the `/v6` plugins. Build RoadRunner `v2025.x` with velox `v2025`.
 - Module path moved to `github.com/roadrunner-server/velox/v3`; the CLI installs from `github.com/roadrunner-server/velox/v3/cmd/vx`.
 - The Connect/gRPC build server is removed. Velox is a CLI only (`vx build`), driven by `velox.toml`.
 - Windows build targets are rejected: `target_platform.os = "windows"` fails configuration validation, and no Windows binary is released.

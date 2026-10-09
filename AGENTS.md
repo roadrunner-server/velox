@@ -172,7 +172,7 @@ CI (`.github/workflows/linux.yml`):
 ## Plugin compatibility
 
 - **Do not use `master` branch** for plugins.
-- **All plugins must share a major version** (e.g., http/v6 + logger/v6, never http/v6 + logger/v5). RR `v2025.x.x` releases pair with `/v5`; the `/v6` beta plugin line pairs with RR `master`, whose module path stays year-based (`/v2025`).
+- **All plugins must share a major version** (e.g., http/v6 + logger/v6, never http/v6 + logger/v5). RR v3 (module path `/v3`) pairs with `/v6`; RR `v2025.x.x` releases pair with `/v5` and velox `v2025`.
 - **A tag that is not a semver version** (`latest`, a branch, a commit) skips post-tidy version verification: pin semver tags for reproducible builds.
 - informer and resetter are bundled from the upstream `go.mod`. Entries for them in `velox.toml` are dropped with a warning to avoid a double registration.
 
