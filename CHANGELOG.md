@@ -1,9 +1,10 @@
 # Changelog
 
-## v3.0.0-beta.1
+## v3.0.0
 
 ### Breaking
 
+- Velox v3 builds RoadRunner v3 (the `/v3` module line) with the `/v6` plugins. Build RoadRunner `v2025.x` with velox `v2025`.
 - Module path moved to `github.com/roadrunner-server/velox/v3`; the CLI installs from `github.com/roadrunner-server/velox/v3/cmd/vx`.
 - The Connect/gRPC build server is removed. Velox is a CLI only (`vx build`), driven by `velox.toml`.
 - Windows build targets are rejected: `target_platform.os = "windows"` fails configuration validation, and no Windows binary is released.
@@ -20,7 +21,7 @@
 - The bundled informer and resetter module paths come from `go mod edit -json` on the upstream go.mod, in place of regexp scraping. A `velox.toml` entry for either of them is dropped before every pipeline step.
 - Post-tidy version verification runs as a single batched `go list -m -e -json` over the plugins pinned to a semver tag, and understands `replace` directives. A tag that is not a semver version (`latest`, a branch, a commit) is not checked.
 - Subprocess cancellation uses `cmd.Cancel` and `cmd.WaitDelay`: the go tool gets SIGINT and 15 seconds before SIGKILL.
-- The binary is compiled straight into the output directory as `rr.tmp` and renamed to `rr` after the smoke test, which now fails when `rr --version` does not print the requested ref.
+- The binary is compiled in a temporary `.rr-build-*` directory inside the output directory and moved to `rr` after the smoke test, which now fails when `rr --version` does not print the requested ref.
 - Every build reuses the caller `GOPATH`, `GOMODCACHE`, and `GOCACHE`; the per-target redirect to `~/go/<os>/<arch>` is gone.
 - The in-process archive cache is removed; a `vx build` process downloads its ref once.
 - The archive download lets net/http follow redirects and accepts a direct 200. The GitHub token is a bearer `Authorization` header on the request, dropped on a redirect to another host, so the `oauth2` dependency is gone.
