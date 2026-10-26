@@ -62,6 +62,8 @@ jobs:
       - name: Build RoadRunner
         env:
           GITHUB_TOKEN: ${{ secrets.RT_TOKEN }}
+          # setup-go sets GOTOOLCHAIN=local. RoadRunner master can require a newer Go than go.mod: https://go.dev/doc/toolchain#GOTOOLCHAIN
+          GOTOOLCHAIN: auto
         run: |
           go install ./cmd/vx
           vx build -c velox.toml -o="."

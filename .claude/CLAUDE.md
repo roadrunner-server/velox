@@ -177,7 +177,7 @@ The sample `velox.toml` tracks RoadRunner `master`: every plugin is on the `/v6`
 
 ## CI
 
-- `linux.yml` runs on push and pull request to `master`, and daily at 05:30 UTC. Job `golang` runs `make test`. Job `build-sample-rr` installs `vx`, builds RoadRunner `master` from `velox.toml` with `latest` plugins, and runs `./rr --version`. A failure there can come from a RoadRunner or plugin change, not from velox.
+- `linux.yml` runs on push and pull request to `master`, and daily at 05:30 UTC. Job `golang` runs `make test`. Job `build-sample-rr` installs `vx`, builds RoadRunner `master` from `velox.toml` with `latest` plugins, and runs `./rr --version`. Its build step sets `GOTOOLCHAIN=auto`, so `go` downloads a newer Go when RoadRunner `master` requires it. A failure there can come from a RoadRunner or plugin change, not from velox.
 - `linters.yml` runs on every push and pull request with the latest stable Go.
 - `codeql-analysis.yml` runs on `master`, and weekly.
 - Unit tests run the go tool against a local `file://` GOPROXY and `httptest` servers. They need `go` on `PATH` but no network. No unit test runs a full RoadRunner build.
