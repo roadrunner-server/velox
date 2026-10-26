@@ -196,7 +196,7 @@ The sample `velox.toml` tracks RoadRunner `master`: every plugin is on the `/v6`
 - Job `docker` builds `Dockerfile` for linux/amd64 and linux/arm64 and pushes `spiralscout/velox:<version>` and `ghcr.io/roadrunner-server/velox:<version>`. A release that is not a prerelease also moves `:latest`, the major tag (`:3`), and the minor tag (`:3.0`) on both registries.
 - A release runs the `release.yml` of the tagged commit.
 - `release.yml` and `Dockerfile` hard-code the package path `github.com/roadrunner-server/velox/v3/internal/version`. Change both when the module path changes.
-- `Dockerfile` builds `vx` on `golang:1.27-alpine`. The final image is also `golang:1.27-alpine`, because `vx` runs the go tool. It adds `gcc` and `musl-dev` for `[debug] race = true`. A Go version change touches the `go` line in `go.mod` and both `FROM` lines in `Dockerfile`. `go.mod` has no `toolchain` line, because `actions/setup-go` installs the `toolchain` version before the `go` version.
+- `Dockerfile` builds `vx` on `golang:1.27-alpine`. The final image is also `golang:1.27-alpine`, because `vx` runs the go tool. It adds `gcc` and `musl-dev` for `[debug] race = true`. It sets `GOTOOLCHAIN=auto`, because the golang image sets `local` and a RoadRunner ref can require a newer Go patch release than the image has. A Go version change touches the `go` line in `go.mod` and both `FROM` lines in `Dockerfile`. `go.mod` has no `toolchain` line, because `actions/setup-go` installs the `toolchain` version before the `go` version.
 - `Dockerfile_sample` and `README.md` pin the image tag `3.0.0`. Update the pins after a release.
 
 ## User documentation
