@@ -24,6 +24,9 @@ FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:1.27-alpine
 # Race builds require CGO and a C toolchain.
 RUN apk add --no-cache gcc musl-dev
 
+# The golang image sets GOTOOLCHAIN=local. With auto, go downloads a newer Go when the RoadRunner go.mod requires it: https://go.dev/doc/toolchain#GOTOOLCHAIN
+ENV GOTOOLCHAIN=auto
+
 # use same build arguments for image labels
 ARG APP_VERSION="undefined"
 ARG BUILD_TIME="undefined"

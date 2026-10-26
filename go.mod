@@ -2,8 +2,6 @@ module github.com/roadrunner-server/velox/v3
 
 go 1.27.3
 
-toolchain go1.27.2
-
 require (
 	github.com/fatih/color v1.19.0
 	github.com/spf13/cobra v1.10.2
