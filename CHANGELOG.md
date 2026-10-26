@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.0.1](https://github.com/roadrunner-server/velox/compare/v3.0.0...v3.0.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **docker:** let the image download the Go version that RoadRunner requires ([2f5cec2](https://github.com/roadrunner-server/velox/commit/2f5cec246b2a5f418d41f20ad341084cb2433984))
+* use the Go version that RoadRunner requires in CI and in the image ([fe03dc2](https://github.com/roadrunner-server/velox/commit/fe03dc2fe2c08b807a922d88f852a1884251ecb8))
+
 ## 3.0.0 (2026-10-09)
 
 ### Breaking
