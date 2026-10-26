@@ -1,6 +1,6 @@
 module github.com/roadrunner-server/velox/v3
 
-go 1.27
+go 1.27.3
 
 toolchain go1.27.2
 
