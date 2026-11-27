@@ -37,24 +37,24 @@ Migration: releases before v3 install from `github.com/roadrunner-server/velox/v
 Each release has a `velox-<version>-<os>-<arch>.tar.gz` archive for `linux` and `darwin` on `amd64` and `arm64`. The archive holds `vx`, the sample `velox.toml`, `README.md`, and `LICENSE`:
 
 ```bash
-curl -fsSL https://github.com/roadrunner-server/velox/releases/download/v3.0.0/velox-3.0.0-linux-amd64.tar.gz | tar -xz
-./velox-3.0.0-linux-amd64/vx --version
+curl -fsSL https://github.com/roadrunner-server/velox/releases/download/v3.2.0/velox-3.2.0-linux-amd64.tar.gz | tar -xz
+./velox-3.2.0-linux-amd64/vx --version
 ```
 
 ### Docker
 
 ```bash
-docker pull ghcr.io/roadrunner-server/velox:3.0.0
+docker pull ghcr.io/roadrunner-server/velox:3.2.0
 ```
 
-Images are published to `ghcr.io/roadrunner-server/velox` and `spiralscout/velox`. The image tag is the release tag without the leading `v`. A stable release also moves `latest`, the major tag (`3`), and the minor tag (`3.0`). The entrypoint is `vx`, and the image ships the sample config at `/etc/velox.toml`. The image sets `GOTOOLCHAIN=auto`, so `go` downloads a newer Go version when the RoadRunner `go.mod` requires it.
+Images are published to `ghcr.io/roadrunner-server/velox` and `spiralscout/velox`. The image tag is the release tag without the leading `v`. A stable release also moves `latest`, the major tag (`3`), and the minor tag (`3.2`). The entrypoint is `vx`, and the image ships the sample config at `/etc/velox.toml`. The image sets `GOTOOLCHAIN=auto`, so `go` downloads a newer Go version when the RoadRunner `go.mod` requires it.
 
 ```bash
 docker run --rm \
   -e GITHUB_TOKEN \
   -v "$PWD/velox.toml:/etc/velox.toml" \
   -v "$PWD:/output" \
-  ghcr.io/roadrunner-server/velox:3.0.0 build -c /etc/velox.toml -o /output
+  ghcr.io/roadrunner-server/velox:3.2.0 build -c /etc/velox.toml -o /output
 ```
 
 The `docker-compose.yml` in this repository builds the image from source and runs `build -c=/etc/velox.toml -o=/tmp/`; uncomment the volume mapping there to copy the produced binary to the host.
@@ -107,7 +107,7 @@ The `velox.toml` shipped in this repository is the full sample: it lists every p
 
 ### `[roadrunner]`
 
-- `ref`: tag, branch, or 40-character commit SHA of `roadrunner-server/roadrunner`. Default `master`. A valid semver value (`v3.0.0`) downloads `refs/tags`, a 40-character hex value downloads that commit, anything else downloads `refs/heads`.
+- `ref`: tag, branch, or 40-character commit SHA of `roadrunner-server/roadrunner`. Default `master`. A valid semver value (`v3.2.0`) downloads `refs/tags`, a 40-character hex value downloads that commit, anything else downloads `refs/heads`.
 
 ### `[github]` and `[github.token]`
 

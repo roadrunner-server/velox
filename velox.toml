@@ -130,6 +130,10 @@ module_name = "github.com/roadrunner-server/status/v6"
 tag = "latest"
 module_name = "github.com/roadrunner-server/gzip/v6"
 
+[plugins.zstd]
+tag = "latest"
+module_name = "github.com/roadrunner-server/zstd/v6"
+
 [plugins.prometheus]
 tag = "latest"
 module_name = "github.com/roadrunner-server/prometheus/v6"
@@ -142,6 +146,10 @@ module_name = "github.com/roadrunner-server/send/v6"
 tag = "latest"
 module_name = "github.com/roadrunner-server/proxy_ip_parser/v6"
 
+[plugins.rateLimiter]
+tag = "latest"
+module_name = "github.com/roadrunner-server/rate-limiter/v6"
+
 [plugins.otel]
 tag = "latest"
 module_name = "github.com/roadrunner-server/otel/v6"
@@ -153,6 +161,10 @@ module_name = "github.com/roadrunner-server/fileserver/v6"
 [plugins.grpc]
 tag = "latest"
 module_name = "github.com/roadrunner-server/grpc/v6"
+
+[plugins.protoreg]
+tag = "latest"
+module_name = "github.com/roadrunner-server/protoreg/v6"
 
 [plugins.memory]
 tag = "latest"
