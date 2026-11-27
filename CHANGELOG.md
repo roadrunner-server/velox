@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.2.0 (2026-11-27)
+
+### 🎯 Core
+
+- ✨ **Sample plugin configuration**: Add `zstd/v6`, `rate-limiter/v6`, and `protoreg/v6` to `velox.toml` so the sample matches the plugins bundled in RoadRunner v3.2.0. See [PR #380](https://github.com/roadrunner-server/velox/pull/380).
+- ✨ **Sample PHP image**: Update `Dockerfile_sample` from `php:8.5.12-cli` to `php:8.6.0-cli`. See [PR #381](https://github.com/roadrunner-server/velox/pull/381).
+- ✨ **Documentation**: Update the release archive, Docker tag, minor tag (`3.2`), and RoadRunner `ref` examples in `README.md` for `v3.2.0`. See [PR #380](https://github.com/roadrunner-server/velox/pull/380).
+- 🐛 **Dependencies**: Update the Go toolchain in `go.mod` to `1.27.4` and update Go module dependencies, including `golang.org/x/mod` `v0.43.0`. See [PR #374](https://github.com/roadrunner-server/velox/pull/374).
+
 ## [3.0.1](https://github.com/roadrunner-server/velox/compare/v3.0.0...v3.0.1) (2026-10-26)
 
 
