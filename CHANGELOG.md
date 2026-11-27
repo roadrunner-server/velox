@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.2.0](https://github.com/roadrunner-server/velox/compare/v3.0.1...v3.2.0) (2026-11-27)
+
+
+### Features
+
+* add missing RoadRunner v3 plugins to velox.toml and update docs for v3.2.0 ([8e4567b](https://github.com/roadrunner-server/velox/commit/8e4567b7db9e5eaf4951bae433cf284ba8c66152))
+* add missing RoadRunner v3 plugins to velox.toml and update docs for v3.2.0 ([6a56755](https://github.com/roadrunner-server/velox/commit/6a5675556c8ef5915fd3e43d89f4c2e2bc01d5a4))
+
+
+### Miscellaneous Chores
+
+* set next release to 3.2.0 ([a0ececb](https://github.com/roadrunner-server/velox/commit/a0ececb3b83db6966a619a4530b767e01e797051))
+
 ## [3.0.1](https://github.com/roadrunner-server/velox/compare/v3.0.0...v3.0.1) (2026-10-26)
 
 
